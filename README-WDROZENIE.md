@@ -22,7 +22,7 @@ Zanim strona trafi na domenę klienta, zastąp **wszystkie dane demonstracyjne**
 | Karta dań | `menu/index.html` | pełne menu jako HTML, ceny, alergeny, data aktualizacji |
 | Oferta eventów | `przyjecia/index.html` | typy przyjęć, minimalna liczba gości, proces, formularz |
 | Kontakt | `kontakt/index.html` | adres, dojazd, mapa, telefon, e-mail, godziny |
-| Wygląd i zdjęcia | `styles.css` | zmienne w `:root`, adresy trzech obrazów, style podstron |
+| Wygląd i zdjęcia | `styles.css`, `refinement.css` | zmienne w `:root`, adresy trzech obrazów; warstwa finalnej art direction |
 | Formularze | `script.js` | tylko funkcja `sendLead()`; klucze API zawsze po stronie serwera |
 | Indeksowanie | `robots.txt`, `sitemap.xml` | domena i lista adresów po publikacji |
 | Konfiguracja hostingu | `.openai/hosting.json` | tylko ustawienia hostingu; nie usuwaj `project_id` |
