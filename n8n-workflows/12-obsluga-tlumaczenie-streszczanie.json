@@ -29,6 +29,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "zgloszenie-jezykowe",
+        "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
       }

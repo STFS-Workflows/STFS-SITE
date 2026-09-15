@@ -29,6 +29,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "formularz-nowy",
+        "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
       }

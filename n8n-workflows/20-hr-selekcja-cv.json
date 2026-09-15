@@ -29,6 +29,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "cv-nowe",
+        "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
       }

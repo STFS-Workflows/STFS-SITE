@@ -29,6 +29,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "opinia-nowa",
+        "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
       }

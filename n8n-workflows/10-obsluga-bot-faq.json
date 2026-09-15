@@ -29,6 +29,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "bot-faq",
+        "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
       }

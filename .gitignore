@@ -1,0 +1,19 @@
+# Lokalne sekrety i poświadczenia integracji — nie dodawaj ich do repozytorium.
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Klucze prywatne, certyfikaty i lokalne pliki poświadczeń.
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+
+# Lokalne dane oraz kopie zapasowe n8n.
+n8n_data/
+.n8n/
+*.sqlite
+*.sqlite-journal

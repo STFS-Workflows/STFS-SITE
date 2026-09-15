@@ -29,6 +29,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "lead-nowy",
+        "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
       }

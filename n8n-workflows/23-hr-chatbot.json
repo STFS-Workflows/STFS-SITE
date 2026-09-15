@@ -29,6 +29,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "hr-pytanie",
+        "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
       }

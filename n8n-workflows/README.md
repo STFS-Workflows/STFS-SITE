@@ -2,16 +2,17 @@
 
 32 gotowe do importu szkielety workflowów n8n, po jednym na każdy proces z katalogu automatyzacji na stronie STFS.
 
-## Chatbot strony STFS (produkcyjny, nie szkielet)
+## Chatbot strony STFS (szablon backendu)
 
-`site-chatbot-odpowiedzi-na-zywo.json` to osobny, w pełni działający workflow — backend widgetu czatu widocznego na żywo na stronie STFS (prawy dolny róg). W przeciwieństwie do 32 workflowów katalogowych poniżej, to nie jest przykład do pokazania klientom, tylko realny serwis, z którym łączy się `stfs/script.js` (stała `N8N_CHAT_WEBHOOK_URL`).
+`site-chatbot-odpowiedzi-na-zywo.json` to szablon backendu widgetu czatu. Obecna statyczna strona w tym repozytorium nie wywołuje go bezpośrednio. Nie kieruj do niego żądań z JavaScriptu przeglądarki — chroniony webhook n8n musi być wywoływany wyłącznie przez własny backend/gateway.
 
 Nie używa bazy wektorowej — cała wiedza o STFS (usługi, proces, konsultacja, kontakt) jest wpisana wprost w węźle "Zbuduj prompt", bo w całości mieści się w jednym zapytaniu do modelu AI. Prościej i taniej niż pełny RAG, wystarczające przy tej wielkości bazy wiedzy.
 
 **Uruchomienie:**
-1. Zaimportuj plik jak każdy inny (patrz niżej), zapisz i **aktywuj** (przełącznik w prawym górnym rogu edytora n8n).
-2. W węźle "AI: wygeneruj odpowiedź" podmień klucz API dostawcy modelu (OpenAI/Claude) w Headers.
-3. Skopiuj Production URL webhooka i wklej w `stfs/script.js` jako `N8N_CHAT_WEBHOOK_URL`.
+1. Zaimportuj plik, utwórz credential Header Auth i przypisz go do webhooka.
+2. Utwórz serwerowy gateway dla widgetu: weryfikuj CAPTCHA, ograniczaj liczbę żądań na IP i sesję, a następnie wywołuj webhook n8n z tokenem przechowywanym wyłącznie po stronie serwera.
+3. W węźle "AI: wygeneruj odpowiedź" użyj credentiala n8n dla wybranego dostawcy modelu (OpenAI/Claude), a nie klucza w pliku workflow.
+4. Dopiero po tych krokach aktywuj workflow.
 
 ## Monitoring opinii i reputacji (szkielet testowalny, nie produkcyjny)
 
@@ -26,10 +27,17 @@ Nie mamy dostępu do żadnej realnej lokalizacji Google z opiniami, więc testuj
 3. Workflow pojawi się z żółtą **notatką (sticky note)** u góry — opisuje, co trzeba podmienić/skonfigurować (klucze API, konta, realne endpointy).
 4. Podmień placeholdery (adresy `YOUR-...`, klucze AI) na realne dane i włącz workflow.
 
+## Bezpieczeństwo przed aktywacją
+
+- Każdy webhook w tym katalogu wymaga **Header Auth**. Przed aktywacją utwórz dla niego osobny credential z długim, losowym tokenem i przypisz go do węzła. Nie przechowuj tokenu w kodzie strony ani w pliku workflow.
+- Publiczne formularze i chatboty kieruj najpierw do własnego backendu/gateway z CAPTCHA oraz rate-limitem. Gateway powinien wywoływać chroniony webhook n8n po stronie serwera.
+- Dla webhooków od Stripe, Twilio i innych dostawców sprawdzaj ich podpis na surowym body przed wykonaniem akcji. Kwoty i statusy płatności pobieraj z API dostawcy, a nie z danych nadesłanych przez klienta.
+- Szczegółowa checklista jest w [SECURITY.md](SECURITY.md).
+
 ## Ważne
 
 - Wszystkie kroki HTTP/AI to **szkielety** — placeholder URL-e (`https://YOUR-....example.com`) trzeba podmienić na realne konta/API.
-- Węzeł "AI: ..." domyślnie woła OpenAI Chat Completions — podmień na swojego dostawcę (OpenAI/Claude/inny) i dodaj klucz w Headers albo użyj natywnego węzła AI w n8n.
+- Węzeł "AI: ..." domyślnie woła OpenAI Chat Completions — podmień na swojego dostawcę (OpenAI/Claude/inny) i zapisz klucz jako credential w n8n albo użyj natywnego węzła AI.
 - Workflowy w kategorii **Zaawansowane AI** (agent głosowy, RAG) wymagają dodatkowej infrastruktury (Twilio, baza wektorowa) — potraktuj je jako punkt startowy, nie gotowe rozwiązanie plug-and-play.
 - Żadne hasła/klucze nie są w plikach — musisz je wpisać sam w panelu n8n (Credentials).
 - Węzły **IF** mają podłączoną tylko gałąź "true" (dalszy ciąg workflow). Gałąź "false" (np. "lead niegorący", "brak anomalii") zostaw pustą albo podepnij własną ścieżkę (np. inny kanał powiadomień) — w edytorze n8n przeciągnij z drugiego wyjścia węzła IF.
@@ -91,4 +99,3 @@ Nie mamy dostępu do żadnej realnej lokalizacji Google z opiniami, więc testuj
 - **Dynamiczne opisy produktów pod SEO** — `30-ecommerce-opisy-produktow.json`
 - **Przypomnienia o porzuconym koszyku** — `31-ecommerce-porzucone-koszyki.json`
 - **Monitoring cen konkurencji** — `32-ecommerce-monitoring-cen.json`
-

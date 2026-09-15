@@ -29,6 +29,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "rozmowa-rekrutacyjna",
+        "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
       }

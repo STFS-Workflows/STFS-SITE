@@ -29,6 +29,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "dokument-nowy",
+        "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
       }

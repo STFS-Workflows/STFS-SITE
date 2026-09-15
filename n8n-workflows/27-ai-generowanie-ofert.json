@@ -29,6 +29,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "brief-oferta",
+        "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
       }

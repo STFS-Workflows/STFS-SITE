@@ -37,7 +37,13 @@ function webhookTrigger(name, webhookPath, x) {
   return node(
     'n8n-nodes-base.webhook',
     name,
-    { httpMethod: 'POST', path: webhookPath, responseMode: 'onReceived', options: {} },
+    {
+      httpMethod: 'POST',
+      path: webhookPath,
+      authentication: 'headerAuth',
+      responseMode: 'onReceived',
+      options: {},
+    },
     x,
     2
   );
@@ -167,7 +173,10 @@ function buildWorkflow({ fileName, name, category, setupNote, triggerNode, steps
     chain.push(s);
   });
 
-  const note = stickyNote(setupNote, 80, 380, 300, -340);
+  const webhookSecurityNote = trigger.type === 'n8n-nodes-base.webhook'
+    ? '\n\n## Bezpieczeństwo przed aktywacją\n\nTen webhook wymaga teraz **Header Auth**. W n8n utwórz poświadczenie Header Auth z długim, losowym tokenem i przypisz je do węzła — bez tego workflow nie może zostać aktywowany. Nie umieszczaj tokenu w JavaScript strony ani w pliku JSON.\n\nDla Stripe, Twilio i podobnych dostawców dodatkowo zweryfikuj ich podpis webhooka na surowym body przed każdym skutkiem ubocznym. Formularz działający w przeglądarce musi iść przez własny backend/gateway z CAPTCHA i limitem żądań; nie wywołuj bezpośrednio chronionego webhooka n8n z kodu klienta. Zweryfikuj schemat danych i uprawnienia po stronie serwera przed wysłaniem e-maila, utworzeniem wydarzenia lub zapisem do systemu.'
+    : '';
+  const note = stickyNote(`${setupNote}${webhookSecurityNote}`, 80, 460, 440, -480);
 
   const connections = {};
   for (let i = 0; i < chain.length - 1; i++) {
@@ -195,7 +204,7 @@ function aiHttpNode(name, note, x) {
     'POST',
     'https://api.openai.com/v1/chat/completions',
     note ||
-      'Podmień na węzeł dostawcy AI (OpenAI/Claude/inny) lub uzupełnij Authorization: Bearer w Headers. To placeholder pokazujący, gdzie w przepływie wchodzi model językowy.',
+      'Podmień na węzeł dostawcy AI (OpenAI/Claude/inny) i zapisz klucz jako credential w n8n. Nie wpisuj klucza w pliku workflow ani w JavaScript strony. To placeholder pokazujący, gdzie w przepływie wchodzi model językowy.',
     x
   );
 }
@@ -789,6 +798,9 @@ const categoryLabels = {
 };
 
 let readme = `# Katalog automatyzacji STFS — workflowy n8n\n\n32 gotowe do importu szkielety workflowów n8n, po jednym na każdy proces z katalogu automatyzacji na stronie STFS.\n\n## Jak zaimportować\n\n1. Otwórz n8n → **Workflows → Import from File**.\n2. Wybierz plik \`.json\` z tego folderu.\n3. Workflow pojawi się z żółtą **notatką (sticky note)** u góry — opisuje, co trzeba podmienić/skonfigurować (klucze API, konta, realne endpointy).\n4. Podmień placeholdery (adresy \`YOUR-...\`, klucze AI) na realne dane i włącz workflow.\n\n## Ważne\n\n- Wszystkie kroki HTTP/AI to **szkielety** — placeholder URL-e (\`https://YOUR-....example.com\`) trzeba podmienić na realne konta/API.\n- Węzeł "AI: ..." domyślnie woła OpenAI Chat Completions — podmień na swojego dostawcę (OpenAI/Claude/inny) i dodaj klucz w Headers albo użyj natywnego węzła AI w n8n.\n- Workflowy w kategorii **Zaawansowane AI** (agent głosowy, RAG) wymagają dodatkowej infrastruktury (Twilio, baza wektorowa) — potraktuj je jako punkt startowy, nie gotowe rozwiązanie plug-and-play.\n- Żadne hasła/klucze nie są w plikach — musisz je wpisać sam w panelu n8n (Credentials).\n- Węzły **IF** mają podłączoną tylko gałąź "true" (dalszy ciąg workflow). Gałąź "false" (np. "lead niegorący", "brak anomalii") zostaw pustą albo podepnij własną ścieżkę (np. inny kanał powiadomień) — w edytorze n8n przeciągnij z drugiego wyjścia węzła IF.\n\n## Lista workflowów\n\n`;
+
+readme = readme.replace('## Lista workflowów\n\n', '');
+readme += `## Bezpieczeństwo przed aktywacją\n\n- Każdy webhook wymaga **Header Auth**. Utwórz osobny credential z długim, losowym tokenem i przypisz go do węzła przed aktywacją.\n- Nie umieszczaj tokenu webhooka ani klucza AI w kodzie strony, pliku workflow ani repozytorium. Zapisuj je jako Credentials w n8n.\n- Formularze i publiczne chatboty muszą wołać własny backend/gateway, który weryfikuje CAPTCHA, ogranicza liczbę żądań i dopiero potem wywołuje chroniony webhook n8n.\n- Dla Stripe, Twilio i podobnych dostawców weryfikuj podpis wiadomości na surowym body; nie zastępuj tej kontroli nagłówkiem z przeglądarki.\n- Przed skutkiem ubocznym waliduj typy, zakresy i uprawnienia danych na serwerze. Kwoty oraz statusy płatności pobieraj z zaufanego systemu źródłowego, nigdy z payloadu klienta.\n\n## Lista workflowów\n\n`;
 
 for (const [cat, items] of Object.entries(grouped)) {
   readme += `### ${categoryLabels[cat]}\n\n`;

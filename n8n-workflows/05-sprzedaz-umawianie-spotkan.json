@@ -29,6 +29,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "rezerwacja-konsultacji",
+        "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
       }
