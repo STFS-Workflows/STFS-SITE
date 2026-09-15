@@ -1,16 +1,29 @@
 // Nawigacja mobilna: działa bez zależności i nie wpływa na indeksowalność linków.
 const toggle = document.querySelector('.menu-toggle');
 const nav = document.querySelector('.site-nav');
+const menuLabel = toggle?.querySelector('.sr-only');
+
+const setMenuOpen = (open) => {
+  if (!nav || !toggle) return;
+  nav.classList.toggle('open', open);
+  toggle.setAttribute('aria-expanded', String(open));
+  if (menuLabel) menuLabel.textContent = open ? 'Zamknij menu' : 'Otwórz menu';
+};
 
 toggle?.addEventListener('click', () => {
-  const open = nav.classList.toggle('open');
-  toggle.setAttribute('aria-expanded', String(open));
+  setMenuOpen(!nav?.classList.contains('open'));
 });
 
 nav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => {
-  nav.classList.remove('open');
-  toggle?.setAttribute('aria-expanded', 'false');
+  setMenuOpen(false);
 }));
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && nav?.classList.contains('open')) {
+    setMenuOpen(false);
+    toggle?.focus();
+  }
+});
 
 // Formularze są gotowe jako interfejs. Funkcja sendLead() to jedyne miejsce,
 // w którym agent wdrożeniowy powinien podłączyć CRM, e-mail lub system rezerwacji.
