@@ -1,4 +1,3 @@
-# Po zmianie domeny podmień adres sitemap.
 User-agent: *
 Allow: /
-Sitemap: https://atelier-27-restaurant-template.marekmaro8.chatgpt.site/sitemap.xml
+Sitemap: https://stfs.pl/sitemap.xml

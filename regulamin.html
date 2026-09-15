@@ -1,2 +1,162 @@
-<!doctype html>
-<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Regulamin rezerwacji — do uzupełnienia</title><link rel="stylesheet" href="styles.css"></head><body class="subpage"><main class="section"><article class="shell legal-template"><p class="eyebrow">Dokument do wdrożenia</p><h1>Regulamin rezerwacji</h1><p>Ten dokument należy zastąpić zasadami obowiązującymi w konkretnej restauracji. Nie publikuj go jako finalnego regulaminu bez weryfikacji przez właściciela i doradcę prawnego.</p><h2>Zakres do potwierdzenia</h2><ul><li>czas trwania rezerwacji i zasady spóźnień,</li><li>warunki rezerwacji dla grup oraz przedpłaty,</li><li>anulacje i no-show,</li><li>alergie, diety oraz kontakt z restauracją,</li><li>zasady wydarzeń prywatnych i reklamacji.</li></ul><p><a class="text-link" href="/">Wróć na stronę główną <span>→</span></a></p></article></main></body></html>
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regulamin — STFS</title>
+<meta name="description" content="Regulamin świadczenia usług drogą elektroniczną przez STFS — zasady korzystania ze strony, formularza rezerwacji i asystenta AI.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="logo_stfs.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+</noscript>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<canvas id="grain"></canvas>
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="aurora" aria-hidden="true"></div>
+
+<header class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="index.html#top" class="brand" aria-label="STFS, strona główna">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-word">STFS</span>
+    </a>
+    <nav class="nav-links">
+      <a href="index.html#onas">O nas</a>
+      <a href="index.html#uslugi">Usługi</a>
+      <a href="index.html#jak-to-dziala">Jak to działa</a>
+      <a href="index.html#wspolpraca">Współpraca</a>
+      <a href="index.html#konsultacja">Konsultacja</a>
+    </nav>
+    <a href="index.html#konsultacja" class="btn btn-primary btn-nav">Umów konsultację</a>
+    <button class="nav-toggle" id="navToggle" aria-label="Otwórz menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <nav class="nav-mobile" id="navMobile">
+    <a href="index.html#onas">O nas</a>
+    <a href="index.html#uslugi">Usługi</a>
+    <a href="index.html#jak-to-dziala">Jak to działa</a>
+    <a href="index.html#wspolpraca">Współpraca</a>
+    <a href="index.html#konsultacja">Konsultacja</a>
+    <a href="index.html#konsultacja" class="btn btn-primary">Umów konsultację</a>
+  </nav>
+</header>
+
+<main>
+  <section class="legal">
+    <div class="section-inner legal-inner">
+      <span class="eyebrow">PRAWNE</span>
+      <h1 class="section-title">Regulamin świadczenia usług drogą elektroniczną</h1>
+      <p class="legal-updated">Ostatnia aktualizacja: 28 lipca 2026</p>
+
+      <h2>1. Postanowienia ogólne</h2>
+      <p>Niniejszy regulamin określa zasady korzystania ze strony internetowej STFS oraz świadczenia za jej pośrednictwem usług drogą elektroniczną w rozumieniu ustawy z dnia 18 lipca 2002 r. o świadczeniu usług drogą elektroniczną.</p>
+      <p>Usługodawcą jest Bartłomiej Kukulski, kontakt: <a href="mailto:kontakt@stfs.pl">kontakt@stfs.pl</a>.</p>
+
+      <h2>2. Definicje</h2>
+      <ul>
+        <li><strong>Strona</strong> — serwis internetowy dostępny pod adresem stfs.pl</li>
+        <li><strong>Użytkownik</strong> — każda osoba odwiedzająca Stronę lub korzystająca z jej funkcji</li>
+        <li><strong>Usługi elektroniczne</strong> — formularz rezerwacji konsultacji, asystent AI (chatbot) oraz formularze kontaktowe dostępne na Stronie</li>
+      </ul>
+
+      <h2>3. Rodzaj i zakres usług świadczonych drogą elektroniczną</h2>
+      <p>Za pośrednictwem Strony Usługodawca umożliwia Użytkownikowi:</p>
+      <ul>
+        <li>zapoznanie się z ofertą STFS (automatyzacje AI, strony internetowe, wsparcie marketingu, startupy dla firm)</li>
+        <li>rezerwację bezpłatnej, 30-minutowej konsultacji za pomocą panelu rezerwacji (obsługiwanego przez zewnętrzną platformę Cal.com)</li>
+        <li>zadawanie pytań dotyczących oferty STFS za pomocą asystenta AI (chatbota) dostępnego na Stronie</li>
+        <li>kontakt drogą mailową lub telefoniczną</li>
+      </ul>
+      <p>Korzystanie z powyższych usług jest bezpłatne. Treści prezentowane na Stronie mają charakter informacyjny i nie stanowią oferty handlowej w rozumieniu art. 66 Kodeksu Cywilnego — są zaproszeniem do rozpoczęcia rozmów (art. 71 Kodeksu Cywilnego). Wiążące warunki współpracy ustalane są indywidualnie po konsultacji.</p>
+
+      <h2>4. Warunki techniczne korzystania ze Strony</h2>
+      <p>Do korzystania ze Strony niezbędne są: urządzenie z dostępem do internetu, aktualna przeglądarka internetowa z włączoną obsługą JavaScript oraz plików cookies. Usługodawca nie ponosi odpowiedzialności za problemy techniczne wynikające z niewłaściwej konfiguracji sprzętu lub oprogramowania Użytkownika.</p>
+
+      <h2>5. Zasady korzystania z asystenta AI</h2>
+      <p>Asystent AI dostępny na Stronie to narzędzie oparte na modelu językowym, które odpowiada na pytania wyłącznie na podstawie zdefiniowanej wiedzy o STFS. Odpowiedzi generowane są automatycznie i mogą zawierać nieścisłości — nie stanowią wiążącej oferty, porady prawnej, finansowej ani profesjonalnej i nie zastępują indywidualnej konsultacji z zespołem STFS.</p>
+      <p>Zabronione jest wykorzystywanie asystenta AI w sposób niezgodny z jego przeznaczeniem, w tym: zautomatyzowane wysyłanie masowych zapytań, próby obejścia zabezpieczeń, wprowadzanie treści niezgodnych z prawem, obraźliwych lub naruszających prawa osób trzecich. Usługodawca zastrzega sobie prawo do ograniczenia dostępu do tej funkcji Użytkownikom naruszającym niniejszy punkt.</p>
+
+      <h2>6. Zasady rezerwacji konsultacji</h2>
+      <p>Rezerwacja terminu konsultacji odbywa się za pośrednictwem panelu Cal.com osadzonego na Stronie. Warunkiem rezerwacji jest podanie prawdziwych danych kontaktowych (imię, adres e-mail). Zmiana lub odwołanie terminu możliwe jest za pośrednictwem linku w mailu potwierdzającym lub poprzez kontakt na adres <a href="mailto:kontakt@stfs.pl">kontakt@stfs.pl</a>.</p>
+
+      <h2>7. Prawa i obowiązki Użytkownika</h2>
+      <p>Użytkownik zobowiązany jest do korzystania ze Strony w sposób zgodny z prawem, dobrymi obyczajami oraz niniejszym regulaminem, w szczególności do niepodawania nieprawdziwych danych oraz niepodejmowania działań mogących zakłócić działanie Strony lub usług elektronicznych.</p>
+
+      <h2>8. Odpowiedzialność</h2>
+      <p>Usługodawca dokłada starań, aby informacje na Stronie były aktualne i rzetelne, jednak nie gwarantuje ich całkowitej bezbłędności. Usługodawca nie ponosi odpowiedzialności za przerwy w dostępności Strony wynikające z przyczyn technicznych, w tym leżących po stronie dostawców zewnętrznych usług (Cal.com, dostawca modelu AI, hosting).</p>
+
+      <h2>9. Postępowanie reklamacyjne</h2>
+      <p>Reklamacje dotyczące funkcjonowania Strony lub usług elektronicznych można zgłaszać na adres <a href="mailto:kontakt@stfs.pl">kontakt@stfs.pl</a>, podając opis zgłaszanego problemu. Reklamacje rozpatrywane są w terminie 14 dni roboczych od otrzymania zgłoszenia.</p>
+
+      <h2>10. Ochrona danych osobowych</h2>
+      <p>Zasady przetwarzania danych osobowych opisane są w odrębnym dokumencie: <a href="polityka-prywatnosci.html">Polityka prywatności</a>.</p>
+
+      <h2>11. Postanowienia końcowe</h2>
+      <p>W sprawach nieuregulowanych niniejszym regulaminem zastosowanie mają przepisy prawa polskiego, w tym Kodeksu Cywilnego oraz ustawy o świadczeniu usług drogą elektroniczną. Usługodawca zastrzega sobie prawo do zmiany regulaminu — aktualna wersja zawsze dostępna jest pod tym adresem, wraz z datą ostatniej aktualizacji na górze strony.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="section-inner footer-inner">
+    <div class="footer-links">
+      <div class="footer-col">
+        <span class="footer-heading">Nawigacja</span>
+        <a href="index.html#onas">O nas</a>
+        <a href="index.html#uslugi">Usługi</a>
+        <a href="index.html#jak-to-dziala">Jak to działa</a>
+        <a href="index.html#wspolpraca">Współpraca</a>
+        <a href="index.html#konsultacja">Konsultacja</a>
+      </div>
+      <div class="footer-col">
+        <span class="footer-heading">Kontakt</span>
+        <a href="mailto:kontakt@stfs.pl">kontakt@stfs.pl</a>
+      </div>
+      <div class="footer-col">
+        <span class="footer-heading">Prawne</span>
+        <a href="polityka-prywatnosci.html">Polityka prywatności</a>
+        <a href="regulamin.html">Regulamin</a>
+      </div>
+    </div>
+  </div>
+  <div class="section-inner footer-bottom">
+    <span>© 2026 STFS · <a href="polityka-prywatnosci.html">Polityka prywatności</a> · <a href="regulamin.html">Regulamin</a></span>
+  </div>
+</footer>
+
+<!-- CHAT WIDGET -->
+<div class="chat-widget" id="chatWidget">
+  <div class="chat-panel" id="chatPanel" role="dialog" aria-label="Asystent AI STFS" aria-hidden="true">
+    <div class="chat-head">
+      <span class="chat-head-avatar" aria-hidden="true"></span>
+      <div class="chat-head-text">
+        <span class="chat-head-title">Asystent STFS</span>
+        <span class="chat-head-status"><span class="status-dot" aria-hidden="true"></span> Online 24/7</span>
+      </div>
+      <button type="button" class="chat-close" id="chatClose" aria-label="Zamknij czat"><svg class="icon" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></svg></button>
+    </div>
+    <div class="chat-body" id="chatBody">
+      <div class="chat-msg ai">Cześć! Jestem asystentem AI STFS. Zapytaj mnie o nasze usługi, proces współpracy albo umówienie darmowej konsultacji.</div>
+    </div>
+    <form class="chat-input-row" id="chatForm">
+      <input type="text" id="chatInput" placeholder="Napisz wiadomość…" autocomplete="off" maxlength="500" required>
+      <button type="submit" class="chat-send" aria-label="Wyślij"><svg class="icon" viewBox="0 0 256 256"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></svg></button>
+    </form>
+  </div>
+  <button type="button" class="chat-toggle" id="chatToggle" aria-label="Otwórz czat z asystentem AI">
+    <svg class="icon" id="chatToggleIconOpen" viewBox="0 0 256 256"><path d="M140,128a12,12,0,1,1-12-12A12,12,0,0,1,140,128ZM84,116a12,12,0,1,0,12,12A12,12,0,0,0,84,116Zm88,0a12,12,0,1,0,12,12A12,12,0,0,0,172,116Zm60,12A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Zm-16,0A88,88,0,1,0,51.81,172.06a8,8,0,0,1,.66,6.54L40,216,77.4,203.53a7.85,7.85,0,0,1,2.53-.42,8,8,0,0,1,4,1.08A88,88,0,0,0,216,128Z"/></svg>
+    <svg class="icon" id="chatToggleIconClose" style="display:none" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></svg>
+  </button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

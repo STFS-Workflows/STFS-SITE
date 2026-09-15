@@ -17,3 +17,12 @@ n8n_data/
 .n8n/
 *.sqlite
 *.sqlite-journal
+
+# Materiały przeniesione do prywatnego STFS-Templates; pozostają lokalnie
+# tylko jako kopie robocze i nigdy nie są publikowane na stfs.pl.
+.site-stage-*/
+dist/
+menu/
+kontakt/
+przyjecia/
+refinement.css
