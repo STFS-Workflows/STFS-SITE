@@ -20,10 +20,15 @@ const sendLead = async (form) => {
   return Promise.resolve();
 };
 
+const now = new Date();
+const localToday = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+  .toISOString()
+  .slice(0, 10);
+
 document.querySelectorAll('form').forEach((form) => {
   const date = form.querySelector('input[type="date"]');
   const feedback = form.querySelector('.form-feedback');
-  if (date) date.min = new Date().toISOString().split('T')[0];
+  if (date) date.min = localToday;
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
