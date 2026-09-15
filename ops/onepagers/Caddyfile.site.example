@@ -1,0 +1,17 @@
+# Copy this as a dedicated site fragment into the central edge gateway after DNS points at the VPS.
+# Do not enable this for stfs.pl until the intended STFS artifact passes validation.
+
+example-client-domain.pl, www.example-client-domain.pl {
+    encode zstd gzip
+    root * /srv/onepagers/example-client/current
+    try_files {path} {path}/ /index.html
+    file_server
+
+    header {
+        -Server
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    }
+}

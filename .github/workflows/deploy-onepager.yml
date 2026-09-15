@@ -1,0 +1,76 @@
+name: Deploy one-pager to Contabo
+
+on:
+  workflow_dispatch:
+    inputs:
+      site_slug:
+        description: "Safe server identifier, e.g. stfs or dom-przyjec-gonsior"
+        required: true
+        default: "stfs"
+        type: string
+      source_dir:
+        description: "Directory containing the static production artifact"
+        required: true
+        default: "dist"
+        type: string
+      public_host:
+        description: "Target hostname for canonical/SEO validation; leave empty only for a preview"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: onepager-production-${{ inputs.site_slug }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate static artifact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate HTML and SEO deployment guardrails
+        run: bash ops/onepagers/validate-static-site.sh "${{ inputs.source_dir }}" "${{ inputs.public_host }}"
+      - name: Build immutable deployment artifact
+        run: tar --create --gzip --file onepager.tar.gz --directory "${{ inputs.source_dir }}" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onepager-${{ github.sha }}
+          path: onepager.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    name: Publish release on Contabo
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: contabo-production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: onepager-${{ github.sha }}
+      - name: Configure SSH
+        env:
+          DEPLOY_KEY: ${{ secrets.CONTABO_ONEPAGER_SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.CONTABO_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: Upload immutable artifact
+        env:
+          CONTABO_HOST: ${{ secrets.CONTABO_SSH_HOST }}
+          CONTABO_USER: ${{ secrets.CONTABO_ONEPAGER_SSH_USER }}
+        run: |
+          scp -o BatchMode=yes onepager.tar.gz "$CONTABO_USER@$CONTABO_HOST:/opt/onepagers/incoming/${{ github.sha }}.tar.gz"
+      - name: Atomically publish and smoke-test
+        env:
+          CONTABO_HOST: ${{ secrets.CONTABO_SSH_HOST }}
+          CONTABO_USER: ${{ secrets.CONTABO_ONEPAGER_SSH_USER }}
+        run: |
+          ssh -o BatchMode=yes "$CONTABO_USER@$CONTABO_HOST" \
+            "sudo /opt/onepagers/bin/deploy-release.sh '${{ inputs.site_slug }}' '${{ github.sha }}' '/opt/onepagers/incoming/${{ github.sha }}.tar.gz' && sudo /opt/onepagers/bin/verify-release.sh '${{ inputs.site_slug }}'"
