@@ -380,9 +380,12 @@
       loadCalEmbed();
       return;
     }
+    const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1));
     const io = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting) {
-        loadCalEmbed();
+        // Defer to an idle moment so injecting Cal's embed script never
+        // lands in the middle of an active scroll/fling on mobile.
+        idle(loadCalEmbed, { timeout: 2000 });
         io.disconnect();
       }
     }, { rootMargin: '600px 0px' });

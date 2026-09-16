@@ -63,6 +63,13 @@ if (reduceMotion) {
 (() => {
   const canvas = document.getElementById('network');
   if (!canvas) return;
+  // Decorative particle animation fights the browser's native momentum
+  // scroll on touch devices and burns CPU for no visual payoff there —
+  // skip it entirely on touch, matching the standing mobile-performance rule.
+  if (window.matchMedia('(hover: none)').matches) {
+    canvas.style.display = 'none';
+    return;
+  }
   const ctx = canvas.getContext('2d');
   let width, height, dpr;
   let particles = [];

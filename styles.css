@@ -390,10 +390,29 @@ section{padding:88px 0}
   content:"";position:absolute;left:0;top:8px;
   width:6px;height:6px;border-radius:2px;background:var(--accent);
 }
+@media (max-width:899px){
+  /* Mobile: 6 full-height stacked cards made this section enormous.
+     Turn it into a swipeable horizontal slider instead, so the section
+     height stays roughly constant no matter how many services we list. */
+  .services-grid--6{
+    display:flex;gap:14px;
+    overflow-x:auto;overflow-y:hidden;
+    scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+    touch-action:pan-x;
+    margin:0 -20px;padding:4px 20px 20px;
+    scrollbar-width:none;
+  }
+  .services-grid--6::-webkit-scrollbar{display:none}
+  .services-grid--6 .service-card{
+    flex:0 0 84%;min-width:0;scroll-snap-align:start;
+    user-select:none;-webkit-user-drag:none;
+  }
+}
 @media (min-width:900px){
   .services-grid{grid-template-columns:1.4fr 1fr}
   .service-card--lg{padding:40px 36px}
   .services-grid--6{grid-template-columns:repeat(2,1fr)}
+  .services-grid--6 .service-card{min-width:0}
 }
 @media (min-width:1200px){
   .services-grid--6{grid-template-columns:repeat(3,1fr)}
@@ -436,7 +455,8 @@ section{padding:88px 0}
 .flow-line.filled::after{transform:scaleY(1)}
 .flow-caption{
   text-align:center;margin-top:28px;color:var(--text-secondary);
-  font-size:14.5px;min-height:1.4em;
+  font-size:14.5px;line-height:1.5;min-height:3em;
+  max-width:46ch;margin-left:auto;margin-right:auto;
 }
 
 @media (min-width:900px){
@@ -494,8 +514,24 @@ section{padding:88px 0}
 .collab-card h3{font-family:var(--font-display);font-size:19px;font-weight:600}
 .collab-card p{color:var(--text-secondary);font-size:14.5px;line-height:1.6}
 
+@media (max-width:899px){
+  .collab-models{
+    display:flex;gap:14px;
+    overflow-x:auto;overflow-y:hidden;
+    scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+    touch-action:pan-x;
+    margin:56px -20px 0;padding:4px 20px 20px;
+    scrollbar-width:none;
+  }
+  .collab-models::-webkit-scrollbar{display:none}
+  .collab-card{
+    flex:0 0 84%;min-width:0;scroll-snap-align:start;
+    user-select:none;-webkit-user-drag:none;
+  }
+}
 @media (min-width:900px){
   .collab-models{grid-template-columns:repeat(3,1fr)}
+  .collab-card{min-width:0}
 }
 
 /* ---------- cta glow (reused by booking section) ---------- */
