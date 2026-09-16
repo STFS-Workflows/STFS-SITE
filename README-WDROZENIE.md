@@ -24,6 +24,7 @@ Zanim strona trafi na domenę klienta, zastąp **wszystkie dane demonstracyjne**
 | Kontakt | `kontakt/index.html` | adres, dojazd, mapa, telefon, e-mail, godziny |
 | Wygląd i zdjęcia | `styles.css`, `refinement.css` | zmienne w `:root`, adresy trzech obrazów; warstwa finalnej art direction |
 | Formularze | `script.js` | tylko funkcja `sendLead()`; klucze API zawsze po stronie serwera |
+| Moduły opcjonalne | `DODATKOWE-MODULY.md` | plan automatyzacji, cyfrowej sali i kontrolowanej puli rezerwacji online |
 | Indeksowanie | `robots.txt`, `sitemap.xml` | domena i lista adresów po publikacji |
 | Konfiguracja hostingu | `.openai/hosting.json` | tylko ustawienia hostingu; nie usuwaj `project_id` |
 
@@ -43,6 +44,8 @@ Nazwa firmy, adres, telefon i godziny muszą być identyczne w stopce, na stroni
 ## Formularze i rezerwacje
 
 Obecne formularze walidują dane po stronie przeglądarki i pokazują stan sukcesu, ale nie wysyłają leadów. Podłącz `sendLead()` do serwerowego endpointu, n8n, CRM lub dostawcy rezerwacji. Waliduj dane również po stronie serwera, ogranicz spam (honeypot/rate-limit/CAPTCHA) i nie przekazuj kluczy do JavaScriptu.
+
+Plan bezpiecznego rozszerzenia o automatyzacje i wybór stolika na cyfrowej sali jest w `DODATKOWE-MODULY.md`. Najpierw wdrażaj wariant „prośba o stolik”, a automatyczne potwierdzanie dopiero po podłączeniu wiarygodnego źródła dostępności.
 
 ## AI Elements
 
