@@ -33,15 +33,13 @@ function codeNode(name, jsCode, x) {
   return node('n8n-nodes-base.code', name, { jsCode }, x, 2);
 }
 
-function httpNode(name, method, url, note, x, bodyOverride) {
-  return node(
-    'n8n-nodes-base.httpRequest',
-    name,
-    { method, url, sendBody: method !== 'GET', specifyBody: 'json', jsonBody: bodyOverride || '={{ JSON.stringify($json) }}', options: {} },
-    x,
-    4.2,
-    { notes: note }
-  );
+function httpNode(name, method, url, note, x, bodyOverride, headerParams) {
+  const params = { method, url, sendBody: method !== 'GET', specifyBody: 'json', jsonBody: bodyOverride || '={{ JSON.stringify($json) }}', options: {} };
+  if (headerParams) {
+    params.sendHeaders = true;
+    params.headerParameters = { parameters: headerParams };
+  }
+  return node('n8n-nodes-base.httpRequest', name, params, x, 4.2, { notes: note });
 }
 
 function respondWebhook(name, x) {
@@ -103,7 +101,7 @@ Technologie, których używa STFS: GPT-4o, Claude, LangChain, n8n, Make, Zapier,
 const buildPromptCode = `
 const KNOWLEDGE_BASE = ${JSON.stringify(knowledgeBase)};
 
-const systemPrompt = "Jesteś asystentem AI na stronie STFS (AI studio dla biznesu). Odpowiadaj wyłącznie na podstawie poniższej wiedzy o STFS. Bądź zwięzły, konkretny, po polsku, przyjazny. Jeśli nie znasz odpowiedzi z tej wiedzy, powiedz to wprost i zaproponuj umówienie darmowej konsultacji przez stronę. Nigdy nie wymyślaj cen ani faktów, których nie ma w kontekście.\\n\\nWiedza o STFS:\\n" + KNOWLEDGE_BASE;
+const systemPrompt = "Jesteś asystentem AI na stronie STFS (AI studio dla biznesu). Odpowiadaj wyłącznie na podstawie poniższej wiedzy o STFS. Bądź zwięzły, konkretny, po polsku, przyjazny. Twoje odpowiedzi MUSZĄ być krótkie: maksymalnie 3-4 zdania albo 3-4 krótkie punkty, nigdy więcej. Jeśli pytanie jest ogólne (np. \\\"jakie usługi oferujecie\\\"), nie wymieniaj wszystkiego naraz z opisami — podaj krótko same nazwy i zapytaj, o którą usługę rozwinąć temat. Bez nagłówków, bez pogrubień na całe zdania, bez sekcji \\\"Dodatkowo\\\" ani rozbudowanych zakończeń — jedno krótkie zdanie zachęty na koniec wystarczy. Jeśli nie znasz odpowiedzi z tej wiedzy, powiedz to wprost i zaproponuj umówienie darmowej konsultacji przez stronę. Nigdy nie wymyślaj cen ani faktów, których nie ma w kontekście.\\n\\nWiedza o STFS:\\n" + KNOWLEDGE_BASE;
 
 const CLIENT_KEY = "stfs-site-widget-2026";
 const headerKey = ($json.headers && $json.headers["x-stfs-client"]) || "";
@@ -120,10 +118,10 @@ return [{
     ...$json,
     question,
     body: {
-      model: "gpt-4o-mini",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 400,
+      system: systemPrompt,
       messages: [
-        { role: "system", content: systemPrompt },
         { role: "user", content: question },
       ],
     },
@@ -132,7 +130,7 @@ return [{
 `.trim();
 
 const extractAnswerCode = `
-const answer = $json.choices && $json.choices[0] && $json.choices[0].message && $json.choices[0].message.content ? $json.choices[0].message.content : "Przepraszam, nie udało się wygenerować odpowiedzi. Napisz do nas na kontakt@stfs.pl.";
+const answer = $json.content && $json.content[0] && $json.content[0].text ? $json.content[0].text : "Przepraszam, nie udało się wygenerować odpowiedzi. Napisz do nas na kontakt@stfs.pl.";
 return [{ json: { answer } }];
 `.trim();
 
@@ -147,7 +145,7 @@ buildWorkflow({
     '**Do zrobienia:**\n' +
     '1. Zapisz i aktywuj ten workflow (przełącznik w prawym górnym rogu) — dopiero wtedy webhook działa na żywo.\n' +
     '2. Skopiuj Production URL webhooka i wklej go w stfs/script.js jako wartość `N8N_CHAT_WEBHOOK_URL`.\n' +
-    '3. W węźle "AI: wygeneruj odpowiedź" podmień URL/klucz na swojego dostawcę modelu (OpenAI/Claude) w Headers.\n' +
+    '3. W węźle "AI: wygeneruj odpowiedź" wklej swój klucz Anthropic w nagłówku x-api-key (wartość, nie cała para) — reszta nagłówków jest już ustawiona.\n' +
     '4. Gdy zmieni się treść strony (nowa usługa, inne ceny) — zaktualizuj stałą KNOWLEDGE_BASE w węźle "Zbuduj prompt" i zapisz ponownie. Zero osobnego "indeksowania".',
   nodes: [
     webhookTrigger('Webhook: pytanie od widgetu', 'stfs-chat', 0),
@@ -155,10 +153,15 @@ buildWorkflow({
     httpNode(
       'AI: wygeneruj odpowiedź',
       'POST',
-      'https://api.openai.com/v1/chat/completions',
-      'Podmień na swojego dostawcę modelu (OpenAI/Claude) + klucz API w Headers.',
+      'https://api.anthropic.com/v1/messages',
+      'Wklej klucz Anthropic w nagłówku x-api-key.',
       0,
-      '={{ $json.body }}'
+      '={{ $json.body }}',
+      [
+        { name: 'x-api-key', value: '' },
+        { name: 'anthropic-version', value: '2023-06-01' },
+        { name: 'content-type', value: 'application/json' },
+      ]
     ),
     codeNode('Wyodrębnij odpowiedź', extractAnswerCode, 0),
     respondWebhook('Zwróć odpowiedź do widgetu', 0),
