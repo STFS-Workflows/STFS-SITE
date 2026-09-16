@@ -271,6 +271,71 @@ if (reduceMotion) {
   }, 2200);
 })();
 
+// ---------- mobile card sliders (Usługi, Współpraca) ----------
+(() => {
+  const sliders = [
+    { grid: document.querySelector('#uslugi .services-grid--6'), key: 'uslugi' },
+    { grid: document.querySelector('#wspolpraca .collab-models'), key: 'wspolpraca' },
+  ];
+
+  sliders.forEach(({ grid, key }) => {
+    if (!grid) return;
+    const cards = Array.from(grid.children);
+    const dotsBox = document.querySelector(`[data-slider-dots="${key}"]`);
+    const navBox = document.querySelector(`[data-slider-nav="${key}"]`);
+    if (!dotsBox || !navBox || cards.length < 2) return;
+
+    cards.forEach((_, i) => {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'slider-dot';
+      dot.setAttribute('aria-label', `Pokaż ${i + 1} z ${cards.length}`);
+      dot.addEventListener('click', () => {
+        cards[i].scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest', inline: 'start' });
+      });
+      dotsBox.appendChild(dot);
+    });
+    const dots = Array.from(dotsBox.children);
+
+    function activeIndex() {
+      let best = 0, bestDist = Infinity;
+      cards.forEach((card, i) => {
+        const dist = Math.abs(card.offsetLeft - grid.scrollLeft);
+        if (dist < bestDist) { bestDist = dist; best = i; }
+      });
+      return best;
+    }
+
+    const prevBtn = navBox.querySelector('.slider-arrow--prev');
+    const nextBtn = navBox.querySelector('.slider-arrow--next');
+
+    function update() {
+      const idx = activeIndex();
+      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+      prevBtn.disabled = idx <= 0;
+      nextBtn.disabled = idx >= cards.length - 1;
+    }
+
+    function goTo(idx) {
+      const clamped = Math.max(0, Math.min(cards.length - 1, idx));
+      cards[clamped].scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest', inline: 'start' });
+    }
+
+    prevBtn.addEventListener('click', () => goTo(activeIndex() - 1));
+    nextBtn.addEventListener('click', () => goTo(activeIndex() + 1));
+
+    let ticking = false;
+    grid.addEventListener('scroll', () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => { update(); ticking = false; });
+    }, { passive: true });
+
+    window.addEventListener('resize', update);
+    update();
+  });
+})();
+
 // ---------- chat widget ----------
 (() => {
   const N8N_CHAT_WEBHOOK_URL = 'https://n8n.stfs.pl/webhook/stfs-chat';
