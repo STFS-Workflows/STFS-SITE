@@ -45,7 +45,7 @@ function httpNode(name, method, url, note, x, bodyOverride) {
 }
 
 function respondWebhook(name, x) {
-  return node('n8n-nodes-base.respondToWebhook', name, { respondWith: 'json', responseBody: '={{ { "answer": $json.answer } }}' }, x, 1.1);
+  return node('n8n-nodes-base.respondToWebhook', name, { respondWith: 'json', responseBody: '={{ { "answer": $json.answer } }}', options: {} }, x, 1.1);
 }
 
 function buildWorkflow({ fileName, name, setupNote, nodes, noteWidth, noteHeight }) {

@@ -2,7 +2,7 @@
   "name": "STFS — Chatbot strony — odpowiedzi na żywo (webhook)",
   "nodes": [
     {
-      "id": "ce04484e-c656-4a24-93af-49a27310cc20",
+      "id": "13243481-256d-44d1-a7e6-36be3c20c1d0",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -18,7 +18,7 @@
       }
     },
     {
-      "id": "5bf8a736-0ba8-42b8-95e5-b287bbec4933",
+      "id": "3a04b899-492e-4936-9198-72f6be961601",
       "name": "Webhook: pytanie od widgetu",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -35,7 +35,7 @@
       }
     },
     {
-      "id": "b73bf990-be5c-41cd-ac97-50f99a5bc2b4",
+      "id": "9061d33f-0622-471d-af01-dbf0bc80a2f2",
       "name": "Zbuduj prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -48,7 +48,7 @@
       }
     },
     {
-      "id": "9ac56ea6-f47e-4d80-8ea7-9fa022114d85",
+      "id": "ee79efea-98d9-4af3-8cba-cf88817555d5",
       "name": "AI: wygeneruj odpowiedź",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -67,7 +67,7 @@
       "notes": "Podmień na swojego dostawcę modelu (OpenAI/Claude) + klucz API w Headers."
     },
     {
-      "id": "a964ee89-1761-4303-8533-3b8806457671",
+      "id": "ba9fbe59-2e49-45c6-a2e1-29f8734a778a",
       "name": "Wyodrębnij odpowiedź",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -80,7 +80,7 @@
       }
     },
     {
-      "id": "0c0a071d-214f-4616-9a07-7ba1d12d454a",
+      "id": "c88d5c2b-df77-4e4e-90e8-c9231ce8a5bd",
       "name": "Zwróć odpowiedź do widgetu",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -90,7 +90,8 @@
       ],
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { \"answer\": $json.answer } }}"
+        "responseBody": "={{ { \"answer\": $json.answer } }}",
+        "options": {}
       }
     }
   ],
