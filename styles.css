@@ -395,17 +395,16 @@ section{padding:88px 0}
      Turn it into a swipeable horizontal slider instead, so the section
      height stays roughly constant no matter how many services we list. */
   .services-grid--6{
-    display:flex;gap:14px;
+    display:flex;gap:16px;
     overflow-x:auto;overflow-y:hidden;
     scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
-    touch-action:pan-x;
-    margin:0 -20px;padding:4px 20px 20px;
+    padding:4px 0 20px;
     scrollbar-width:none;
   }
   .services-grid--6::-webkit-scrollbar{display:none}
   .services-grid--6 .service-card{
-    flex:0 0 84%;min-width:0;scroll-snap-align:start;
-    user-select:none;-webkit-user-drag:none;
+    flex:0 0 100%;min-width:0;scroll-snap-align:start;
+    padding:24px 22px;
   }
 }
 @media (min-width:900px){
@@ -516,17 +515,16 @@ section{padding:88px 0}
 
 @media (max-width:899px){
   .collab-models{
-    display:flex;gap:14px;
+    display:flex;gap:16px;
     overflow-x:auto;overflow-y:hidden;
     scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
-    touch-action:pan-x;
-    margin:56px -20px 0;padding:4px 20px 20px;
+    margin-top:56px;padding:4px 0 20px;
     scrollbar-width:none;
   }
   .collab-models::-webkit-scrollbar{display:none}
   .collab-card{
-    flex:0 0 84%;min-width:0;scroll-snap-align:start;
-    user-select:none;-webkit-user-drag:none;
+    flex:0 0 100%;min-width:0;scroll-snap-align:start;
+    padding:22px 20px;
   }
 }
 @media (min-width:900px){
