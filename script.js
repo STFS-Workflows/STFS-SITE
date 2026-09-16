@@ -14,6 +14,32 @@ navMobile.querySelectorAll('a').forEach(link => {
   });
 });
 
+// ---------- clean-URL anchor navigation ----------
+(() => {
+  const noMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Arriving from another page via a link like "/#uslugi": let the browser do
+  // its native jump, then strip the hash so the address bar goes back to
+  // just the clean page URL instead of showing the fragment forever.
+  if (location.hash) {
+    const stripHash = () => setTimeout(() => history.replaceState(null, '', location.pathname + location.search), 50);
+    if (document.readyState === 'complete') stripHash();
+    else window.addEventListener('load', stripHash);
+  }
+
+  // Same-page anchor links (nav, logo, CTAs): scroll smoothly without ever
+  // touching the URL bar in the first place.
+  document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      const id = link.getAttribute('href').slice(1);
+      const target = id ? document.getElementById(id) : document.body;
+      if (!target) return;
+      e.preventDefault();
+      target.scrollIntoView({ behavior: noMotion ? 'auto' : 'smooth', block: 'start' });
+    });
+  });
+})();
+
 // ---------- scroll reveal ----------
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const revealEls = document.querySelectorAll('.reveal');
