@@ -240,7 +240,7 @@ if (reduceMotion) {
 
 // ---------- chat widget ----------
 (() => {
-  const N8N_CHAT_WEBHOOK_URL = 'https://stfsworkflow.app.n8n.cloud/webhook/stfs-chat';
+  const N8N_CHAT_WEBHOOK_URL = 'https://n8n.stfs.pl/webhook/stfs-chat';
 
   const widget = document.getElementById('chatWidget');
   if (!widget) return;
