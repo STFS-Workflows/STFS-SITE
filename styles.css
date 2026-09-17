@@ -40,7 +40,7 @@ ul{list-style:none}
 button{font:inherit;cursor:pointer}
 input,textarea{font:inherit;color:inherit}
 
-.section-inner{max-width:var(--max);margin:0 auto;padding:0 20px}
+.section-inner{max-width:var(--max);margin:0 auto;padding:0 clamp(16px,4vw,20px)}
 
 @media (prefers-reduced-motion: reduce){
   *{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important;scroll-behavior:auto !important}
@@ -113,7 +113,7 @@ input,textarea{font:inherit;color:inherit}
   .nav{background:rgba(8,9,11,0.94);backdrop-filter:none;-webkit-backdrop-filter:none}
 }
 .nav-inner{
-  max-width:var(--max);margin:0 auto;padding:0 20px;
+  max-width:var(--max);margin:0 auto;padding:0 clamp(16px,4vw,20px);
   height:64px;display:flex;align-items:center;justify-content:space-between;
   gap:24px;
 }
@@ -156,7 +156,7 @@ input,textarea{font:inherit;color:inherit}
   border-bottom:1px solid var(--border);
   transition:max-height 0.35s var(--ease);
 }
-.nav-mobile.open{max-height:340px}
+.nav-mobile.open{max-height:400px}
 .nav-mobile a{
   padding:16px 20px;font-size:15px;color:var(--text-secondary);
   border-top:1px solid var(--border);
@@ -191,7 +191,7 @@ input,textarea{font:inherit;color:inherit}
   position:relative;
   min-height:100dvh;
   display:flex;align-items:center;
-  padding:120px 20px 80px;
+  padding:120px clamp(16px,4vw,20px) 80px;
   overflow:hidden;
 }
 .hero-canvas{position:absolute;inset:0;width:100%;height:100%;opacity:0.55}
@@ -209,6 +209,11 @@ input,textarea{font:inherit;color:inherit}
   max-width:52ch;
 }
 .hero-cta{display:flex;flex-wrap:wrap;gap:14px}
+@media (max-width:639px){
+  .hero{padding-top:104px;padding-bottom:64px}
+  .hero-cta{flex-direction:column;align-items:stretch;width:100%}
+  .hero-cta .btn{width:100%;white-space:normal;text-align:center}
+}
 .hero-status{
   display:inline-flex;align-items:center;gap:10px;margin-top:8px;
   font-family:var(--font-mono);font-size:12.5px;color:var(--text-tertiary);
@@ -402,6 +407,19 @@ section{padding:88px 0}
   /* Mobile: 6 full-height stacked cards made this section enormous.
      Turn it into a swipeable horizontal slider instead, so the section
      height stays roughly constant no matter how many services we list. */
+  .services-grid--6,
+  .flow-slider,
+  .collab-models{
+    width:100%;max-width:100%;min-width:0;
+  }
+  /* Scroll-reveal keeps off-screen slides at opacity:0 until they
+     intersect the viewport — on a horizontal slider that means a blank
+     flash every time the user swipes. Slides must be visible on arrival. */
+  .services-grid--6 .reveal,
+  .flow-slider .reveal,
+  .collab-models .reveal{
+    opacity:1;transform:none;
+  }
   .services-grid--6{
     display:flex;gap:16px;
     overflow-x:auto;overflow-y:hidden;
@@ -425,11 +443,12 @@ section{padding:88px 0}
     margin-top:4px;
   }
   .slider-arrow{
-    flex:none;width:36px;height:36px;border-radius:50%;
+    flex:none;width:44px;height:44px;border-radius:50%;
     display:flex;align-items:center;justify-content:center;
     background:var(--surface);border:1px solid var(--border-strong);color:var(--text-secondary);
     font-size:16px;transition:opacity 0.2s var(--ease),border-color 0.2s var(--ease);
   }
+  .nav-toggle{width:44px;height:44px}
   .slider-arrow:active{border-color:var(--accent);color:var(--accent)}
   .slider-arrow[disabled]{opacity:0.35;pointer-events:none}
   .slider-dots{display:flex;align-items:center;gap:7px}
@@ -595,8 +614,12 @@ section{padding:88px 0}
   display:flex;flex-direction:column;gap:22px;
   box-shadow:0 30px 80px -30px rgba(0,0,0,0.6);
 }
-.booking-card--cal{padding:12px;overflow:visible}
-.cal-inline{width:100%;min-height:850px;overflow:visible}
+.booking-card--cal{padding:12px;overflow:hidden}
+.cal-inline{width:100%;max-width:100%;min-height:850px;overflow:hidden}
+@media (max-width:899px){
+  .booking-card--cal{padding:8px}
+  .cal-inline{min-height:min(720px,85dvh)}
+}
 @media (min-width:1024px){
   .cal-inline{min-height:900px}
 }
@@ -743,8 +766,25 @@ section{padding:88px 0}
 .chat-send:disabled{opacity:0.5;pointer-events:none}
 
 @media (max-width:479px){
-  .chat-widget{right:14px;bottom:14px;left:14px;align-items:stretch}
+  .chat-widget{
+    right:max(14px,env(safe-area-inset-right));
+    bottom:max(14px,env(safe-area-inset-bottom));
+    left:max(14px,env(safe-area-inset-left));
+    align-items:stretch;
+  }
   .chat-panel{width:100%}
+  .footer-bottom{
+    flex-direction:column;align-items:flex-start;gap:10px;
+  }
+  .footer-bottom span{line-height:1.55}
+}
+@media (max-width:899px){
+  .chat-send{width:44px;height:44px}
+  .nav{padding-top:env(safe-area-inset-top,0)}
+  .chat-widget{
+    right:max(20px,env(safe-area-inset-right));
+    bottom:max(20px,env(safe-area-inset-bottom));
+  }
 }
 
 /* ---------- mobile: drop backdrop-filter on scroll-visible cards ---------- */

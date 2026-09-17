@@ -258,6 +258,10 @@ if (reduceMotion) {
     const navBox = document.querySelector(`[data-slider-nav="${key}"]`);
     if (!dotsBox || !navBox || cards.length < 2) return;
 
+    // Horizontal slides must not wait for scroll-reveal — otherwise every
+    // swipe shows a blank card until IntersectionObserver catches up.
+    cards.forEach((card) => card.classList.add('in'));
+
     cards.forEach((_, i) => {
       const dot = document.createElement('button');
       dot.type = 'button';

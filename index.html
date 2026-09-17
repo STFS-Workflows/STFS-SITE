@@ -13,7 +13,7 @@
 <noscript>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 </noscript>
-<link rel="stylesheet" href="styles.css?v=20260917g">
+<link rel="stylesheet" href="styles.css?v=20260917h">
 </head>
 <body>
 
@@ -42,6 +42,7 @@
   <nav class="nav-mobile" id="navMobile">
     <a href="#onas">O nas</a>
     <a href="#uslugi">Usługi</a>
+    <a href="#jak-to-dziala">Jak to działa</a>
     <a href="#wspolpraca">Współpraca</a>
     <a href="#konsultacja">Konsultacja</a>
     <a href="#konsultacja" class="btn btn-primary">Umów konsultację</a>
@@ -172,7 +173,7 @@
           </ul>
         </article>
       </div>
-      <div class="slider-nav" data-slider-nav="uslugi" aria-hidden="true">
+      <nav class="slider-nav" data-slider-nav="uslugi" aria-label="Nawigacja usług">
         <button type="button" class="slider-arrow slider-arrow--prev" data-dir="-1" aria-label="Poprzednia usługa">
           <svg class="icon" viewBox="0 0 256 256"><path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z"/></svg>
         </button>
@@ -180,7 +181,7 @@
         <button type="button" class="slider-arrow slider-arrow--next" data-dir="1" aria-label="Następna usługa">
           <svg class="icon" viewBox="0 0 256 256"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg>
         </button>
-      </div>
+      </nav>
     </div>
   </section>
 
@@ -216,7 +217,7 @@
           <p>Zaakceptowana odpowiedź trafia do klienta.</p>
         </article>
       </div>
-      <div class="slider-nav" data-slider-nav="jak-to-dziala" aria-hidden="true">
+      <nav class="slider-nav" data-slider-nav="jak-to-dziala" aria-label="Nawigacja kroków automatyzacji">
         <button type="button" class="slider-arrow slider-arrow--prev" data-dir="-1" aria-label="Poprzedni krok">
           <svg class="icon" viewBox="0 0 256 256"><path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z"/></svg>
         </button>
@@ -224,7 +225,7 @@
         <button type="button" class="slider-arrow slider-arrow--next" data-dir="1" aria-label="Następny krok">
           <svg class="icon" viewBox="0 0 256 256"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg>
         </button>
-      </div>
+      </nav>
     </div>
   </section>
 
@@ -273,7 +274,7 @@
           <p>Dla startupów i firm budujących nowe produkty z AI: długoterminowa współpraca z elastycznym zakresem prac.</p>
         </article>
       </div>
-      <div class="slider-nav" data-slider-nav="wspolpraca" aria-hidden="true">
+      <nav class="slider-nav" data-slider-nav="wspolpraca" aria-label="Nawigacja modeli współpracy">
         <button type="button" class="slider-arrow slider-arrow--prev" data-dir="-1" aria-label="Poprzedni model współpracy">
           <svg class="icon" viewBox="0 0 256 256"><path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z"/></svg>
         </button>
@@ -281,7 +282,7 @@
         <button type="button" class="slider-arrow slider-arrow--next" data-dir="1" aria-label="Następny model współpracy">
           <svg class="icon" viewBox="0 0 256 256"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg>
         </button>
-      </div>
+      </nav>
     </div>
   </section>
 
@@ -361,7 +362,7 @@
   </button>
 </div>
 
-<script src="script.js?v=20260917g" defer></script>
+<script src="script.js?v=20260917h" defer></script>
 <script>
   function loadCalEmbed() {
     (function (C, A, L) {
@@ -393,10 +394,16 @@
 
     Cal('init', '30min', { origin: 'https://cal.com' });
 
+    const isMobileEmbed = window.matchMedia('(max-width: 899px)').matches;
+
     Cal.ns['30min']('inline', {
       elementOrSelector: '#cal-inline',
       calLink: 'kamil-piechota-se8qxt/30min',
-      config: { layout: 'month_view', theme: 'dark' },
+      config: {
+        layout: 'month_view',
+        theme: 'dark',
+        useSlotsViewOnSmallScreen: 'true',
+      },
     });
 
     Cal.ns['30min']('ui', {
@@ -405,7 +412,7 @@
         dark: { 'cal-brand': '#35e0c1' },
         light: { 'cal-brand': '#35e0c1' },
       },
-      hideEventTypeDetails: false,
+      hideEventTypeDetails: isMobileEmbed,
       layout: 'month_view',
     });
   }
