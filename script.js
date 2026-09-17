@@ -180,9 +180,9 @@ if (reduceMotion) {
     { who: 'user', text: 'Cześć, jakie usługi oferuje STFS?' },
     { who: 'ai', text: 'Marketing z AI, strony internetowe, automatyzacja Gmaila, rezerwacje, monitoring opinii i arkusze Google.' },
     { who: 'user', text: 'Ile trwa i kosztuje konsultacja?' },
-    { who: 'ai', text: '30 minut, całkowicie za darmo — bez zobowiązań.' },
+    { who: 'ai', text: '30 minut, całkowicie za darmo, bez zobowiązań.' },
     { who: 'user', text: 'Jak umówić termin?' },
-    { who: 'ai', text: 'Wybierz dzień i godzinę w panelu rezerwacji poniżej — potwierdzenie przyjdzie mailem.' },
+    { who: 'ai', text: 'Wybierz dzień i godzinę w panelu rezerwacji poniżej: potwierdzenie przyjdzie mailem.' },
   ];
 
   if (reduceMotion) {
@@ -252,10 +252,10 @@ if (reduceMotion) {
   const nodes = Array.from(flow.querySelectorAll('.flow-node'));
   const lines = Array.from(flow.querySelectorAll('.flow-line'));
   const captions = [
-    'Klient zostawia nową opinię — pozytywną lub negatywną.',
+    'Klient zostawia nową opinię: pozytywną lub negatywną.',
     'AI analizuje treść i ocenia sentyment opinii.',
     'AI przygotowuje gotową odpowiedź, dopasowaną do sytuacji.',
-    'Zatwierdzasz odpowiedź jednym kliknięciem — albo ją edytujesz.',
+    'Zatwierdzasz odpowiedź jednym kliknięciem albo ją edytujesz.',
     'Zaakceptowana odpowiedź trafia do klienta.',
   ];
 
@@ -429,7 +429,7 @@ if (reduceMotion) {
       pending.classList.remove('pending');
       typeMessage(
         pending,
-        'Asystent AI startuje wkrótce — w międzyczasie napisz do nas na kontakt@stfs.pl albo umów darmową konsultację.',
+        'Asystent AI startuje wkrótce. W międzyczasie napisz do nas na kontakt@stfs.pl albo umów darmową konsultację.',
         () => (sendBtn.disabled = false)
       );
       return;
