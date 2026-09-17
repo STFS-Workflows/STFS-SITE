@@ -243,41 +243,10 @@ if (reduceMotion) {
   io.observe(body);
 })();
 
-// ---------- workflow pipeline demo ----------
-(() => {
-  const flow = document.getElementById('flowDemo');
-  const caption = document.getElementById('flowCaption');
-  if (!flow || !caption) return;
-
-  const nodes = Array.from(flow.querySelectorAll('.flow-node'));
-  const lines = Array.from(flow.querySelectorAll('.flow-line'));
-  const captions = [
-    'Klient zostawia nową opinię: pozytywną lub negatywną.',
-    'AI analizuje treść i ocenia sentyment opinii.',
-    'AI przygotowuje gotową odpowiedź, dopasowaną do sytuacji.',
-    'Zatwierdzasz odpowiedź jednym kliknięciem albo ją edytujesz.',
-    'Zaakceptowana odpowiedź trafia do klienta.',
-  ];
-
-  if (reduceMotion) return;
-
-  let step = 0;
-
-  function render() {
-    nodes.forEach((n, idx) => n.classList.toggle('active', idx === step));
-    lines.forEach((l, idx) => l.classList.toggle('filled', idx < step));
-    caption.textContent = captions[step];
-  }
-
-  setInterval(() => {
-    step = (step + 1) % nodes.length;
-    render();
-  }, 2200);
-})();
-
-// ---------- mobile card sliders (Usługi, Współpraca) ----------
+// ---------- mobile card sliders (Jak to dziala, Usługi, Współpraca) ----------
 (() => {
   const sliders = [
+    { grid: document.querySelector('#jak-to-dziala .flow-slider'), key: 'jak-to-dziala' },
     { grid: document.querySelector('#uslugi .services-grid--6'), key: 'uslugi' },
     { grid: document.querySelector('#wspolpraca .collab-models'), key: 'wspolpraca' },
   ];

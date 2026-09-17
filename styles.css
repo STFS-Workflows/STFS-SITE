@@ -451,50 +451,43 @@ section{padding:88px 0}
   .services-grid--6 .service-card{padding:36px 32px}
 }
 
-/* ---------- workflow (interactive demo) ---------- */
-.flow{
-  display:flex;flex-direction:column;align-items:center;gap:0;
-  max-width:920px;margin:0 auto;
+/* ---------- workflow (card slider demo) ---------- */
+.flow-slider{display:grid;grid-template-columns:1fr;gap:20px}
+.flow-card{
+  position:relative;z-index:1;
+  background:rgba(20,23,28,0.55);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border:1px solid var(--border);
+  border-radius:var(--radius-card);
+  padding:32px 28px;
+  display:flex;flex-direction:column;gap:14px;
+  transition:border-color 0.3s var(--ease),transform 0.3s var(--ease),box-shadow 0.3s var(--ease);
 }
-.flow-node{
-  display:flex;flex-direction:column;align-items:center;gap:10px;
-  padding:18px 14px;border-radius:16px;
-  color:var(--text-tertiary);
-  transition:color 0.4s var(--ease);
-  width:100%;
+.flow-card:hover{
+  border-color:rgba(53,224,193,0.35);
+  transform:translateY(-3px);
+  box-shadow:0 16px 40px -20px rgba(53,224,193,0.25);
 }
-.flow-node i{
-  width:56px;height:56px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;font-size:24px;
-  background:var(--surface);border:1px solid var(--border-strong);
-  transition:background 0.4s var(--ease),border-color 0.4s var(--ease),
-    box-shadow 0.4s var(--ease),color 0.4s var(--ease),transform 0.4s var(--ease);
-}
-.flow-node span{font-size:13px;font-weight:600;text-align:center}
-.flow-node.active{color:var(--text-primary)}
-.flow-node.active i{
-  background:var(--accent);border-color:var(--accent);color:var(--accent-text);
-  box-shadow:0 0 0 8px rgba(53,224,193,0.12),0 0 30px -4px rgba(53,224,193,0.6);
-  transform:scale(1.06);
-}
-.flow-line{
-  width:2px;height:28px;background:var(--border);position:relative;overflow:hidden;
-}
-.flow-line::after{
-  content:"";position:absolute;inset:0;background:var(--accent);
-  transform:scaleY(0);transform-origin:top;transition:transform 0.5s var(--ease);
-}
-.flow-line.filled::after{transform:scaleY(1)}
-.flow-caption{
-  text-align:center;margin-top:28px;color:var(--text-secondary);
-  font-size:14.5px;line-height:1.5;min-height:3em;
-  max-width:46ch;margin-left:auto;margin-right:auto;
-}
+.flow-card h3{font-family:var(--font-display);font-size:19px;font-weight:600}
+.flow-card p{color:var(--text-secondary);font-size:14.5px;line-height:1.6}
 
+@media (max-width:899px){
+  .flow-slider{
+    display:flex;gap:16px;
+    overflow-x:auto;overflow-y:hidden;
+    scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+    padding:4px 0 20px;
+    scrollbar-width:none;
+  }
+  .flow-slider::-webkit-scrollbar{display:none}
+  .flow-card{flex:0 0 100%;min-width:0;scroll-snap-align:start;padding:24px 22px}
+}
 @media (min-width:900px){
-  .flow{flex-direction:row;align-items:flex-start}
-  .flow-node{width:auto;flex:1}
-  .flow-line{width:auto;height:2px;flex:0 0 48px;margin-top:28px}
+  .flow-slider{grid-template-columns:repeat(3,1fr)}
+}
+@media (min-width:1200px){
+  .flow-slider{grid-template-columns:repeat(5,1fr)}
+  .flow-card{padding:24px 20px}
 }
 
 /* ---------- process ---------- */
@@ -760,7 +753,7 @@ section{padding:88px 0}
      frame on every card a user scrolls past is a real, measurable cause of
      mobile scroll jank. Placed at end of file so it wins the cascade over
      each card's own base rule (equal specificity, source order decides). */
-  .service-card,.collab-card,.booking-card{
+  .service-card,.collab-card,.booking-card,.flow-card{
     background:rgba(18,21,25,0.96);backdrop-filter:none;-webkit-backdrop-filter:none;
   }
   .collab-card--accent{background:rgba(23,27,33,0.96)}
