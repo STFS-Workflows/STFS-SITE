@@ -211,7 +211,11 @@ if (reduceMotion) {
       c++;
       el.textContent = line.text.slice(0, c);
       el.appendChild(cursor);
-      body.scrollTop = 1e9;
+      // Writing scrollTop right after a DOM mutation still forces a
+      // synchronous layout flush (the browser needs fresh layout to clamp
+      // the value) — defer it to the next frame so it rides the layout
+      // the browser was going to do anyway instead of forcing an extra one.
+      requestAnimationFrame(() => { body.scrollTop = 1e9; });
       if (c >= line.text.length) {
         clearInterval(typeInterval);
         cursor.remove();
@@ -380,14 +384,14 @@ if (reduceMotion) {
     el.className = `chat-msg ${who}`;
     el.textContent = text;
     body.appendChild(el);
-    body.scrollTop = body.scrollHeight;
+    requestAnimationFrame(() => { body.scrollTop = 1e9; });
     return el;
   }
 
   function typeMessage(el, text, onDone) {
     if (reduceMotion) {
       el.textContent = text;
-      body.scrollTop = body.scrollHeight;
+      requestAnimationFrame(() => { body.scrollTop = 1e9; });
       if (onDone) onDone();
       return;
     }
@@ -397,7 +401,7 @@ if (reduceMotion) {
     const interval = setInterval(() => {
       i += CHARS_PER_TICK;
       el.textContent = text.slice(0, i);
-      body.scrollTop = body.scrollHeight;
+      requestAnimationFrame(() => { body.scrollTop = 1e9; });
       if (i >= text.length) {
         clearInterval(interval);
         if (onDone) onDone();
