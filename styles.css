@@ -104,6 +104,14 @@ input,textarea{font:inherit;color:inherit}
   -webkit-backdrop-filter:blur(14px);
   border-bottom:1px solid var(--border);
 }
+@media (max-width:899px){
+  /* backdrop-filter:blur on a fixed, always-on-screen nav re-blurs every
+     scroll frame — one of the biggest real-world causes of mobile scroll
+     jank ("nothing keeps up while flicking through the page"). Drop the
+     live blur on mobile and go near-opaque instead: same dark look,
+     zero per-frame GPU cost. */
+  .nav{background:rgba(8,9,11,0.94);backdrop-filter:none;-webkit-backdrop-filter:none}
+}
 .nav-inner{
   max-width:var(--max);margin:0 auto;padding:0 20px;
   height:64px;display:flex;align-items:center;justify-content:space-between;
@@ -744,4 +752,16 @@ section{padding:88px 0}
 @media (max-width:479px){
   .chat-widget{right:14px;bottom:14px;left:14px;align-items:stretch}
   .chat-panel{width:100%}
+}
+
+/* ---------- mobile: drop backdrop-filter on scroll-visible cards ---------- */
+@media (max-width:899px){
+  /* Same reasoning as the nav fix above: live blur recomputed every scroll
+     frame on every card a user scrolls past is a real, measurable cause of
+     mobile scroll jank. Placed at end of file so it wins the cascade over
+     each card's own base rule (equal specificity, source order decides). */
+  .service-card,.collab-card,.booking-card{
+    background:rgba(18,21,25,0.96);backdrop-filter:none;-webkit-backdrop-filter:none;
+  }
+  .collab-card--accent{background:rgba(23,27,33,0.96)}
 }
