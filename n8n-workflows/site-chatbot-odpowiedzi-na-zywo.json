@@ -2,7 +2,7 @@
   "name": "STFS — Chatbot strony — odpowiedzi na żywo (webhook)",
   "nodes": [
     {
-      "id": "ce04484e-c656-4a24-93af-49a27310cc20",
+      "id": "36468b88-43e8-4494-b55b-2394ea062f94",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -11,14 +11,14 @@
         -120
       ],
       "parameters": {
-        "content": "## Webhook widgetu czatu (działa 24/7)\n\n**Co robi:** przyjmuje pytanie z widgetu na stronie STFS, dokleja do niego całą wiedzę o STFS (usługi, proces, konsultacja, kontakt) i prosi model AI o odpowiedź WYŁĄCZNIE na tej podstawie. Bez bazy wektorowej — baza wiedzy jest mała, więc mieści się w całości w jednym zapytaniu.\n\n**Do zrobienia:**\n1. Zapisz i aktywuj ten workflow (przełącznik w prawym górnym rogu) — dopiero wtedy webhook działa na żywo.\n2. Skopiuj Production URL webhooka i wklej go w stfs/script.js jako wartość `N8N_CHAT_WEBHOOK_URL`.\n3. W węźle \"AI: wygeneruj odpowiedź\" podmień URL/klucz na swojego dostawcę modelu (OpenAI/Claude) w Headers.\n4. Gdy zmieni się treść strony (nowa usługa, inne ceny) — zaktualizuj stałą KNOWLEDGE_BASE w węźle \"Zbuduj prompt\" i zapisz ponownie. Zero osobnego \"indeksowania\".",
+        "content": "## Webhook widgetu czatu (działa 24/7)\n\n**Co robi:** przyjmuje pytanie z widgetu na stronie STFS, dokleja do niego całą wiedzę o STFS (usługi, proces, konsultacja, kontakt) i prosi model AI o odpowiedź WYŁĄCZNIE na tej podstawie. Bez bazy wektorowej — baza wiedzy jest mała, więc mieści się w całości w jednym zapytaniu.\n\n**Do zrobienia:**\n1. Zapisz i aktywuj ten workflow (przełącznik w prawym górnym rogu) — dopiero wtedy webhook działa na żywo.\n2. Skopiuj Production URL webhooka i wklej go w stfs/script.js jako wartość `N8N_CHAT_WEBHOOK_URL`.\n3. W węźle \"AI: wygeneruj odpowiedź\" wklej swój klucz Anthropic w nagłówku x-api-key (wartość, nie cała para) — reszta nagłówków jest już ustawiona.\n4. Gdy zmieni się treść strony (nowa usługa, inne ceny) — zaktualizuj stałą KNOWLEDGE_BASE w węźle \"Zbuduj prompt\" i zapisz ponownie. Zero osobnego \"indeksowania\".",
         "height": 400,
         "width": 460,
         "color": 4
       }
     },
     {
-      "id": "5bf8a736-0ba8-42b8-95e5-b287bbec4933",
+      "id": "c51ac703-e4d8-4381-a439-30d4c32c82fb",
       "name": "Webhook: pytanie od widgetu",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -29,13 +29,12 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "stfs-chat",
-        "authentication": "headerAuth",
         "responseMode": "responseNode",
         "options": {}
       }
     },
     {
-      "id": "b73bf990-be5c-41cd-ac97-50f99a5bc2b4",
+      "id": "4a62527b-d600-481f-8581-83147e370caf",
       "name": "Zbuduj prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -44,11 +43,11 @@
         300
       ],
       "parameters": {
-        "jsCode": "const KNOWLEDGE_BASE = \"O STFS: Pracujemy bezpośrednio z klientem, bez warstwy pośredników. Łączymy sprzedaż, strategię i wdrożenia AI w jednym procesie. Zamiast sprzedawać modne słowa, budujemy konkretne rozwiązania: automatyzacje, które przejmują powtarzalną pracę, strony, które realnie konwertują, i wsparcie marketingu oparte na danych, nie na domysłach. Pracujemy zarówno ze startupami budującymi pierwszy produkt, jak i z firmami, które chcą przenieść swoje procesy na AI bez ryzyka i chaosu wdrożeniowego — z pełną odpowiedzialnością za efekt na każdym etapie.\\n\\nUsługa — Marketing z AI: Tworzymy materiały marketingowe gotowe do publikacji — wideo reklamowe i grafiki dopasowane pod markę klienta, bez tygodni czekania na agencję i bez stawek agencyjnych. Obejmuje: generowanie wideo marketingowego, generowanie grafik reklamowych.\\n\\nUsługa — Strony internetowe: Budujemy strony od podstaw, dopasowane pod markę i cel klienta — sprzedaż, generowanie leadów albo prezentację oferty. Każda strona może mieć wbudowanego chatbota AI, który odpowiada klientom od razu. Obejmuje: stronę budowaną od zera pod konkretny cel, chatbota AI wbudowanego w stronę.\\n\\nUsługa — Automatyzacja skrzynki Gmail: Przejmujemy powtarzalną komunikację mailową, żeby zespół klienta nie tracił godzin na pisanie tego samego po raz setny. Obejmuje: automatyczne odpisywanie na wiadomości, follow-up do leadów i klientów, generowanie wiadomości powitalnych, automatyczne przypomnienia.\\n\\nUsługa — System rezerwacji: Klienci umawiają się sami, dostają przypomnienia i łączą się na wideorozmowę — bez telefonów ze strony właściciela firmy. Obejmuje: rezerwacje online z automatycznymi przypomnieniami, integrację z wideorozmowami.\\n\\nUsługa — Monitoring opinii i reputacji: Dla sieci sklepów i firm z wieloma lokalizacjami — pilnujemy opinii klientów i reagujemy, zanim problem urośnie. System wykrywa nowe opinie (pozytywne i negatywne), wysyła alert i przygotowuje gotową odpowiedź, którą właściciel zatwierdza jednym kliknięciem przed publikacją. Obejmuje: wykrywanie nowych opinii w czasie rzeczywistym, alerty o opiniach, gotową odpowiedź AI do akceptacji, pełną kontrolę nad treścią (nic nie wychodzi bez zgody klienta).\\n\\nUsługa — Automatyzacja arkuszy Google: Automatyzujemy pracę w arkuszach pod konkretny proces klienta, żeby nikt nie klikał tego ręcznie co tydzień. Zakres dopasowywany indywidualnie do procesu klienta.\\n\\nProces współpracy: 1) Konsultacja — darmowa, 30-minutowa rozmowa ustalająca cele i zakres. 2) Diagnoza i plan — audyt strony/procesów/danych. 3) Wdrożenie — budowa strony/automatyzacji z cotygodniowym podglądem postępu. 4) Skalowanie — po starcie mierzymy dane i dokładamy kolejne automatyzacje AI.\\n\\nModele współpracy: Projekt jednorazowy (konkretny zakres, jeden cel, wycena stała po konsultacji) — dla jednego celu. Stała opieka (comiesięczne wsparcie rozwoju: nowe automatyzacje, optymalizacje, marketing w jednym abonamencie) — najczęściej wybierane. Partnerstwo wzrostowe (długoterminowa współpraca z elastycznym zakresem) — dla startupów i firm skalujących się.\\n\\nKonsultacja: Darmowa konsultacja trwa 30 minut i jest bezpłatna. Można ją zarezerwować online przez panel na stronie (kalendarz Cal.com), dostępne terminy to zwykle 12:00-18:00, z minimum 2-dniowym wyprzedzeniem. W konsultacji: analiza obecnej strony/procesów/kampanii, konkretne rekomendacje nawet bez dalszej współpracy, wstępna wycena i realny harmonogram.\\n\\nKontakt: e-mail kontakt@stfs.pl. Najlepszym pierwszym krokiem jest umówienie darmowej konsultacji przez stronę.\\n\\nTechnologie, których używa STFS: GPT-4o, Claude, LangChain, n8n, Make, Zapier, Next.js, Supabase, bazy wektorowe.\";\n\nconst systemPrompt = \"Jesteś asystentem AI na stronie STFS (AI studio dla biznesu). Odpowiadaj wyłącznie na podstawie poniższej wiedzy o STFS. Bądź zwięzły, konkretny, po polsku, przyjazny. Jeśli nie znasz odpowiedzi z tej wiedzy, powiedz to wprost i zaproponuj umówienie darmowej konsultacji przez stronę. Nigdy nie wymyślaj cen ani faktów, których nie ma w kontekście.\\n\\nWiedza o STFS:\\n\" + KNOWLEDGE_BASE;\n\nconst MAX_QUESTION_LENGTH = 500;\nconst rawQuestion = $json.body && $json.body.question !== undefined ? $json.body.question : $json.question;\nif (typeof rawQuestion !== \"string\") {\n  throw new Error(\"Pole question musi być tekstem.\");\n}\nconst question = rawQuestion.trim().slice(0, MAX_QUESTION_LENGTH);\nif (!question) {\n  throw new Error(\"Brak pytania.\");\n}\nreturn [{\n  json: {\n    ...$json,\n    question,\n    body: {\n      model: \"gpt-4o-mini\",\n      max_tokens: 400,\n      messages: [\n        { role: \"system\", content: systemPrompt },\n        { role: \"user\", content: question },\n      ],\n    },\n  },\n}];"
+        "jsCode": "const KNOWLEDGE_BASE = \"O STFS: Pracujemy bezpośrednio z klientem, bez warstwy pośredników. Łączymy sprzedaż, strategię i wdrożenia AI w jednym procesie. Zamiast sprzedawać modne słowa, budujemy konkretne rozwiązania: automatyzacje, które przejmują powtarzalną pracę, strony, które realnie konwertują, i wsparcie marketingu oparte na danych, nie na domysłach. Pracujemy zarówno ze startupami budującymi pierwszy produkt, jak i z firmami, które chcą przenieść swoje procesy na AI bez ryzyka i chaosu wdrożeniowego, z pełną odpowiedzialnością za efekt na każdym etapie.\\n\\nUsługa: Marketing z AI. Tworzymy materiały marketingowe gotowe do publikacji: wideo reklamowe i grafiki dopasowane pod markę klienta, bez tygodni czekania na agencję i bez stawek agencyjnych. Obejmuje: generowanie wideo marketingowego, generowanie grafik reklamowych.\\n\\nUsługa: Strony internetowe. Budujemy strony od podstaw, dopasowane pod markę i cel klienta: sprzedaż, generowanie leadów albo prezentację oferty. Każda strona może mieć wbudowanego chatbota AI, który odpowiada klientom od razu. Obejmuje: stronę budowaną od zera pod konkretny cel, chatbota AI wbudowanego w stronę.\\n\\nUsługa: Automatyzacja skrzynki Gmail. Przejmujemy powtarzalną komunikację mailową, żeby zespół klienta nie tracił godzin na pisanie tego samego po raz setny. Obejmuje: automatyczne odpisywanie na wiadomości, follow-up do leadów i klientów, generowanie wiadomości powitalnych, automatyczne przypomnienia.\\n\\nUsługa: System rezerwacji. Klienci umawiają się sami, dostają przypomnienia i łączą się na wideorozmowę, bez telefonów ze strony właściciela firmy. Obejmuje: rezerwacje online z automatycznymi przypomnieniami, integrację z wideorozmowami.\\n\\nUsługa: Monitoring opinii i reputacji. Dla sieci sklepów i firm z wieloma lokalizacjami: pilnujemy opinii klientów i reagujemy, zanim problem urośnie. System wykrywa nowe opinie (pozytywne i negatywne), wysyła alert i przygotowuje gotową odpowiedź, którą właściciel zatwierdza jednym kliknięciem przed publikacją. Obejmuje: wykrywanie nowych opinii w czasie rzeczywistym, alerty o opiniach, gotową odpowiedź AI do akceptacji, pełną kontrolę nad treścią (nic nie wychodzi bez zgody klienta).\\n\\nUsługa: Automatyzacja arkuszy Google. Automatyzujemy pracę w arkuszach pod konkretny proces klienta, żeby nikt nie klikał tego ręcznie co tydzień. Zakres dopasowywany indywidualnie do procesu klienta.\\n\\nProces współpracy: 1) Konsultacja: darmowa, 30-minutowa rozmowa ustalająca cele i zakres. 2) Diagnoza i plan: audyt strony/procesów/danych. 3) Wdrożenie: budowa strony/automatyzacji z cotygodniowym podglądem postępu. 4) Skalowanie: po starcie mierzymy dane i dokładamy kolejne automatyzacje AI.\\n\\nModele współpracy: Projekt jednorazowy (konkretny zakres, jeden cel, wycena stała po konsultacji), dla jednego celu. Stała opieka (comiesięczne wsparcie rozwoju: nowe automatyzacje, optymalizacje, marketing w jednym abonamencie), najczęściej wybierane. Partnerstwo wzrostowe (długoterminowa współpraca z elastycznym zakresem), dla startupów i firm skalujących się.\\n\\nKonsultacja: Darmowa konsultacja trwa 30 minut i jest bezpłatna. Można ją zarezerwować online przez panel na stronie (kalendarz Cal.com), dostępne terminy to zwykle 12:00-18:00, z minimum 2-dniowym wyprzedzeniem. W konsultacji: analiza obecnej strony/procesów/kampanii, konkretne rekomendacje nawet bez dalszej współpracy, wstępna wycena i realny harmonogram.\\n\\nKontakt: e-mail kontakt@stfs.pl. Najlepszym pierwszym krokiem jest umówienie darmowej konsultacji przez stronę.\\n\\nTechnologie, których używa STFS: GPT-4o, Claude, LangChain, n8n, Make, Zapier, Next.js, Supabase, bazy wektorowe.\";\n\nconst systemPrompt = \"Jesteś asystentem AI na stronie STFS (AI studio dla biznesu). Odpowiadaj wyłącznie na podstawie poniższej wiedzy o STFS. Bądź zwięzły, konkretny, po polsku, przyjazny. Twoje odpowiedzi MUSZĄ być krótkie: maksymalnie 3-4 zdania albo 3-4 krótkie punkty, nigdy więcej. Jeśli pytanie jest ogólne (np. \\\"jakie usługi oferujecie\\\"), nie wymieniaj wszystkiego naraz z opisami, podaj krótko same nazwy i zapytaj, o którą usługę rozwinąć temat. Bez nagłówków, bez pogrubień na całe zdania, bez sekcji \\\"Dodatkowo\\\" ani rozbudowanych zakończeń: jedno krótkie zdanie zachęty na koniec wystarczy. Jeśli nie znasz odpowiedzi z tej wiedzy, powiedz to wprost i zaproponuj umówienie darmowej konsultacji przez stronę. Nigdy nie wymyślaj cen ani faktów, których nie ma w kontekście.\\n\\nWiedza o STFS:\\n\" + KNOWLEDGE_BASE;\n\nconst CLIENT_KEY = \"stfs-site-widget-2026\";\nconst headerKey = ($json.headers && $json.headers[\"x-stfs-client\"]) || \"\";\nconst authorized = headerKey === CLIENT_KEY;\n\nconst MAX_QUESTION_LENGTH = 500;\nlet question = ($json.body && $json.body.question ? $json.body.question : ($json.question || \"\")).toString().slice(0, MAX_QUESTION_LENGTH);\nif (!authorized) {\n  question = \"Przywitaj się krótko i zaproponuj kontakt przez formularz konsultacji.\";\n}\n\nreturn [{\n  json: {\n    ...$json,\n    question,\n    body: {\n      model: \"claude-haiku-4-5-20251001\",\n      max_tokens: 400,\n      system: systemPrompt,\n      messages: [\n        { role: \"user\", content: question },\n      ],\n    },\n  },\n}];"
       }
     },
     {
-      "id": "9ac56ea6-f47e-4d80-8ea7-9fa022114d85",
+      "id": "837f7985-6f6e-48ca-99d0-e564eac77407",
       "name": "AI: wygeneruj odpowiedź",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -58,16 +57,33 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
+        "url": "https://api.anthropic.com/v1/messages",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json.body }}",
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": ""
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        }
       },
-      "notes": "Podmień na swojego dostawcę modelu (OpenAI/Claude) + klucz API w Headers."
+      "notes": "Wklej klucz Anthropic w nagłówku x-api-key."
     },
     {
-      "id": "a964ee89-1761-4303-8533-3b8806457671",
+      "id": "973400fe-f792-4c50-90af-ec7584c97bbc",
       "name": "Wyodrębnij odpowiedź",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -76,11 +92,11 @@
         300
       ],
       "parameters": {
-        "jsCode": "const rawAnswer = $json.choices?.[0]?.message?.content;\nconst fallback = \"Przepraszam, nie udało się wygenerować odpowiedzi. Napisz do nas na kontakt@stfs.pl.\";\nconst answer = typeof rawAnswer === \"string\" && rawAnswer.trim() ? rawAnswer.trim().slice(0, 1200) : fallback;\nreturn [{ json: { answer } }];"
+        "jsCode": "const answer = $json.content && $json.content[0] && $json.content[0].text ? $json.content[0].text : \"Przepraszam, nie udało się wygenerować odpowiedzi. Napisz do nas na kontakt@stfs.pl.\";\nreturn [{ json: { answer } }];"
       }
     },
     {
-      "id": "0c0a071d-214f-4616-9a07-7ba1d12d454a",
+      "id": "3efb0f01-7147-458a-a816-0106006667f3",
       "name": "Zwróć odpowiedź do widgetu",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -90,7 +106,8 @@
       ],
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { \"answer\": $json.answer } }}"
+        "responseBody": "={{ { \"answer\": $json.answer } }}",
+        "options": {}
       }
     }
   ],

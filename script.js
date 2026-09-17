@@ -14,6 +14,32 @@ navMobile.querySelectorAll('a').forEach(link => {
   });
 });
 
+// ---------- clean-URL anchor navigation ----------
+(() => {
+  const noMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Arriving from another page via a link like "/#uslugi": let the browser do
+  // its native jump, then strip the hash so the address bar goes back to
+  // just the clean page URL instead of showing the fragment forever.
+  if (location.hash) {
+    const stripHash = () => setTimeout(() => history.replaceState(null, '', location.pathname + location.search), 50);
+    if (document.readyState === 'complete') stripHash();
+    else window.addEventListener('load', stripHash);
+  }
+
+  // Same-page anchor links (nav, logo, CTAs): scroll smoothly without ever
+  // touching the URL bar in the first place.
+  document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      const id = link.getAttribute('href').slice(1);
+      const target = id ? document.getElementById(id) : document.body;
+      if (!target) return;
+      e.preventDefault();
+      target.scrollIntoView({ behavior: noMotion ? 'auto' : 'smooth', block: 'start' });
+    });
+  });
+})();
+
 // ---------- scroll reveal ----------
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const revealEls = document.querySelectorAll('.reveal');
@@ -37,6 +63,13 @@ if (reduceMotion) {
 (() => {
   const canvas = document.getElementById('network');
   if (!canvas) return;
+  // Decorative particle animation fights the browser's native momentum
+  // scroll on touch devices and burns CPU for no visual payoff there —
+  // skip it entirely on touch, matching the standing mobile-performance rule.
+  if (window.matchMedia('(hover: none)').matches) {
+    canvas.style.display = 'none';
+    return;
+  }
   const ctx = canvas.getContext('2d');
   let width, height, dpr;
   let particles = [];
@@ -147,9 +180,9 @@ if (reduceMotion) {
     { who: 'user', text: 'Cześć, jakie usługi oferuje STFS?' },
     { who: 'ai', text: 'Marketing z AI, strony internetowe, automatyzacja Gmaila, rezerwacje, monitoring opinii i arkusze Google.' },
     { who: 'user', text: 'Ile trwa i kosztuje konsultacja?' },
-    { who: 'ai', text: '30 minut, całkowicie za darmo — bez zobowiązań.' },
+    { who: 'ai', text: '30 minut, całkowicie za darmo, bez zobowiązań.' },
     { who: 'user', text: 'Jak umówić termin?' },
-    { who: 'ai', text: 'Wybierz dzień i godzinę w panelu rezerwacji poniżej — potwierdzenie przyjdzie mailem.' },
+    { who: 'ai', text: 'Wybierz dzień i godzinę w panelu rezerwacji poniżej: potwierdzenie przyjdzie mailem.' },
   ];
 
   if (reduceMotion) {
@@ -178,7 +211,11 @@ if (reduceMotion) {
       c++;
       el.textContent = line.text.slice(0, c);
       el.appendChild(cursor);
-      body.scrollTop = 1e9;
+      // Writing scrollTop right after a DOM mutation still forces a
+      // synchronous layout flush (the browser needs fresh layout to clamp
+      // the value) — defer it to the next frame so it rides the layout
+      // the browser was going to do anyway instead of forcing an extra one.
+      requestAnimationFrame(() => { body.scrollTop = 1e9; });
       if (c >= line.text.length) {
         clearInterval(typeInterval);
         cursor.remove();
@@ -206,41 +243,75 @@ if (reduceMotion) {
   io.observe(body);
 })();
 
-// ---------- workflow pipeline demo ----------
+// ---------- mobile card sliders (Jak to dziala, Usługi, Współpraca) ----------
 (() => {
-  const flow = document.getElementById('flowDemo');
-  const caption = document.getElementById('flowCaption');
-  if (!flow || !caption) return;
-
-  const nodes = Array.from(flow.querySelectorAll('.flow-node'));
-  const lines = Array.from(flow.querySelectorAll('.flow-line'));
-  const captions = [
-    'Klient zostawia nową opinię — pozytywną lub negatywną.',
-    'AI analizuje treść i ocenia sentyment opinii.',
-    'AI przygotowuje gotową odpowiedź, dopasowaną do sytuacji.',
-    'Zatwierdzasz odpowiedź jednym kliknięciem — albo ją edytujesz.',
-    'Zaakceptowana odpowiedź trafia do klienta.',
+  const sliders = [
+    { grid: document.querySelector('#jak-to-dziala .flow-slider'), key: 'jak-to-dziala' },
+    { grid: document.querySelector('#uslugi .services-grid--6'), key: 'uslugi' },
+    { grid: document.querySelector('#wspolpraca .collab-models'), key: 'wspolpraca' },
   ];
 
-  if (reduceMotion) return;
+  sliders.forEach(({ grid, key }) => {
+    if (!grid) return;
+    const cards = Array.from(grid.children);
+    const dotsBox = document.querySelector(`[data-slider-dots="${key}"]`);
+    const navBox = document.querySelector(`[data-slider-nav="${key}"]`);
+    if (!dotsBox || !navBox || cards.length < 2) return;
 
-  let step = 0;
+    cards.forEach((_, i) => {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'slider-dot';
+      dot.setAttribute('aria-label', `Pokaż ${i + 1} z ${cards.length}`);
+      dot.addEventListener('click', () => {
+        cards[i].scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest', inline: 'start' });
+      });
+      dotsBox.appendChild(dot);
+    });
+    const dots = Array.from(dotsBox.children);
 
-  function render() {
-    nodes.forEach((n, idx) => n.classList.toggle('active', idx === step));
-    lines.forEach((l, idx) => l.classList.toggle('filled', idx < step));
-    caption.textContent = captions[step];
-  }
+    function activeIndex() {
+      let best = 0, bestDist = Infinity;
+      cards.forEach((card, i) => {
+        const dist = Math.abs(card.offsetLeft - grid.scrollLeft);
+        if (dist < bestDist) { bestDist = dist; best = i; }
+      });
+      return best;
+    }
 
-  setInterval(() => {
-    step = (step + 1) % nodes.length;
-    render();
-  }, 2200);
+    const prevBtn = navBox.querySelector('.slider-arrow--prev');
+    const nextBtn = navBox.querySelector('.slider-arrow--next');
+
+    function update() {
+      const idx = activeIndex();
+      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+      prevBtn.disabled = idx <= 0;
+      nextBtn.disabled = idx >= cards.length - 1;
+    }
+
+    function goTo(idx) {
+      const clamped = Math.max(0, Math.min(cards.length - 1, idx));
+      cards[clamped].scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest', inline: 'start' });
+    }
+
+    prevBtn.addEventListener('click', () => goTo(activeIndex() - 1));
+    nextBtn.addEventListener('click', () => goTo(activeIndex() + 1));
+
+    let ticking = false;
+    grid.addEventListener('scroll', () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => { update(); ticking = false; });
+    }, { passive: true });
+
+    window.addEventListener('resize', update);
+    update();
+  });
 })();
 
 // ---------- chat widget ----------
 (() => {
-  const N8N_CHAT_WEBHOOK_URL = 'https://stfsworkflow.app.n8n.cloud/webhook/stfs-chat';
+  const N8N_CHAT_WEBHOOK_URL = 'https://n8n.stfs.pl/webhook/stfs-chat';
 
   const widget = document.getElementById('chatWidget');
   if (!widget) return;
@@ -282,14 +353,14 @@ if (reduceMotion) {
     el.className = `chat-msg ${who}`;
     el.textContent = text;
     body.appendChild(el);
-    body.scrollTop = body.scrollHeight;
+    requestAnimationFrame(() => { body.scrollTop = 1e9; });
     return el;
   }
 
   function typeMessage(el, text, onDone) {
     if (reduceMotion) {
       el.textContent = text;
-      body.scrollTop = body.scrollHeight;
+      requestAnimationFrame(() => { body.scrollTop = 1e9; });
       if (onDone) onDone();
       return;
     }
@@ -299,7 +370,7 @@ if (reduceMotion) {
     const interval = setInterval(() => {
       i += CHARS_PER_TICK;
       el.textContent = text.slice(0, i);
-      body.scrollTop = body.scrollHeight;
+      requestAnimationFrame(() => { body.scrollTop = 1e9; });
       if (i >= text.length) {
         clearInterval(interval);
         if (onDone) onDone();
@@ -327,7 +398,7 @@ if (reduceMotion) {
       pending.classList.remove('pending');
       typeMessage(
         pending,
-        'Asystent AI startuje wkrótce — w międzyczasie napisz do nas na kontakt@stfs.pl albo umów darmową konsultację.',
+        'Asystent AI startuje wkrótce. W międzyczasie napisz do nas na kontakt@stfs.pl albo umów darmową konsultację.',
         () => (sendBtn.disabled = false)
       );
       return;
