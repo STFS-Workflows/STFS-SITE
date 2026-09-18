@@ -84,6 +84,15 @@ input,textarea{font:inherit;color:inherit}
 @media (prefers-reduced-motion: reduce){
   .aurora::before,.aurora::after{animation:none}
 }
+@media (max-width:899px){
+  /* filter:blur(100px) on a position:fixed element that animates forever
+     forces the browser to keep recompositing an expensive blurred layer
+     for the entire lifetime of the tab, whether or not anyone is looking
+     at it — real heat/battery cost on phones, worse under CPU throttling
+     (Low Power Mode). Freeze it on mobile: still a soft glow, zero
+     ongoing GPU work. */
+  .aurora::before,.aurora::after{animation:none}
+}
 
 /* ---------- eyebrow tag ---------- */
 .eyebrow{
