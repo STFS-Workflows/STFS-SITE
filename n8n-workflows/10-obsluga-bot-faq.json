@@ -1,120 +1,258 @@
 {
-  "name": "STFS — Bot FAQ (Telegram / WhatsApp / czat)",
+  "name": "STFS — Bot FAQ (Telegram)",
   "nodes": [
     {
-      "id": "be1d47ea-12ab-4bd2-9d65-88655611a791",
+      "id": "0b5ffdd1-acbc-46d4-afb4-62940746b5a5",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Bot FAQ\n\n**Trigger:** Webhook — podepnij pod Telegram Bot API / WhatsApp Business API / widget czatu na stronie.\n\n**Do zrobienia:**\n1. Skonfiguruj webhook swojego kanału (Telegram/WhatsApp) tak, by wołał ten URL.\n2. Podmień węzeł AI na provider + dodaj bazę wiedzy FAQ w promptcie.\n3. Podmień \"Odpowiedz na kanale\" na węzeł Telegram/WhatsApp.",
-        "height": 300,
-        "width": 380,
+        "content": "## 10 – Bot FAQ na Telegramie\n\nNatywny Telegram Trigger (bez ręcznego webhooka) → AI odpowiada WYŁĄCZNIE na podstawie FAQ z Konfiguracji → odpowiedź w tej samej rozmowie. Gdy AI nie zna odpowiedzi – odsyła do kontaktu.\n\nWhatsApp: podmień trigger i węzeł wysyłki na WhatsApp Business Cloud.\n\n## Credentials do utworzenia\n- Telegram\n- Header Auth (API)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "43f5a768-6c99-4efc-ad02-b047e6e73bb1",
-      "name": "Wiadomość od klienta (Webhook)",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
+      "name": "Wiadomość na Telegramie",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "webhookId": "04bbca11-0de4-443e-ac5b-31419c5a486d",
       "position": [
         80,
         300
       ],
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "bot-faq",
-        "authentication": "headerAuth",
-        "responseMode": "onReceived",
-        "options": {}
-      }
+      "id": "416846a2-fb3a-48cb-a1ff-df67ba4d9ac6"
     },
     {
-      "id": "8c77e6f2-1e7a-4f72-ac31-8971bb61b05b",
-      "name": "AI: wygeneruj odpowiedź z FAQ",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fc69b88a-7124-429e-a57a-f861c4e4e478",
+              "name": "faq",
+              "value": "P: Jakie są godziny otwarcia? O: Pn-Pt 9-17.\nP: Jak się skontaktować? O: kontakt@stfs.pl",
+              "type": "string"
+            },
+            {
+              "id": "5d733f0d-6c28-47a1-a887-3b1446f6878a",
+              "name": "kontaktAwaryjny",
+              "value": "kontakt@stfs.pl",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Model odpowiada na podstawie bazy FAQ w prompt/kontekście."
+      "id": "77988c54-06c7-435e-a5f7-b9d6a6b8056c"
     },
     {
-      "id": "3314c8f2-de96-4b22-bee9-e5cce9b3c75e",
-      "name": "Odpowiedz na kanale",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Czy to wiadomość tekstowa?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "bdf444ce-4b57-4ae4-a4fc-e0e17e664235",
+              "leftValue": "={{ Boolean($('Wiadomość na Telegramie').item.json.message.text) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.telegram.org/botYOUR_TOKEN/sendMessage",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na natywny węzeł Telegram/WhatsApp."
+      "id": "f419318b-52f9-4478-a61f-f57792487a18"
     },
     {
-      "id": "25298cab-c74b-44f6-8acd-1631bdec3007",
-      "name": "Odpowiedz webhookowi",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
+      "name": "AI: prompt (odpowiedź FAQ)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Jesteś asystentem obsługi klienta. Odpowiadasz krótko (maks. 3 zdania), po polsku, WYŁĄCZNIE na podstawie FAQ podanego w wiadomości. Jeśli odpowiedzi nie ma w FAQ – ustaw \\\"znaleziono\\\": false.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"znaleziono\\\": true/false, \\\"odpowiedz\\\": tekst odpowiedzi}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `FAQ:\\n${$('Konfiguracja').first().json.faq}\\n\\nPytanie klienta: ${$('Wiadomość na Telegramie').item.json.message.text}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
       "position": [
         860,
         300
       ],
+      "id": "b14d66f4-d5a9-4afc-aa3c-3388eb8f1f7b"
+    },
+    {
+      "name": "AI: odpowiedź FAQ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { \"status\": \"ok\" } }}"
-      }
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "294c35eb-842d-4f18-a8b3-7db7d4d4407c"
+    },
+    {
+      "name": "AI: wynik (odpowiedź FAQ)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...{} };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"znaleziono\":\"\",\"odpowiedz\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "cb99d1c8-803d-4450-a828-75873cd1b5a6"
+    },
+    {
+      "name": "Odpowiedz na Telegramie",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "parameters": {
+        "chatId": "={{ $('Wiadomość na Telegramie').item.json.message.chat.id }}",
+        "text": "={{ $json._aiOk && $json.znaleziono !== false ? $json.odpowiedz : 'Nie mam pewnej odpowiedzi na to pytanie. Napisz proszę na ' + $('Konfiguracja').first().json.kontaktAwaryjny }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "f4be3fd2-e008-4aad-a45b-9a398dcb730c"
+    },
+    {
+      "name": "Nie tekst – pomiń",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        860,
+        520
+      ],
+      "id": "92565509-4595-4141-ad49-969513e97247"
     }
   ],
   "connections": {
-    "Wiadomość od klienta (Webhook)": {
+    "Wiadomość na Telegramie": {
       "main": [
         [
           {
-            "node": "AI: wygeneruj odpowiedź z FAQ",
+            "node": "Konfiguracja",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: wygeneruj odpowiedź z FAQ": {
+    "Konfiguracja": {
       "main": [
         [
           {
-            "node": "Odpowiedz na kanale",
+            "node": "Czy to wiadomość tekstowa?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Odpowiedz na kanale": {
+    "Czy to wiadomość tekstowa?": {
       "main": [
         [
           {
-            "node": "Odpowiedz webhookowi",
+            "node": "AI: prompt (odpowiedź FAQ)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Nie tekst – pomiń",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (odpowiedź FAQ)": {
+      "main": [
+        [
+          {
+            "node": "AI: odpowiedź FAQ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: odpowiedź FAQ": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (odpowiedź FAQ)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (odpowiedź FAQ)": {
+      "main": [
+        [
+          {
+            "node": "Odpowiedz na Telegramie",
             "type": "main",
             "index": 0
           }
@@ -124,6 +262,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

@@ -1,0 +1,371 @@
+{
+  "name": "STFS — Wnioski urlopowe z akceptacją przełożonego",
+  "nodes": [
+    {
+      "id": "4c401ebb-c2a3-4499-af18-0e366fd99073",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 47 – Wniosek urlopowy\n\nPracownik składa wniosek → workflow liczy **dni robocze** (bez weekendów i polskich świąt, w tym Wigilii) → przełożony dostaje e-mail z formularzem Zatwierdź/Odrzuć i polem na komentarz → po zatwierdzeniu urlop trafia do kalendarza zespołu, a pracownik dostaje potwierdzenie. Odrzucenie wraca z komentarzem.\n\nWejście: `employeeName`, `email`, `managerEmail`, `from`, `to` (RRRR-MM-DD), `type` (wypoczynkowy, na żądanie, okolicznościowy…).\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- SMTP\n- Header Auth (API)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Wniosek urlopowy (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wniosek-urlopowy",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "741d7c9b-7fa8-49b5-ac43-ddf3296b3d3b",
+      "position": [
+        80,
+        300
+      ],
+      "id": "7c7fe158-c331-4590-aa92-2e35c4156d08"
+    },
+    {
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"employeeName\",\"email\",\"managerEmail\",\"from\",\"to\",\"type\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "08097b58-77e7-40c4-ad2d-655b33d9f31f"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "194542bd-742b-4186-ac92-cfb98f9f8270",
+              "name": "kalendarzUrl",
+              "value": "https://YOUR-CALENDAR.example.com/api/events",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        600,
+        300
+      ],
+      "id": "0301f944-a275-4172-a785-f61d13a9d779"
+    },
+    {
+      "name": "Policz dni robocze",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const od = new Date($json.from + 'T12:00:00Z');\nconst doD = new Date($json.to + 'T12:00:00Z');\nif (isNaN(od) || isNaN(doD) || doD < od) throw new Error('Niepoprawny zakres dat');\nif ((doD - od) / 86400000 > 60) throw new Error('Wniosek dłuższy niż 60 dni – złóż kilka');\nfunction wielkanoc(r) { // algorytm Meeusa/Jonesa/Butchera\n  const a = r % 19, b = Math.floor(r / 100), c = r % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);\n  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);\n  const mies = Math.floor((h + l - 7 * m + 114) / 31), dz = ((h + l - 7 * m + 114) % 31) + 1;\n  return Date.UTC(r, mies - 1, dz, 12);\n}\nfunction swieta(r) {\n  const s = new Set(['01-01', '01-06', '05-01', '05-03', '08-15', '11-01', '11-11', '12-24', '12-25', '12-26'].map((x) => r + '-' + x));\n  const w = wielkanoc(r);\n  for (const plus of [0, 1, 49, 60]) s.add(new Date(w + plus * 86400000).toISOString().slice(0, 10)); // Wielkanoc, Poniedziałek Wlk., Zesłanie Ducha Św., Boże Ciało\n  return s;\n}\nlet dniRobocze = 0;\nfor (let t = new Date(od); t <= doD; t.setUTCDate(t.getUTCDate() + 1)) {\n  const dzienTyg = t.getUTCDay();\n  const iso = t.toISOString().slice(0, 10);\n  if (dzienTyg !== 0 && dzienTyg !== 6 && !swieta(t.getUTCFullYear()).has(iso)) dniRobocze++;\n}\nif (dniRobocze === 0) throw new Error('W wybranym okresie nie ma dni roboczych');\nreturn { json: { ...$json, dniRobocze } };"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "b6782844-1733-4894-af06-61d96509c5ca"
+    },
+    {
+      "name": "Poproś przełożonego o decyzję",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $json.managerEmail }}",
+        "subject": "=Wniosek urlopowy: {{ $json.employeeName }} ({{ $json.from }} – {{ $json.to }})",
+        "emailFormat": "text",
+        "text": "={{ $json.employeeName }} prosi o urlop ({{ $json.type }}): {{ $json.from }} – {{ $json.to }}, dni roboczych: {{ $json.dniRobocze }}.\n\nZatwierdź lub odrzuć: {{ $execution.resumeFormUrl }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "5aba65f5-11a0-44b8-ae0e-be3d3272c77b"
+    },
+    {
+      "name": "Czekaj na decyzję przełożonego",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "parameters": {
+        "resume": "form",
+        "formTitle": "Wniosek urlopowy",
+        "formDescription": "Zatwierdź lub odrzuć wniosek. Komentarz trafi do pracownika.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decyzja",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Zatwierdź"
+                  },
+                  {
+                    "option": "Odrzuć"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Komentarz",
+              "fieldType": "textarea",
+              "requiredField": false
+            }
+          ]
+        },
+        "limitWaitTime": true,
+        "limitType": "afterTimeInterval",
+        "resumeAmount": 120,
+        "resumeUnit": "hours",
+        "options": {}
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "e43320bf-651b-49e7-aa7d-b69b0507b509"
+    },
+    {
+      "name": "Zatwierdzony?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "795d4168-eeba-45b2-ade9-547205fa4c69",
+              "leftValue": "={{ $json['Decyzja'] }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "Zatwierdź"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "e578a94b-0a08-4940-a440-245b104a7145"
+    },
+    {
+      "name": "Dodaj urlop do kalendarza zespołu",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.kalendarzUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: 'Urlop: ' + $('Policz dni robocze').item.json.employeeName, allDay: true, start: $('Policz dni robocze').item.json.from, end: $('Policz dni robocze').item.json.to }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "18ef09d2-a1c4-4d58-a92a-9abb09531436"
+    },
+    {
+      "name": "Potwierdź pracownikowi",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Policz dni robocze').item.json.email }}",
+        "subject": "=Urlop zatwierdzony ✔",
+        "emailFormat": "text",
+        "text": "=Twój urlop {{ $('Policz dni robocze').item.json.from }} – {{ $('Policz dni robocze').item.json.to }} ({{ $('Policz dni robocze').item.json.dniRobocze }} dni roboczych) został zatwierdzony.{{ $('Czekaj na decyzję przełożonego').item.json['Komentarz'] ? '\\n\\nKomentarz: ' + $('Czekaj na decyzję przełożonego').item.json['Komentarz'] : '' }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2160,
+        300
+      ],
+      "id": "c718b34a-8e8f-4d24-a7ad-de6381cf8d32"
+    },
+    {
+      "name": "Poinformuj o odrzuceniu",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Policz dni robocze').item.json.email }}",
+        "subject": "=Wniosek urlopowy – decyzja",
+        "emailFormat": "text",
+        "text": "=Twój wniosek urlopowy {{ $('Policz dni robocze').item.json.from }} – {{ $('Policz dni robocze').item.json.to }} nie został zatwierdzony (lub minął czas na decyzję).{{ $json['Komentarz'] ? '\\n\\nKomentarz przełożonego: ' + $json['Komentarz'] : '' }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        520
+      ],
+      "id": "0d5f7fd8-b31b-4520-a99d-1e82fd7c1f46"
+    }
+  ],
+  "connections": {
+    "Wniosek urlopowy (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Policz dni robocze",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policz dni robocze": {
+      "main": [
+        [
+          {
+            "node": "Poproś przełożonego o decyzję",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poproś przełożonego o decyzję": {
+      "main": [
+        [
+          {
+            "node": "Czekaj na decyzję przełożonego",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Czekaj na decyzję przełożonego": {
+      "main": [
+        [
+          {
+            "node": "Zatwierdzony?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zatwierdzony?": {
+      "main": [
+        [
+          {
+            "node": "Dodaj urlop do kalendarza zespołu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Poinformuj o odrzuceniu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dodaj urlop do kalendarza zespołu": {
+      "main": [
+        [
+          {
+            "node": "Potwierdź pracownikowi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

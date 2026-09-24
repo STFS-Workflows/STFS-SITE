@@ -1,0 +1,452 @@
+{
+  "name": "STFS — Przypomnienia o wizytach i rezerwacjach",
+  "nodes": [
+    {
+      "id": "ea73ecb0-632c-45ee-aea4-0fa4c366c76d",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 35 – Przypomnienia dzień przed wizytą\n\nCodziennie o 18:00 pobiera jutrzejsze rezerwacje i wysyła przypomnienie: SMS, a gdy brak numeru – e-mail. Bez telefonu i e-maila → info na Slacku. Każda rezerwacja dostaje jedno przypomnienie. To część usługi „System rezerwacji” (mniej nieobecności).\n\nFormat: `{ \"data\": [ { \"id\", \"name\", \"phone\", \"email\", \"start\", \"service\", \"cancelUrl\" } ] }`.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- SMTP\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Codziennie 18:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * *"
+            }
+          ]
+        }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "18463876-13f9-4ce5-acf8-620b078bac57"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bb074bf7-534f-4016-a182-a37a6878879c",
+              "name": "rezerwacjeUrl",
+              "value": "https://YOUR-BOOKING.example.com/api/bookings",
+              "type": "string"
+            },
+            {
+              "id": "2eb5d346-3310-49b7-a7af-37274d2dca7c",
+              "name": "smsUrl",
+              "value": "https://YOUR-SMS-GATEWAY.example.com/api/sms",
+              "type": "string"
+            },
+            {
+              "id": "e67a9b66-a291-481d-ae9c-6a36a724709b",
+              "name": "nazwaFirmy",
+              "value": "Nazwa firmy",
+              "type": "string"
+            },
+            {
+              "id": "7efb6f18-24d3-41ce-a815-a592689bce65",
+              "name": "adres",
+              "value": "ul. Przykładowa 1, Rybnik",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "c0043c22-a99e-49e8-a375-c5e28a3a1635"
+    },
+    {
+      "name": "Pobierz jutrzejsze rezerwacje",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.rezerwacjeUrl + '?date=' + $now.plus({ days: 1 }).toISODate() }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        600,
+        300
+      ],
+      "id": "74ef1335-2cd2-4e08-a4c7-d0e7572c7c88"
+    },
+    {
+      "name": "Rozbij listę rezerwacji",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "d27ba4ad-9a78-4b2f-af03-96bf0fc1374a"
+    },
+    {
+      "name": "Pomiń już przypomniane",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"wizyty\"] = store[\"wizyty\"] || {};\nconst seen = store[\"wizyty\"];\nconst now = Date.now();\nconst ttl = 14 * 86400000;\nfor (const [k, t] of Object.entries(seen)) if (now - t > ttl) delete seen[k];\nconst out = [];\n$input.all().forEach((item, index) => {\n  const key = String(item.json.id ?? '');\n  if (!key || seen[key]) return; // brak klucza albo już obsłużone -> pomiń\n  // pairedItem zachowuje powiązanie z danymi wejściowymi (potrzebne dla odwołań .item w kolejnych węzłach)\n  out.push({ json: item.json, binary: item.binary, pairedItem: { item: index } });\n});\nreturn out;"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "b9dffc4a-6516-4866-a632-dce16dde5993"
+    },
+    {
+      "name": "Przygotuj treść",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const c = $('Konfiguracja').first().json;\nconst start = new Date($json.start);\nconst godzina = start.toLocaleTimeString('pl-PL', { timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit' });\nconst tresc = c.nazwaFirmy + ': przypominamy o wizycie jutro o ' + godzina + (($json.service) ? ' (' + $json.service + ')' : '') + ', ' + c.adres + '.' + ($json.cancelUrl ? ' Zmiana/odwołanie: ' + $json.cancelUrl : '');\nreturn { json: { ...$json, godzina, tresc } };"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "6117244a-4b37-490e-a2dc-7cfb4173d02b"
+    },
+    {
+      "name": "Ma numer telefonu?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cdf6359e-c63a-4ba8-ab58-0f2dfe913384",
+              "leftValue": "={{ Boolean($json.phone) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "a068509b-7689-45fd-a455-b41b02aa5a1c"
+    },
+    {
+      "name": "Wyślij SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.smsUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ to: $json.phone, message: $json.tresc }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "05b57e95-c1d0-4d8f-aeab-1a0f3ff7d515"
+    },
+    {
+      "name": "Zapamiętaj (SMS)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"wizyty\"] = store[\"wizyty\"] || {};\nconst src = $('Przygotuj treść').item.json;\nconst key = String(src.id ?? '');\nif (key) store[\"wizyty\"][key] = Date.now();\nreturn { json: $json };"
+      },
+      "position": [
+        2160,
+        300
+      ],
+      "id": "50e1d4e0-0410-4839-af96-68862fff086d"
+    },
+    {
+      "name": "Ma e-mail?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "753e4f34-df43-425b-acb7-8fde0c84a878",
+              "leftValue": "={{ Boolean($json.email) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        1900,
+        520
+      ],
+      "id": "82d73e87-0865-460b-aead-8b662aea7c6a"
+    },
+    {
+      "name": "Wyślij e-mail",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $json.email }}",
+        "subject": "=Przypomnienie: wizyta jutro o {{ $json.godzina }}",
+        "emailFormat": "text",
+        "text": "=Dzień dobry {{ $json.name }},\n\n{{ $json.tresc }}\n\nDo zobaczenia!",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2160,
+        520
+      ],
+      "id": "0a31445d-50a7-4dcb-a17f-bb593bc7ee24"
+    },
+    {
+      "name": "Zapamiętaj (e-mail)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"wizyty\"] = store[\"wizyty\"] || {};\nconst src = $('Przygotuj treść').item.json;\nconst key = String(src.id ?? '');\nif (key) store[\"wizyty\"][key] = Date.now();\nreturn { json: $json };"
+      },
+      "position": [
+        2420,
+        520
+      ],
+      "id": "f6502b67-1810-406d-a664-81d81613aa6f"
+    },
+    {
+      "name": "Brak kontaktu do klienta",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=📵 Rezerwacja {{ $json.id }} ({{ $json.name }}, jutro {{ $json.godzina }}) nie ma telefonu ani e-maila – przypomnij ręcznie.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2160,
+        740
+      ],
+      "id": "0ca0fa0b-ec40-404a-a9a9-04ab60de5fad"
+    }
+  ],
+  "connections": {
+    "Codziennie 18:00": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Pobierz jutrzejsze rezerwacje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pobierz jutrzejsze rezerwacje": {
+      "main": [
+        [
+          {
+            "node": "Rozbij listę rezerwacji",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rozbij listę rezerwacji": {
+      "main": [
+        [
+          {
+            "node": "Pomiń już przypomniane",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pomiń już przypomniane": {
+      "main": [
+        [
+          {
+            "node": "Przygotuj treść",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Przygotuj treść": {
+      "main": [
+        [
+          {
+            "node": "Ma numer telefonu?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ma numer telefonu?": {
+      "main": [
+        [
+          {
+            "node": "Wyślij SMS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ma e-mail?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wyślij SMS": {
+      "main": [
+        [
+          {
+            "node": "Zapamiętaj (SMS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ma e-mail?": {
+      "main": [
+        [
+          {
+            "node": "Wyślij e-mail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Brak kontaktu do klienta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wyślij e-mail": {
+      "main": [
+        [
+          {
+            "node": "Zapamiętaj (e-mail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

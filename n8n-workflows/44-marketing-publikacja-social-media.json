@@ -1,0 +1,303 @@
+{
+  "name": "STFS — Publikacja postów z kalendarza treści",
+  "nodes": [
+    {
+      "id": "f24deebc-593d-4f8f-aed9-5f4de3b274ad",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 44 – Kalendarz treści → Facebook\n\nCo 15 minut czyta arkusz Google z kalendarzem postów. Post o statusie **zatwierdzony**, kanale `facebook` i dacie publikacji, która już minęła, jest publikowany na stronie firmowej, a w arkuszu zmienia się status na `opublikowany` z ID posta. Pamięć workflow chroni przed podwójną publikacją.\n\nKolumny arkusza: `id`, `data` (ISO z przesunięciem, np. 2026-10-01T10:00:00+02:00), `kanal`, `tresc`, `link`, `status`, `postId`, `opublikowano`.\n\nFacebook: token strony z uprawnieniem `pages_manage_posts` (wymaga aplikacji Meta).\n\n## Credentials do utworzenia\n- Google Sheets OAuth2\n- Header Auth (API)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Co 15 minut",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/15 * * * *"
+            }
+          ]
+        }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "959c4e84-b116-4598-af02-d5833b7d4f7d"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "187ea3de-3eba-4606-a904-1377fa05b5da",
+              "name": "arkuszUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR-SHEET-ID/edit",
+              "type": "string"
+            },
+            {
+              "id": "44f7b6c6-9f48-41c5-a44c-8738e49da532",
+              "name": "zakladka",
+              "value": "Kalendarz",
+              "type": "string"
+            },
+            {
+              "id": "93686e38-89cf-473f-a529-a0feea77fcc3",
+              "name": "fbPageId",
+              "value": "YOUR_PAGE_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "76dcedd3-fe61-4d7a-a793-c4d03f330429"
+    },
+    {
+      "name": "Czytaj kalendarz treści",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Konfiguracja').first().json.arkuszUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Konfiguracja').first().json.zakladka }}"
+        },
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        600,
+        300
+      ],
+      "id": "d233cf69-c51f-4c15-abee-e30e0aec8a85"
+    },
+    {
+      "name": "Wybierz posty do publikacji",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const teraz = Date.now();\nreturn $input.all().map((i, n) => ({ i, n })).filter(({ i }) => {\n  const r = i.json;\n  const t = Date.parse(r.data);\n  return String(r.status).trim().toLowerCase() === 'zatwierdzony' && String(r.kanal).trim().toLowerCase() === 'facebook'\n    && Number.isFinite(t) && t <= teraz && String(r.tresc || '').trim() && !r.postId;\n}).map(({ i, n }) => ({ json: i.json, pairedItem: { item: n } }));"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "17e3750c-c16c-48e3-a9ee-b713c8e56f2c"
+    },
+    {
+      "name": "Pomiń już opublikowane",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"posty\"] = store[\"posty\"] || {};\nconst seen = store[\"posty\"];\nconst now = Date.now();\nconst ttl = 365 * 86400000;\nfor (const [k, t] of Object.entries(seen)) if (now - t > ttl) delete seen[k];\nconst out = [];\n$input.all().forEach((item, index) => {\n  const key = String(item.json.id ?? '');\n  if (!key || seen[key]) return; // brak klucza albo już obsłużone -> pomiń\n  // pairedItem zachowuje powiązanie z danymi wejściowymi (potrzebne dla odwołań .item w kolejnych węzłach)\n  out.push({ json: item.json, binary: item.binary, pairedItem: { item: index } });\n});\nreturn out;"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "a02c7f07-e21f-4d7e-a608-b79ef25aa8eb"
+    },
+    {
+      "name": "Opublikuj na Facebooku",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.facebook.com/v20.0/' + $('Konfiguracja').first().json.fbPageId + '/feed' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.assign({ message: $json.tresc }, $json.link ? { link: $json.link } : {})) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Header Auth: Authorization = Bearer <token strony>.",
+      "notesInFlow": true,
+      "position": [
+        1380,
+        300
+      ],
+      "id": "8554dc40-385e-46b7-aa02-b53b06d3efc5"
+    },
+    {
+      "name": "Zapamiętaj publikację",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"posty\"] = store[\"posty\"] || {};\nconst src = $('Pomiń już opublikowane').item.json;\nconst key = String(src.id ?? '');\nif (key) store[\"posty\"][key] = Date.now();\nreturn { json: $json };"
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "e234957e-81bf-4c5c-ac77-b3226cc53838"
+    },
+    {
+      "name": "Oznacz w arkuszu",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Konfiguracja').first().json.arkuszUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Konfiguracja').first().json.zakladka }}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Pomiń już opublikowane').item.json.id }}",
+            "status": "opublikowany",
+            "postId": "={{ $('Opublikuj na Facebooku').item.json.id }}",
+            "opublikowano": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": []
+        },
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "73b229db-1a5c-4aed-a367-ea8b289ff0eb"
+    }
+  ],
+  "connections": {
+    "Co 15 minut": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Czytaj kalendarz treści",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Czytaj kalendarz treści": {
+      "main": [
+        [
+          {
+            "node": "Wybierz posty do publikacji",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wybierz posty do publikacji": {
+      "main": [
+        [
+          {
+            "node": "Pomiń już opublikowane",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pomiń już opublikowane": {
+      "main": [
+        [
+          {
+            "node": "Opublikuj na Facebooku",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Opublikuj na Facebooku": {
+      "main": [
+        [
+          {
+            "node": "Zapamiętaj publikację",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapamiętaj publikację": {
+      "main": [
+        [
+          {
+            "node": "Oznacz w arkuszu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

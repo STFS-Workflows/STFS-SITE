@@ -2,92 +2,281 @@
   "name": "STFS — OCR i ekstrakcja danych z dokumentów",
   "nodes": [
     {
-      "id": "361ce4ec-041e-400d-8595-a10b94aef4da",
+      "id": "4c3815fa-a6bb-4f6f-aa9b-9c9376377406",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## OCR dokumentów\n\n**Trigger:** Webhook — po przesłaniu pliku (skan/paragon/umowa).\n\n**Do zrobienia:**\n1. Podmień \"OCR: odczytaj dokument\" na Google Vision / AWS Textract / Azure Document Intelligence + klucz API.\n2. Podmień \"Zapisz dane\" na docelową bazę/arkusz.",
-        "height": 300,
-        "width": 380,
+        "content": "## 14 – OCR dokumentów\n\nAdres pliku (skan/zdjęcie faktury) → Google Vision odczytuje tekst → AI wyciąga pola (typ, numer, data, kwoty, NIP) → zapis do bazy/arkusza. Dokumenty z niską pewnością trafiają do ręcznej weryfikacji.\n\nWejście: `fileUrl` (publicznie dostępny lub podpisany URL).\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "4e177462-b10f-4ce4-8e59-5b65575a7be4",
       "name": "Nowy dokument (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "dokument-nowy",
         "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
-      }
+      },
+      "webhookId": "28503b6e-b557-44ad-a6f8-242aa7624559",
+      "position": [
+        80,
+        300
+      ],
+      "id": "d5507ada-719f-4791-a166-e54849c836c2"
     },
     {
-      "id": "1c5e41d5-08cf-4c1b-a804-b60735d7cfa8",
-      "name": "OCR: odczytaj dokument",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"fileUrl\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://vision.googleapis.com/v1/images:annotate",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na Google Vision/AWS Textract/Azure Document Intelligence."
+      "id": "8f568336-e304-437a-a59e-08126e26735c"
     },
     {
-      "id": "62186820-6fc6-4b4b-9b6a-a94fc54a64d3",
-      "name": "Wyciągnij pola",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "478c507b-62d8-45be-a853-6eb4fe668f60",
+              "name": "zapisUrl",
+              "value": "https://YOUR-DB.example.com/api/documents",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "jsCode": "return [{ json: { text: $json.text || \"\" } }];"
-      }
+      "id": "02adfc13-1c48-441f-a80c-764b4a11884e"
     },
     {
-      "id": "2966be3e-1d87-4ade-a7df-223e205b738e",
-      "name": "Zapisz dane",
+      "name": "OCR: odczytaj dokument",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://vision.googleapis.com/v1/images:annotate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ requests: [{ image: { source: { imageUri: $json.fileUrl } }, features: [{ type: \"DOCUMENT_TEXT_DETECTION\" }] }] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Header Auth: X-Goog-Api-Key = klucz Google Cloud Vision (albo podmień na Azure/Textract).",
+      "notesInFlow": true,
       "position": [
         860,
         300
       ],
+      "id": "2019117a-91d2-45b5-a037-965caa36b920"
+    },
+    {
+      "name": "Wyciągnij tekst",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const text = $json.responses?.[0]?.fullTextAnnotation?.text || '';\nif (!text) throw new Error('OCR nie zwrócił tekstu');\nreturn { json: { fileUrl: $('Walidacja danych').item.json.fileUrl, text } };"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "c2e6b0d9-31c9-4297-a55e-481ebef7b6cd"
+    },
+    {
+      "name": "AI: prompt (ekstrakcja pól)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Wyciągasz dane z tekstu dokumentu księgowego (faktura, paragon, umowa). Pola, których nie ma w tekście, ustaw na null.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"typ\\\": \\\"faktura\\\" | \\\"paragon\\\" | \\\"umowa\\\" | \\\"inny\\\", \\\"numer\\\": tekst lub null, \\\"data\\\": YYYY-MM-DD lub null, \\\"kwotaBrutto\\\": liczba lub null, \\\"nipSprzedawcy\\\": tekst lub null, \\\"sprzedawca\\\": tekst lub null, \\\"pewnosc\\\": liczba 0-1}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Tekst dokumentu:\\n${$json.text}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "6f85f2cf-8af4-4c4b-a2e7-e57f6517958b"
+    },
+    {
+      "name": "AI: ekstrakcja pól",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "parameters": {
         "method": "POST",
-        "url": "https://YOUR-DB.example.com/api/documents",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "e906ece9-dd6c-4117-ab19-02cda96411e7"
+    },
+    {
+      "name": "AI: wynik (ekstrakcja pól)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (ekstrakcja pól)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"typ\":\"\",\"numer\":\"\",\"data\":\"\",\"kwotaBrutto\":\"\",\"nipSprzedawcy\":\"\",\"sprzedawca\":\"\",\"pewnosc\":0};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\nout.pewnosc = Math.max(0, Math.min(1, Number(out.pewnosc)));\nif (!Number.isFinite(out.pewnosc)) out.pewnosc = 0;\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "b8593294-9145-41f2-a258-74dfc1a8f660"
+    },
+    {
+      "name": "Pewność wystarczająca?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "93c00d19-01d7-4053-af5c-be193ae651ab",
+              "leftValue": "={{ $json.pewnosc }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "rightValue": 0.7
+            }
+          ],
+          "combinator": "and"
+        },
         "options": {}
       },
-      "notes": "Podmień na docelową bazę/arkusz."
+      "position": [
+        2160,
+        300
+      ],
+      "id": "d2cdf8af-a436-4bf2-a54a-eb77b3e6940b"
+    },
+    {
+      "name": "Zapisz dane",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.zapisUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ fileUrl: $json.fileUrl, typ: $json.typ, numer: $json.numer, data: $json.data, kwotaBrutto: $json.kwotaBrutto, nipSprzedawcy: $json.nipSprzedawcy, sprzedawca: $json.sprzedawca }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2420,
+        300
+      ],
+      "id": "6fe82b39-7bb9-4986-af41-88c14a3370a1"
+    },
+    {
+      "name": "Do ręcznej weryfikacji",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=📄 Dokument wymaga ręcznej weryfikacji (pewność {{ $json.pewnosc }}): {{ $json.fileUrl }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2420,
+        520
+      ],
+      "id": "f1c0a1d4-b95d-4662-afe3-8d57c5976302"
     }
   ],
   "connections": {
     "Nowy dokument (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -102,18 +291,69 @@
       "main": [
         [
           {
-            "node": "Wyciągnij pola",
+            "node": "Wyciągnij tekst",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wyciągnij pola": {
+    "Wyciągnij tekst": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (ekstrakcja pól)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (ekstrakcja pól)": {
+      "main": [
+        [
+          {
+            "node": "AI: ekstrakcja pól",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: ekstrakcja pól": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (ekstrakcja pól)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (ekstrakcja pól)": {
+      "main": [
+        [
+          {
+            "node": "Pewność wystarczająca?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pewność wystarczająca?": {
       "main": [
         [
           {
             "node": "Zapisz dane",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Do ręcznej weryfikacji",
             "type": "main",
             "index": 0
           }
@@ -123,6 +363,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

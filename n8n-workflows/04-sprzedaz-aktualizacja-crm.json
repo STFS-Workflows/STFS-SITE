@@ -2,91 +2,151 @@
   "name": "STFS — Aktualizacja CRM bez ręcznego wpisywania",
   "nodes": [
     {
-      "id": "6b59261a-cb2f-4750-a8fd-5ffdb777ec10",
+      "id": "2d0c51af-6919-4538-a20b-7618c357169a",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Auto-aktualizacja CRM\n\n**Trigger:** Webhook — dowolne źródło danych (formularz, e-mail, czat).\n\n**Do zrobienia:**\n1. Podmień \"Zapisz/Aktualizuj w CRM\" na realny endpoint (HubSpot/Pipedrive/Salesforce).\n2. Zmapuj pola w węźle Set na strukturę Twojego CRM.",
-        "height": 300,
-        "width": 380,
+        "content": "## 04 – Aktualizacja CRM\n\nDowolne źródło (formularz, czat, e-mail parser) → mapowanie pól → **upsert** kontaktu po e-mailu (bez duplikatów).\n\nWejście: `email` (wymagane), `name`, `phone`, `source`, `notes`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "b540564c-412f-447d-a42b-6fef547f9659",
       "name": "Nowe dane kontaktu (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "dane-kontaktu",
         "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
-      }
+      },
+      "webhookId": "b6d61e22-88b0-4575-a2b4-0e35a2ac62ba",
+      "position": [
+        80,
+        300
+      ],
+      "id": "653c8a47-23fc-4f50-a606-bc78a737e70b"
     },
     {
-      "id": "1749faf4-d4f5-4176-b6bf-0b9db4a0fdc7",
-      "name": "Zmapuj pola",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"email\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
+      "id": "60f981de-718b-45c4-a315-0ed5bd5332ce"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "parameters": {
+        "mode": "manual",
         "assignments": {
           "assignments": [
             {
-              "id": "574fcc17-f7b0-4a32-9791-f457c3459912",
-              "name": "fullName",
-              "value": "={{ $json.name }}",
-              "type": "string"
-            },
-            {
-              "id": "2ebdbbf7-2a97-47c2-9a2f-e1363d786938",
-              "name": "email",
-              "value": "={{ $json.email }}",
-              "type": "string"
-            },
-            {
-              "id": "f7efbe3b-f717-46f9-a2df-8ff6912e72a8",
-              "name": "source",
-              "value": "={{ $json.source || \"strona\" }}",
+              "id": "0a8ab65f-f91c-4951-adb3-37abdd19cedc",
+              "name": "crmUpsertUrl",
+              "value": "https://YOUR-CRM.example.com/api/contacts/upsert",
               "type": "string"
             }
           ]
         },
+        "includeOtherFields": true,
         "options": {}
-      }
-    },
-    {
-      "id": "62210761-bf1b-43ee-a51e-b2a5f7690cd5",
-      "name": "Zapisz/Aktualizuj w CRM",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      },
       "position": [
         600,
         300
       ],
+      "id": "87c2fce2-931d-4913-aa72-f30115c46b21"
+    },
+    {
+      "name": "Zmapuj pola na CRM",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "42c4738c-3a5f-485e-a4f7-ac052ecd1454",
+              "name": "email",
+              "value": "={{ $json.email.toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "3099d940-3946-4480-a318-5e21375c22f0",
+              "name": "fullName",
+              "value": "={{ $json.name || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "c0ff83d0-e0b7-4f67-a0ee-92aeea5e59fb",
+              "name": "phone",
+              "value": "={{ $json.phone || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "ac4129c7-5d4c-4cc2-ae8d-427f9a4ca89c",
+              "name": "source",
+              "value": "={{ $json.source || \"strona\" }}",
+              "type": "string"
+            },
+            {
+              "id": "dc2c8980-82d8-46e8-a887-6c3c6bcc802a",
+              "name": "notes",
+              "value": "={{ $json.notes || \"\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "6a9e220f-3fe3-4d21-a4c7-30306cba1254"
+    },
+    {
+      "name": "Zapisz/aktualizuj kontakt w CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "parameters": {
         "method": "POST",
-        "url": "https://YOUR-CRM.example.com/api/contacts/upsert",
+        "url": "={{ $('Konfiguracja').first().json.crmUpsertUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
+        "options": {
+          "timeout": 30000
+        }
       },
-      "notes": "Podmień na realny endpoint CRM."
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "d009c9a8-5226-4168-a15e-157e7beed626"
     }
   ],
   "connections": {
@@ -94,18 +154,40 @@
       "main": [
         [
           {
-            "node": "Zmapuj pola",
+            "node": "Walidacja danych",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Zmapuj pola": {
+    "Walidacja danych": {
       "main": [
         [
           {
-            "node": "Zapisz/Aktualizuj w CRM",
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Zmapuj pola na CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zmapuj pola na CRM": {
+      "main": [
+        [
+          {
+            "node": "Zapisz/aktualizuj kontakt w CRM",
             "type": "main",
             "index": 0
           }
@@ -115,6 +197,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

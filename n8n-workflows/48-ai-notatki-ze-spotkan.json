@@ -1,0 +1,394 @@
+{
+  "name": "STFS — Notatka i zadania ze spotkania (transkrypcja AI)",
+  "nodes": [
+    {
+      "id": "81868e4e-ad39-407f-a42b-9ce7b79732d6",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 48 – Notatka ze spotkania\n\nNagranie spotkania → transkrypcja (Whisper) → AI przygotowuje streszczenie, decyzje i listę zadań (kto, co, do kiedy) → uczestnicy dostają notatkę e-mailem → każde zadanie trafia do narzędzia zadań (Trello / Asana / ClickUp).\n\nUczestnicy muszą wiedzieć o nagrywaniu i zgodzić się na nie (RODO). Nagranie po transkrypcji usuń u źródła.\n\nWejście: `recordingUrl`, `title`, `participants` (e-maile po przecinku).\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Nagranie spotkania (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "notatka-spotkanie",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "57942e8e-0978-4d86-a98a-ae7cc433b2ca",
+      "position": [
+        80,
+        300
+      ],
+      "id": "fbdb3351-9833-4d1c-a1a4-d4466dd47098"
+    },
+    {
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"recordingUrl\",\"title\",\"participants\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "430b3178-5005-4306-a389-2a80b7adc6ec"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "76a3a2e4-10d9-4c97-a919-bf6c818fdc9f",
+              "name": "zadaniaUrl",
+              "value": "https://YOUR-TASKS.example.com/api/tasks",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        600,
+        300
+      ],
+      "id": "5c2fd922-8f9a-4ccf-a74f-7f451b0339fa"
+    },
+    {
+      "name": "Pobierz nagranie",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.recordingUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Jeśli nagranie jest publiczne/podpisane – ustaw Authentication: None.",
+      "notesInFlow": true,
+      "position": [
+        860,
+        300
+      ],
+      "id": "2dd8e80e-ab9f-4c2b-ad65-1902f95d3216"
+    },
+    {
+      "name": "Transkrypcja (Whisper)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "model",
+              "value": "whisper-1"
+            },
+            {
+              "name": "language",
+              "value": "pl"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "c0dd7f4f-b634-4d30-a2d7-f5c7eecf24dd"
+    },
+    {
+      "name": "AI: prompt (notatka ze spotkania)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Tworzysz notatkę ze spotkania po polsku na podstawie transkrypcji. Zadania wypisuj tylko te, które padły w rozmowie; osobę i termin podawaj tylko, jeśli zostały wypowiedziane (inaczej null).\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"streszczenie\\\": 3-5 zdań, \\\"decyzje\\\": tablica zdań, \\\"zadania\\\": tablica { \\\"co\\\", \\\"kto\\\" (lub null), \\\"termin\\\" RRRR-MM-DD lub null }}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Spotkanie: ${$('Walidacja danych').first().json.title}\\n\\nTranskrypcja:\\n${$json.text}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 1500,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "5def6db9-aeae-49cd-a2ab-1ff80e53e12d"
+    },
+    {
+      "name": "AI: notatka ze spotkania",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "8e1ac226-02e4-47b9-ae78-423b667ce835"
+    },
+    {
+      "name": "AI: wynik (notatka ze spotkania)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...{} };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"streszczenie\":\"\",\"decyzje\":\"\",\"zadania\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "b6b020d9-d80b-4ffa-ad56-4fa5e4cd7aec"
+    },
+    {
+      "name": "Wyślij notatkę uczestnikom",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Walidacja danych').item.json.participants }}",
+        "subject": "=Notatka: {{ $('Walidacja danych').item.json.title }}",
+        "emailFormat": "text",
+        "text": "={{ $json.streszczenie }}\n\nDecyzje:\n{{ ($json.decyzje || []).map(d => '• ' + d).join('\\n') || '—' }}\n\nZadania:\n{{ ($json.zadania || []).map(z => '• ' + z.co + (z.kto ? ' – ' + z.kto : '') + (z.termin ? ' (do ' + z.termin + ')' : '')).join('\\n') || '—' }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2160,
+        300
+      ],
+      "id": "06e5caa2-0277-4985-a445-9024bde9f6bb"
+    },
+    {
+      "name": "Rozbij zadania",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const zadania = $('AI: wynik (notatka ze spotkania)').first().json.zadania || [];\nconst tytul = $('Walidacja danych').first().json.title;\nreturn zadania.filter((z) => z && z.co).slice(0, 30).map((z) => ({ json: { co: String(z.co).slice(0, 200), kto: z.kto || null, termin: z.termin || null, spotkanie: tytul } }));"
+      },
+      "position": [
+        2420,
+        300
+      ],
+      "id": "f910987a-bcbc-4fa1-a5f2-19c0d8de89e3"
+    },
+    {
+      "name": "Utwórz zadanie",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.zadaniaUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: $json.co, assignee: $json.kto, due: $json.termin, description: \"Ze spotkania: \" + $json.spotkanie }) }}",
+        "options": {
+          "timeout": 30000,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 500
+            }
+          }
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2680,
+        300
+      ],
+      "id": "92507ec0-9862-4073-aba8-c2c03fc144e0"
+    }
+  ],
+  "connections": {
+    "Nagranie spotkania (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Pobierz nagranie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pobierz nagranie": {
+      "main": [
+        [
+          {
+            "node": "Transkrypcja (Whisper)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transkrypcja (Whisper)": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (notatka ze spotkania)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (notatka ze spotkania)": {
+      "main": [
+        [
+          {
+            "node": "AI: notatka ze spotkania",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: notatka ze spotkania": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (notatka ze spotkania)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (notatka ze spotkania)": {
+      "main": [
+        [
+          {
+            "node": "Wyślij notatkę uczestnikom",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wyślij notatkę uczestnikom": {
+      "main": [
+        [
+          {
+            "node": "Rozbij zadania",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rozbij zadania": {
+      "main": [
+        [
+          {
+            "node": "Utwórz zadanie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

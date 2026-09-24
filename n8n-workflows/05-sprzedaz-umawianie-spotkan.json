@@ -2,77 +2,207 @@
   "name": "STFS — Umawianie spotkań i konsultacji",
   "nodes": [
     {
-      "id": "9d3d18dc-ac86-4ca1-9169-2f4a0a3d429c",
+      "id": "6a4549d7-9350-4243-ab30-e0386bc66be9",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Automatyczne umawianie spotkań\n\n**Trigger:** Webhook z panelu rezerwacji (np. sekcja Konsultacja na stronie STFS).\n\n**Do zrobienia:**\n1. Podmień \"Utwórz wydarzenie\" na węzeł Google Calendar / Cal.com / Calendly.\n2. Skonfiguruj SMTP dla potwierdzenia mailowego.",
-        "height": 300,
-        "width": 380,
+        "content": "## 05 – Umawianie konsultacji\n\nRezerwacja → wydarzenie w kalendarzu → potwierdzenie e-mailem → Slack dla zespołu.\n\nWejście: `name`, `email`, `start` (ISO, np. 2026-10-01T14:00:00+02:00), opcjonalnie `topic`.\n\nUwaga: jeśli używasz Cal.com, ono samo tworzy wydarzenia – wtedy podłącz jego webhook *BOOKING_CREATED* i usuń krok kalendarza.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- SMTP\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "9d3b9962-e4a5-4445-831c-665680d4e841",
       "name": "Rezerwacja konsultacji (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "rezerwacja-konsultacji",
         "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
-      }
+      },
+      "webhookId": "ca085ccb-3742-4218-acb8-cb43a16c6d52",
+      "position": [
+        80,
+        300
+      ],
+      "id": "4b162692-e140-44c8-ac82-a185bc0276b9"
     },
     {
-      "id": "c3e4870e-2302-40d7-b621-d1e92a60886a",
-      "name": "Utwórz wydarzenie w kalendarzu",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"name\",\"email\",\"start\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://YOUR-CALENDAR.example.com/api/events",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na Google Calendar / Cal.com / Calendly node."
+      "id": "db77f404-0556-4277-ac74-1ae9464e312b"
     },
     {
-      "id": "b89da383-172a-450e-a3d5-321b5ad23006",
-      "name": "Wyślij potwierdzenie",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f48855dd-98de-4bbf-a0f7-048d38669bc9",
+              "name": "kalendarzUrl",
+              "value": "https://YOUR-CALENDAR.example.com/api/events",
+              "type": "string"
+            },
+            {
+              "id": "85ac4c5e-fade-4002-a629-57b486badc92",
+              "name": "czasTrwaniaMin",
+              "value": 30,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
+      "id": "3d208e7e-a9a8-420c-a652-ab13a0907b1f"
+    },
+    {
+      "name": "Policz koniec spotkania",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "parameters": {
-        "fromEmail": "hello@stfs.studio",
-        "toEmail": "={{ $json.email }}",
-        "subject": "Potwierdzenie konsultacji STFS",
-        "text": "Twoja konsultacja została zarezerwowana: {{$json.date}} {{$json.time}}.",
-        "options": {}
-      }
+        "mode": "runOnceForEachItem",
+        "jsCode": "const start = new Date($json.start);\nif (isNaN(start)) throw new Error('Niepoprawna data start');\nif (start < new Date()) throw new Error('Termin w przeszłości');\nconst end = new Date(start.getTime() + $('Konfiguracja').first().json.czasTrwaniaMin * 60000);\nreturn { json: { ...$json, startISO: start.toISOString(), endISO: end.toISOString(),\n  terminTekst: start.toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw', dateStyle: 'full', timeStyle: 'short' }) } };"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "37399d37-20d7-40cf-a6cf-bd486eec0f3e"
+    },
+    {
+      "name": "Utwórz wydarzenie w kalendarzu",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.kalendarzUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: \"Konsultacja: \" + $json.name, start: $json.startISO, end: $json.endISO, attendees: [$json.email], description: $json.topic || \"\" }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "a611d960-041c-46e6-a1b2-4c207ad60263"
+    },
+    {
+      "name": "Wyślij potwierdzenie",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Policz koniec spotkania').item.json.email }}",
+        "subject": "Potwierdzenie konsultacji",
+        "emailFormat": "text",
+        "text": "=Dzień dobry {{ $('Policz koniec spotkania').item.json.name }},\n\npotwierdzamy konsultację: {{ $('Policz koniec spotkania').item.json.terminTekst }}.\nLink do spotkania otrzymasz w zaproszeniu z kalendarza.\n\nDo zobaczenia!",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1380,
+        300
+      ],
+      "id": "5ff5f61d-3040-4b72-ab06-d136c04c4940"
+    },
+    {
+      "name": "Powiadom zespół",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=📅 Nowa konsultacja: {{ $('Policz koniec spotkania').item.json.name }} – {{ $('Policz koniec spotkania').item.json.terminTekst }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "d3461c47-2add-4ca6-adc1-1d21b685c031"
     }
   ],
   "connections": {
     "Rezerwacja konsultacji (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Policz koniec spotkania",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policz koniec spotkania": {
       "main": [
         [
           {
@@ -93,10 +223,29 @@
           }
         ]
       ]
+    },
+    "Wyślij potwierdzenie": {
+      "main": [
+        [
+          {
+            "node": "Powiadom zespół",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

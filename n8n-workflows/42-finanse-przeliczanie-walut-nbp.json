@@ -1,0 +1,219 @@
+{
+  "name": "STFS — Przeliczanie faktur walutowych po kursie NBP",
+  "nodes": [
+    {
+      "id": "5ecd986c-9ad6-4f16-af79-be3b8b34f342",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 42 – Kurs NBP do faktury walutowej\n\nPodajesz kwotę, walutę i datę faktury → workflow pobiera z publicznego API NBP średni kurs (tabela A) z **ostatniego dnia roboczego przed tą datą** i zwraca kwotę w PLN, kurs, numer tabeli i datę kursu – gotowe do wpisania na fakturę lub do księgowości.\n\nTo najczęstsza reguła dla faktur i kosztów w walucie; w nietypowych przypadkach potwierdź ją z księgową.\n\nWejście: `amount`, `currency` (np. EUR), `invoiceDate` (RRRR-MM-DD).\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Przelicz kwotę (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "przelicz-walute",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "7a7ff7eb-a8eb-491b-a9c4-8ea0dcb07c53",
+      "position": [
+        80,
+        300
+      ],
+      "id": "26110744-c3fe-4279-abee-e10761c2bd03"
+    },
+    {
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"amount\",\"currency\",\"invoiceDate\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "32d67e06-3a41-4440-a92a-2ee5c83fdefd"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": []
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        600,
+        300
+      ],
+      "id": "33c7e85d-15bd-468f-abee-2bada3fa6e96"
+    },
+    {
+      "name": "Przygotuj zapytanie",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const waluta = String($json.currency).toUpperCase().trim();\nif (!/^[A-Z]{3}$/.test(waluta) || waluta === 'PLN') throw new Error('Niepoprawna waluta');\nconst kwota = Number(String($json.amount).replace(',', '.'));\nif (!Number.isFinite(kwota) || kwota <= 0) throw new Error('Niepoprawna kwota');\nconst d = new Date($json.invoiceDate + 'T12:00:00Z');\nif (isNaN(d)) throw new Error('Niepoprawna data faktury');\nconst dzien = (x) => x.toISOString().slice(0, 10);\nconst od = new Date(d); od.setUTCDate(od.getUTCDate() - 10);\nconst doDnia = new Date(d); doDnia.setUTCDate(doDnia.getUTCDate() - 1);\nreturn { json: { waluta, kwota, dataFaktury: dzien(d), od: dzien(od), do: dzien(doDnia) } };"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "32d4c1ea-3e83-4110-a5d6-979e71332622"
+    },
+    {
+      "name": "Pobierz kursy NBP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://api.nbp.pl/api/exchangerates/rates/a/' + $json.waluta.toLowerCase() + '/' + $json.od + '/' + $json.do + '/?format=json' }}",
+        "authentication": "none",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Publiczne API NBP. 10 dni wstecz obejmuje weekendy i święta.",
+      "notesInFlow": true,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "9519461b-55aa-4b29-a679-d3301016b181"
+    },
+    {
+      "name": "Przelicz na PLN",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const we = $('Przygotuj zapytanie').item.json;\nconst kursy = ($json.rates || []).filter((r) => r.effectiveDate < we.dataFaktury).sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate));\nconst k = kursy[kursy.length - 1];\nif (!k) throw new Error('Brak kursu NBP przed datą faktury');\nconst kwotaPLN = Math.round(we.kwota * k.mid * 100) / 100;\nreturn { json: { kwota: we.kwota, waluta: we.waluta, kurs: k.mid, tabela: k.no, dataKursu: k.effectiveDate, kwotaPLN,\n  adnotacja: 'Kurs średni NBP ' + k.mid + ' z tabeli ' + k.no + ' z dnia ' + k.effectiveDate } };"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "3d328740-ad3c-43b5-a2c4-07e3d9b069ad"
+    },
+    {
+      "name": "Zwróć przeliczenie",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "95e42170-0706-46ea-a5a8-77e1fff1dd4e"
+    }
+  ],
+  "connections": {
+    "Przelicz kwotę (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Przygotuj zapytanie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Przygotuj zapytanie": {
+      "main": [
+        [
+          {
+            "node": "Pobierz kursy NBP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pobierz kursy NBP": {
+      "main": [
+        [
+          {
+            "node": "Przelicz na PLN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Przelicz na PLN": {
+      "main": [
+        [
+          {
+            "node": "Zwróć przeliczenie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

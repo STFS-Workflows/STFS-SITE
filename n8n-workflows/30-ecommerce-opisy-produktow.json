@@ -2,75 +2,196 @@
   "name": "STFS — Dynamiczne opisy produktów pod SEO",
   "nodes": [
     {
-      "id": "273b9305-dbb8-43c3-9aa8-bcb478848a15",
+      "id": "d51ba601-241f-4f98-add2-68c870ec7d36",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Generator opisów produktów\n\n**Trigger:** Webhook — nowy produkt dodany do sklepu.\n\n**Do zrobienia:**\n1. Podepnij webhook nowego produktu (Shopify/WooCommerce/inny).\n2. Podmień \"Zapisz opis\" na aktualizację produktu w sklepie.",
-        "height": 300,
-        "width": 380,
+        "content": "## 30 – Opisy produktów SEO\n\nNowy produkt → AI pisze tytuł SEO, meta opis (≤155 znaków), opis i punkty → zapis jako **szkic** w sklepie (np. metafield) → Slack do przejrzenia. Nie nadpisuje opisu na żywo.\n\nWejście: `productId`, `name`, opcjonalnie `category`, `attributes`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "ef29dcfa-afce-4edd-bec1-d04bb0b30814",
       "name": "Nowy produkt (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "produkt-nowy",
         "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
-      }
+      },
+      "webhookId": "dfddff2a-8614-4f14-a92b-1f0fb0beed87",
+      "position": [
+        80,
+        300
+      ],
+      "id": "ed73aca7-4e22-4784-a1fb-3f3e8bc28376"
     },
     {
-      "id": "f0f449db-d328-486e-8105-f5fdf53db371",
-      "name": "AI: wygeneruj opis SEO",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"productId\",\"name\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Model generuje opis produktu na podstawie atrybutów (nazwa, kategoria, cechy)."
+      "id": "b85b259e-6599-4bed-a8ee-ee30003e122f"
     },
     {
-      "id": "955c8e89-6e9c-49b9-93f2-f6516e1d62bc",
-      "name": "Zapisz opis w sklepie",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "81d52def-0682-490c-ad09-c600d95503b5",
+              "name": "produktyUrl",
+              "value": "https://YOUR-SHOP.example.com/api/products",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
+      "id": "ab2a4ae0-5e57-431e-aee1-25bee2688653"
+    },
+    {
+      "name": "AI: prompt (opis SEO)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "parameters": {
-        "method": "PUT",
-        "url": "https://YOUR-SHOP.example.com/api/products/update",
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Jesteś copywriterem e-commerce. Piszesz po polsku opis produktu pod SEO, naturalnym językiem, bez upychania słów kluczowych. Używasz tylko podanych cech – nie wymyślaj parametrów.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"tytulSeo\\\": maks. 60 znaków, \\\"metaOpis\\\": maks. 155 znaków, \\\"opis\\\": 2-3 akapity, \\\"punkty\\\": tablica 3-5 punktów}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Produkt: ${$json.name}\\nKategoria: ${$json.category || '-'}\\nCechy: ${JSON.stringify($json.attributes || {})}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 900,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "b08a6a4a-2345-453b-a968-4198e4a1ec3c"
+    },
+    {
+      "name": "AI: opis SEO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
       },
-      "notes": "Podmień na Shopify/WooCommerce/inny."
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "ae467372-c6e5-4a7f-a923-9cf833737fbc"
+    },
+    {
+      "name": "AI: wynik (opis SEO)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (opis SEO)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"tytulSeo\":\"\",\"metaOpis\":\"\",\"opis\":\"\",\"punkty\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "4ad59b21-e3ac-4e75-aa9e-05f01a0c63a0"
+    },
+    {
+      "name": "Przytnij do limitów SEO",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: { ...$json, tytulSeo: String($json.tytulSeo).slice(0, 60), metaOpis: String($json.metaOpis).slice(0, 155) } };"
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "ff1e64f2-3711-4b7d-a7c3-67742b22f466"
+    },
+    {
+      "name": "Zapisz szkic opisu w sklepie",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('Konfiguracja').first().json.produktyUrl + '/' + encodeURIComponent($json.productId) + '/draft-description' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ seoTitle: $json.tytulSeo, metaDescription: $json.metaOpis, description: $json.opis, bullets: $json.punkty, status: \"draft\" }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "0f8f312d-2a10-4362-af14-ba99d97b804c"
+    },
+    {
+      "name": "Powiadom o szkicu",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=🛍️ Szkic opisu SEO gotowy do przejrzenia: {{ $('Przytnij do limitów SEO').item.json.name }} ({{ $('Przytnij do limitów SEO').item.json.productId }})",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2160,
+        300
+      ],
+      "id": "abbc8acc-eab1-4711-aefd-9d3e73fd6931"
     }
   ],
   "connections": {
@@ -78,18 +199,84 @@
       "main": [
         [
           {
-            "node": "AI: wygeneruj opis SEO",
+            "node": "Walidacja danych",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: wygeneruj opis SEO": {
+    "Walidacja danych": {
       "main": [
         [
           {
-            "node": "Zapisz opis w sklepie",
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (opis SEO)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (opis SEO)": {
+      "main": [
+        [
+          {
+            "node": "AI: opis SEO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: opis SEO": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (opis SEO)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (opis SEO)": {
+      "main": [
+        [
+          {
+            "node": "Przytnij do limitów SEO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Przytnij do limitów SEO": {
+      "main": [
+        [
+          {
+            "node": "Zapisz szkic opisu w sklepie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapisz szkic opisu w sklepie": {
+      "main": [
+        [
+          {
+            "node": "Powiadom o szkicu",
             "type": "main",
             "index": 0
           }
@@ -99,6 +286,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

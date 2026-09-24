@@ -1,0 +1,177 @@
+{
+  "name": "STFS — Obsługa błędów (Error Workflow)",
+  "nodes": [
+    {
+      "id": "5b5030f7-5884-49ed-a937-cff891399fd1",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 00 – Obsługa błędów\n\nUruchamia się automatycznie, gdy DOWOLNY workflow, który wskazuje go jako *Error Workflow*, zakończy się błędem. Wysyła alert na Slacka i e-mail z nazwą workflow, węzłem, komunikatem i linkiem do wykonania.\n\nZaimportuj go jako PIERWSZY, a potem w każdym workflow: *Settings → Error Workflow → STFS — Obsługa błędów*.\n\n## Credentials do utworzenia\n- Slack\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Błąd w workflow",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        80,
+        300
+      ],
+      "id": "647f27bb-e0b2-4d42-a05e-74187fa2fd6a"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5e46409d-5611-4c6b-a181-da776fe0824c",
+              "name": "odbiorcaAlertow",
+              "value": "kontakt@stfs.pl",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "fad04c27-d379-4617-a807-ce2bbf5855bf"
+    },
+    {
+      "name": "Przygotuj alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const e = $('Błąd w workflow').item.json;\nconst wfName = e.workflow?.name || 'nieznany workflow';\nconst nodeName = e.execution?.lastNodeExecuted || '?';\nconst msg = (e.execution?.error?.message || 'brak komunikatu').slice(0, 500);\nconst url = e.execution?.url || '';\nreturn { json: { tekst: '❌ Błąd: ' + wfName + '\\nWęzeł: ' + nodeName + '\\nKomunikat: ' + msg + (url ? '\\n' + url : '') , temat: 'Błąd n8n: ' + wfName } };"
+      },
+      "position": [
+        600,
+        300
+      ],
+      "id": "a7abc334-f1c0-4e8c-a0dd-189b932cf857"
+    },
+    {
+      "name": "Alert na Slacku",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "={{ $json.tekst }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        860,
+        300
+      ],
+      "id": "3eb15b5a-91ca-4e05-a9a4-12e0684b5ca1"
+    },
+    {
+      "name": "Alert e-mailem",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Konfiguracja').first().json.odbiorcaAlertow }}",
+        "subject": "={{ $('Przygotuj alert').item.json.temat }}",
+        "emailFormat": "text",
+        "text": "={{ $('Przygotuj alert').item.json.tekst }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "8bc5c9a4-d1ed-44fe-a263-48126b943a03"
+    }
+  ],
+  "connections": {
+    "Błąd w workflow": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Przygotuj alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Przygotuj alert": {
+      "main": [
+        [
+          {
+            "node": "Alert na Slacku",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert na Slacku": {
+      "main": [
+        [
+          {
+            "node": "Alert e-mailem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

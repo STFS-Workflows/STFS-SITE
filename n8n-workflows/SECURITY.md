@@ -22,3 +22,12 @@ Workflowy są nieaktywne i celowo nie mają żadnych prawdziwych danych ani cred
 1. Uruchom `n8n audit` na instancji i usuń zgłoszone niechronione webhooki.
 2. Sprawdź, że żaden workflow nie ma danych testowych, placeholderów ani poświadczeń w eksporcie.
 3. Przetestuj niepoprawny podpis, brak tokenu, zbyt częste żądania oraz nieprawidłowy payload. Każdy przypadek musi zostać odrzucony bez uruchomienia akcji zewnętrznej.
+
+## Wyjątki od Header Auth (świadome)
+
+- `site-chatbot-odpowiedzi-na-zywo.json` – wywoływany z przeglądarki, więc nie może mieć sekretnego tokenu. Chroniony przez: sprawdzenie klucza widgetu i nagłówka Origin, CORS tylko dla stfs.pl, limit pytań na IP i dzienny, odmowę **bez** wywołania modelu. Dodatkowo ustaw rate-limit w Caddy i limit wydatków u Anthropic.
+- `24-ai-agent-glosowy.json` – Twilio nie wysyła własnych nagłówków; workflow weryfikuje podpis `X-Twilio-Signature` (wymaga `TWILIO_AUTH_TOKEN` i `NODE_FUNCTION_ALLOW_BUILTIN=crypto`).
+
+## Automatyczna kontrola
+
+`node validate.js` odrzuca m.in.: webhook bez Header Auth (poza wyjątkami wyżej), HTTP bez credentiala, klucze API w pliku, powtórzone ścieżki webhooków, aktywne workflowy w eksporcie.

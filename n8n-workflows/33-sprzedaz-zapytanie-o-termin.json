@@ -1,0 +1,300 @@
+{
+  "name": "STFS — Zapytanie o termin (sala / usługa)",
+  "nodes": [
+    {
+      "id": "60bba8df-24db-49fa-ac7d-07c959a6f9ee",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 33 – Zapytanie o termin\n\nBackend formularza „zapytaj o termin” dla sal weselnych, restauracji i usług z rezerwacją (to jest `inquiryEndpoint` ze stron Dom Przyjęć). Zapytanie → CRM ze statusem „prośba o kontakt” → pełny e-mail do biura → krótki SMS do właściciela → odpowiedź dla formularza z numerem zgłoszenia.\n\nZapytanie NIE blokuje kalendarza – termin potwierdza człowiek.\n\nWejście: `name`, `phone`, `date` (RRRR-MM-DD), `guests`, `type` (np. wesele, komunia), opcjonalnie `email`, `message`.\n\nFormularz z przeglądarki kieruj przez własny backend z CAPTCHA (patrz SECURITY.md).\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Zapytanie z formularza (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "zapytanie-termin",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "a9fdede1-e8ce-4846-a8fd-204c5dfa393b",
+      "position": [
+        80,
+        300
+      ],
+      "id": "d6c4366a-8c3d-43ef-a4ba-46889d039a6e"
+    },
+    {
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"name\",\"phone\",\"date\",\"guests\",\"type\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "1349f635-5cc6-42d7-a563-22e98d275e72"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0d5a6378-b6a4-4cc4-a06f-42ca072c5207",
+              "name": "nazwaObiektu",
+              "value": "Nazwa obiektu",
+              "type": "string"
+            },
+            {
+              "id": "0aceb8e2-8e12-446a-a4ce-5d6f0b8861dd",
+              "name": "crmUrl",
+              "value": "https://YOUR-CRM.example.com/api/leads",
+              "type": "string"
+            },
+            {
+              "id": "1d2ebbe8-433d-42ba-aa57-8d4307739257",
+              "name": "emailBiura",
+              "value": "biuro@twojafirma.pl",
+              "type": "string"
+            },
+            {
+              "id": "54125482-7f0a-4e20-aa27-9bca326c6be9",
+              "name": "smsUrl",
+              "value": "https://YOUR-SMS-GATEWAY.example.com/api/sms",
+              "type": "string"
+            },
+            {
+              "id": "16fc11f0-2e5f-4776-a8a6-5760414dba69",
+              "name": "telefonWlasciciela",
+              "value": "+48600000000",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        600,
+        300
+      ],
+      "id": "4948fbc4-c3f5-4c36-acf3-44302c526f50"
+    },
+    {
+      "name": "Sprawdź telefon, datę i liczbę gości",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "let tel = String($json.phone || '').replace(/[\\s()-]/g, '');\nif (/^\\d{9}$/.test(tel)) tel = '+48' + tel;\nif (!/^\\+\\d{10,15}$/.test(tel)) throw new Error('Niepoprawny numer telefonu');\nconst d = new Date($json.date);\nif (isNaN(d) || d < new Date()) throw new Error('Niepoprawna lub przeszła data');\nconst goscie = Number($json.guests);\nif (!Number.isInteger(goscie) || goscie < 1 || goscie > 2000) throw new Error('Niepoprawna liczba gości');\nreturn { json: { ...$json, phone: tel, guests: goscie,\n  dataTekst: d.toLocaleDateString('pl-PL', { timeZone: 'Europe/Warsaw', dateStyle: 'full' }),\n  numerZgloszenia: 'ZAP-' + Date.now().toString(36).toUpperCase() } };"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "fd97003a-2975-43c3-a6bc-651f009171dd"
+    },
+    {
+      "name": "Zapisz zapytanie w CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.crmUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.numerZgloszenia, name: $json.name, phone: $json.phone, email: $json.email || null, date: $json.date, guests: $json.guests, type: $json.type, message: $json.message || \"\", status: \"prosba_o_kontakt\", source: \"formularz\" }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "c58a979a-8b82-45af-a44b-0553ef22a375"
+    },
+    {
+      "name": "Powiadom biuro (pełne dane)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Konfiguracja').first().json.emailBiura }}",
+        "subject": "=Nowe zapytanie {{ $('Sprawdź telefon, datę i liczbę gości').item.json.numerZgloszenia }}: {{ $('Sprawdź telefon, datę i liczbę gości').item.json.type }}, {{ $('Sprawdź telefon, datę i liczbę gości').item.json.dataTekst }}",
+        "emailFormat": "text",
+        "text": "=Numer: {{ $('Sprawdź telefon, datę i liczbę gości').item.json.numerZgloszenia }}\nImię: {{ $('Sprawdź telefon, datę i liczbę gości').item.json.name }}\nTelefon: {{ $('Sprawdź telefon, datę i liczbę gości').item.json.phone }}\nE-mail: {{ $('Sprawdź telefon, datę i liczbę gości').item.json.email || '-' }}\nRodzaj: {{ $('Sprawdź telefon, datę i liczbę gości').item.json.type }}\nTermin: {{ $('Sprawdź telefon, datę i liczbę gości').item.json.dataTekst }}\nLiczba gości: {{ $('Sprawdź telefon, datę i liczbę gości').item.json.guests }}\n\nWiadomość:\n{{ $('Sprawdź telefon, datę i liczbę gości').item.json.message || '-' }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1380,
+        300
+      ],
+      "id": "f6bb34ed-5270-4471-acfc-20018a4d4958"
+    },
+    {
+      "name": "SMS do właściciela (skrót)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.smsUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ to: $('Konfiguracja').first().json.telefonWlasciciela, message: 'Zapytanie: ' + $('Sprawdź telefon, datę i liczbę gości').item.json.name + ', ' + $('Sprawdź telefon, datę i liczbę gości').item.json.phone + ', ' + $('Sprawdź telefon, datę i liczbę gości').item.json.date + ', ' + $('Sprawdź telefon, datę i liczbę gości').item.json.guests + ' os., ' + $('Sprawdź telefon, datę i liczbę gości').item.json.type }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput",
+      "notes": "SMSAPI / Twilio / inna bramka. Błąd SMS nie blokuje zgłoszenia (jest już w CRM i e-mailu).",
+      "notesInFlow": true,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "0b8c12b2-7fee-4f7f-a51c-8125b9edb38d"
+    },
+    {
+      "name": "Potwierdź formularzowi",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"ok\", \"numer\": $('Sprawdź telefon, datę i liczbę gości').item.json.numerZgloszenia, \"komunikat\": \"Dziękujemy! Skontaktujemy się w ciągu 24 godzin, żeby potwierdzić termin.\" } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "b90601e3-5102-4840-a3c2-249ef2ce00b4"
+    }
+  ],
+  "connections": {
+    "Zapytanie z formularza (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Sprawdź telefon, datę i liczbę gości",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sprawdź telefon, datę i liczbę gości": {
+      "main": [
+        [
+          {
+            "node": "Zapisz zapytanie w CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapisz zapytanie w CRM": {
+      "main": [
+        [
+          {
+            "node": "Powiadom biuro (pełne dane)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Powiadom biuro (pełne dane)": {
+      "main": [
+        [
+          {
+            "node": "SMS do właściciela (skrót)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMS do właściciela (skrót)": {
+      "main": [
+        [
+          {
+            "node": "Potwierdź formularzowi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

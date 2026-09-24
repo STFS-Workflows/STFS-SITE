@@ -1,0 +1,432 @@
+{
+  "name": "STFS — Zwroty i reklamacje (numer RMA i instrukcja)",
+  "nodes": [
+    {
+      "id": "db75fec7-fa99-4edb-ac2b-9f125b01543e",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 46 – Zwroty i reklamacje\n\nFormularz zwrotu/reklamacji → workflow pobiera zamówienie ze sklepu (data dostawy z systemu, nie od klienta) → sprawdza termin: **zwrot 14 dni** od dostawy (odstąpienie od umowy), **reklamacja 2 lata** (niezgodność towaru z umową) → nadaje numer RMA, zakłada zgłoszenie i wysyła instrukcję.\n\nPo terminie workflow NICZEGO nie odrzuca sam: klient dostaje potwierdzenie przyjęcia, a decyzję podejmuje człowiek (na reklamację trzeba odpowiedzieć w 14 dni). To dotyczy sprzedaży konsumenckiej – dla firm (B2B) ustaw zasady ze swojego regulaminu.\n\nWejście: `orderId`, `email`, `typ` (zwrot / reklamacja), opcjonalnie `reason`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- SMTP\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Zgłoszenie zwrotu / reklamacji (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "zwrot-reklamacja",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "c663f1d5-0f98-41a8-a5e7-9c39c1bc1c0c",
+      "position": [
+        80,
+        300
+      ],
+      "id": "0edafbfc-4881-4f6f-a0f2-e80171bbbcae"
+    },
+    {
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"orderId\",\"email\",\"typ\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "1d9c3b50-0624-4040-a5f9-f4e677ade083"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "473b461c-31f0-49fc-a8ba-9b2f920b7f01",
+              "name": "zamowieniaUrl",
+              "value": "https://YOUR-SHOP.example.com/api/orders",
+              "type": "string"
+            },
+            {
+              "id": "be9e2c4a-25ea-4431-a37e-725f425c362e",
+              "name": "rmaUrl",
+              "value": "https://YOUR-SHOP.example.com/api/returns",
+              "type": "string"
+            },
+            {
+              "id": "656d2990-e9fd-4d5f-a292-a5a3416437c2",
+              "name": "dniNaZwrot",
+              "value": 14,
+              "type": "number"
+            },
+            {
+              "id": "f4747666-6c74-4f9a-a28d-474e21216cc0",
+              "name": "dniNaReklamacje",
+              "value": 730,
+              "type": "number"
+            },
+            {
+              "id": "00a1fe4c-9553-488d-aaa9-b78dc0648f44",
+              "name": "adresZwrotow",
+              "value": "Magazyn zwrotów, ul. Przykładowa 1, 44-200 Rybnik",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        600,
+        300
+      ],
+      "id": "c457cef6-f346-49c3-a777-971307250d7e"
+    },
+    {
+      "name": "Pobierz zamówienie",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.zamowieniaUrl + '/' + encodeURIComponent($json.orderId) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        860,
+        300
+      ],
+      "id": "dd74310f-f238-431a-a2b4-9a299efaa2c4"
+    },
+    {
+      "name": "Oceń termin",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const we = $('Walidacja danych').item.json;\nconst c = $('Konfiguracja').first().json;\nconst typ = String(we.typ).toLowerCase().startsWith('rekl') ? 'reklamacja' : 'zwrot';\nconst dostawa = Date.parse($json.deliveredAt || $json.deliveryDate || '');\nconst dni = Number.isFinite(dostawa) ? Math.floor((Date.now() - dostawa) / 86400000) : null;\nconst limit = typ === 'zwrot' ? c.dniNaZwrot : c.dniNaReklamacje;\nconst emailZgodny = String($json.email || '').toLowerCase() === String(we.email).toLowerCase();\nconst wTerminie = dni !== null && dni <= limit && emailZgodny;\nreturn { json: { orderId: we.orderId, email: we.email, typ, reason: we.reason || '', dniOdDostawy: dni, limit, emailZgodny, wTerminie,\n  rma: 'RMA-' + we.orderId + '-' + Date.now().toString(36).toUpperCase().slice(-4) } };"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "a4c415d1-e6ee-4cfc-a57e-202c4386e923"
+    },
+    {
+      "name": "W terminie?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "1b35d337-6b9f-40e2-a18f-40aec5dc8bf8",
+              "leftValue": "={{ $json.wTerminie }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "fb45734e-964b-4aac-a65d-5bbfb1d20673"
+    },
+    {
+      "name": "Załóż zgłoszenie RMA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.rmaUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ rma: $json.rma, orderId: $json.orderId, type: $json.typ, reason: $json.reason, status: \"oczekuje_na_paczke\" }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "fc71097e-078d-4a1e-a78d-97a6b580fe22"
+    },
+    {
+      "name": "Wyślij instrukcję",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Oceń termin').item.json.email }}",
+        "subject": "=Twoje zgłoszenie {{ $('Oceń termin').item.json.rma }}",
+        "emailFormat": "text",
+        "text": "=Dzień dobry,\n\nprzyjęliśmy {{ $('Oceń termin').item.json.typ === 'zwrot' ? 'zwrot' : 'reklamację' }} do zamówienia {{ $('Oceń termin').item.json.orderId }}. Numer zgłoszenia: {{ $('Oceń termin').item.json.rma }}.\n\nOdeślij produkt na adres:\n{{ $('Konfiguracja').first().json.adresZwrotow }}\nNa paczce lub w środku zapisz numer zgłoszenia.\n\n{{ $('Oceń termin').item.json.typ === 'zwrot' ? 'Zwrot pieniędzy nastąpi do 14 dni od otrzymania paczki.' : 'Odpowiemy na reklamację w ciągu 14 dni.' }}\n\nPozdrawiamy",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "48dc2569-3e23-43dd-a586-df452d280723"
+    },
+    {
+      "name": "Potwierdź (w terminie)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"przyjeto\", \"rma\": $('Oceń termin').item.json.rma } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "position": [
+        2160,
+        300
+      ],
+      "id": "4405e1fb-bb6a-4530-a63b-24099875c680"
+    },
+    {
+      "name": "Do decyzji człowieka",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=📦 {{ $('Oceń termin').item.json.typ }} do zamówienia {{ $('Oceń termin').item.json.orderId }} wymaga decyzji: {{ !$('Oceń termin').item.json.emailZgodny ? 'e-mail nie zgadza się z zamówieniem' : 'po terminie (' + $('Oceń termin').item.json.dniOdDostawy + ' dni od dostawy, limit ' + $('Oceń termin').item.json.limit + ')' }}. Odpowiedz klientowi w 14 dni.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        520
+      ],
+      "id": "16d93953-4223-4673-a3dc-df71c82b4e8e"
+    },
+    {
+      "name": "Potwierdź przyjęcie zgłoszenia",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Oceń termin').item.json.email }}",
+        "subject": "=Otrzymaliśmy Twoje zgłoszenie",
+        "emailFormat": "text",
+        "text": "=Dzień dobry,\n\notrzymaliśmy zgłoszenie dotyczące zamówienia {{ $('Oceń termin').item.json.orderId }}. Sprawdzimy je i odpowiemy w ciągu 14 dni.\n\nPozdrawiamy",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        520
+      ],
+      "id": "4ba57724-af08-49ca-ab0a-ce4dd21baf96"
+    },
+    {
+      "name": "Potwierdź (do weryfikacji)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"do_weryfikacji\" } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "position": [
+        2160,
+        520
+      ],
+      "id": "83fa41e4-9650-41f9-acd1-842e0f6f60ea"
+    }
+  ],
+  "connections": {
+    "Zgłoszenie zwrotu / reklamacji (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Pobierz zamówienie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pobierz zamówienie": {
+      "main": [
+        [
+          {
+            "node": "Oceń termin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Oceń termin": {
+      "main": [
+        [
+          {
+            "node": "W terminie?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "W terminie?": {
+      "main": [
+        [
+          {
+            "node": "Załóż zgłoszenie RMA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Do decyzji człowieka",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Załóż zgłoszenie RMA": {
+      "main": [
+        [
+          {
+            "node": "Wyślij instrukcję",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wyślij instrukcję": {
+      "main": [
+        [
+          {
+            "node": "Potwierdź (w terminie)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Do decyzji człowieka": {
+      "main": [
+        [
+          {
+            "node": "Potwierdź przyjęcie zgłoszenia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Potwierdź przyjęcie zgłoszenia": {
+      "main": [
+        [
+          {
+            "node": "Potwierdź (do weryfikacji)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

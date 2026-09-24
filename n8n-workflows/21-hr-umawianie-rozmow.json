@@ -2,77 +2,207 @@
   "name": "STFS — Automatyczne umawianie rozmów rekrutacyjnych",
   "nodes": [
     {
-      "id": "ed7bd967-86a9-481c-9446-538de90e3702",
+      "id": "651c458b-64fe-4d84-a845-97a34bf0eec0",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Umawianie rozmów rekrutacyjnych\n\n**Trigger:** Webhook — kandydat wybiera termin w formularzu.\n\n**Do zrobienia:**\n1. Podmień \"Utwórz wydarzenie\" na Google Calendar/Cal.com.\n2. Skonfiguruj SMTP do potwierdzenia.",
-        "height": 300,
-        "width": 380,
+        "content": "## 21 – Umawianie rozmów\n\nKandydat wybiera termin → wydarzenie w kalendarzu rekrutera → potwierdzenie do kandydata → Slack.\n\nWejście: `name`, `email`, `start` (ISO).\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- SMTP\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "17007016-cfd5-4d40-ad64-176e2ed7582d",
       "name": "Wybrano termin rozmowy (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "rozmowa-rekrutacyjna",
         "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
-      }
+      },
+      "webhookId": "f0fd543b-ece4-4566-a6d5-05aa862bc07a",
+      "position": [
+        80,
+        300
+      ],
+      "id": "0a26e53b-beb8-4704-ab80-ea42a069a1f0"
     },
     {
-      "id": "8d2d8ac0-fc91-434f-867b-6eebf9fc77ac",
-      "name": "Utwórz wydarzenie",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"name\",\"email\",\"start\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://YOUR-CALENDAR.example.com/api/events",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na Google Calendar/Cal.com."
+      "id": "fd4f62a4-44c4-44c1-aa77-bd5636a2d7d7"
     },
     {
-      "id": "98f1b312-7ab4-42ac-a03f-5177bd683a25",
-      "name": "Wyślij potwierdzenie",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1e3ae7d7-cef9-410e-a52d-e69b51c3e412",
+              "name": "kalendarzUrl",
+              "value": "https://YOUR-CALENDAR.example.com/api/events",
+              "type": "string"
+            },
+            {
+              "id": "9ac55f6e-6b9e-49a4-af63-7c927c7b70e6",
+              "name": "czasTrwaniaMin",
+              "value": 45,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
+      "id": "4a54e82c-d492-42b1-a2c0-3bf620a9e8b9"
+    },
+    {
+      "name": "Policz koniec rozmowy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "parameters": {
-        "fromEmail": "hello@stfs.studio",
-        "toEmail": "={{ $json.email }}",
+        "mode": "runOnceForEachItem",
+        "jsCode": "const start = new Date($json.start);\nif (isNaN(start) || start < new Date()) throw new Error('Niepoprawny lub przeszły termin');\nconst end = new Date(start.getTime() + $('Konfiguracja').first().json.czasTrwaniaMin * 60000);\nreturn { json: { ...$json, startISO: start.toISOString(), endISO: end.toISOString(),\n  terminTekst: start.toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw', dateStyle: 'full', timeStyle: 'short' }) } };"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "09541a49-8964-4687-a320-3fb2a005bbad"
+    },
+    {
+      "name": "Utwórz wydarzenie",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.kalendarzUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: \"Rozmowa rekrutacyjna: \" + $json.name, start: $json.startISO, end: $json.endISO, attendees: [$json.email] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "5d99f1ca-2490-41bd-a8c3-1891c247f3d4"
+    },
+    {
+      "name": "Wyślij potwierdzenie",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Policz koniec rozmowy').item.json.email }}",
         "subject": "Potwierdzenie rozmowy rekrutacyjnej",
-        "text": "Twoja rozmowa została umówiona: {{$json.date}} {{$json.time}}.",
-        "options": {}
-      }
+        "emailFormat": "text",
+        "text": "=Dzień dobry {{ $('Policz koniec rozmowy').item.json.name }},\n\npotwierdzamy rozmowę: {{ $('Policz koniec rozmowy').item.json.terminTekst }}.\nSzczegóły znajdziesz w zaproszeniu z kalendarza.",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1380,
+        300
+      ],
+      "id": "4ac1e3dc-8310-4403-abf1-539c73eccb03"
+    },
+    {
+      "name": "Powiadom rekrutera",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=🗓️ Rozmowa: {{ $('Policz koniec rozmowy').item.json.name }} – {{ $('Policz koniec rozmowy').item.json.terminTekst }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "7ad31745-9365-4330-aa3f-df51c471377b"
     }
   ],
   "connections": {
     "Wybrano termin rozmowy (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Policz koniec rozmowy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policz koniec rozmowy": {
       "main": [
         [
           {
@@ -93,10 +223,29 @@
           }
         ]
       ]
+    },
+    "Wyślij potwierdzenie": {
+      "main": [
+        [
+          {
+            "node": "Powiadom rekrutera",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

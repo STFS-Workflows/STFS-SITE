@@ -2,90 +2,189 @@
   "name": "STFS — Uzupełnianie arkuszy z formularzy i maili",
   "nodes": [
     {
-      "id": "13395e0f-9458-46d0-aeb6-c48dbe1c051b",
+      "id": "2a7cdd69-adb4-4440-a405-07d043b62aa4",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Auto-uzupełnianie arkusza\n\n**Trigger:** Webhook z formularza.\n\n**Do zrobienia:**\n1. Podmień \"Dopisz wiersz\" na węzeł Google Sheets (wybierz arkusz + zakres).\n2. Zmapuj pola w węźle Set do kolumn arkusza.",
-        "height": 300,
-        "width": 380,
+        "content": "## 15 – Dopisywanie do Google Sheets\n\nFormularz → mapowanie na kolumny → nowy wiersz w arkuszu. Nagłówki w arkuszu muszą nazywać się tak samo jak pola w węźle „Zmapuj do kolumn”.\n\nWejście: `name`, `email`, opcjonalnie `phone`, `message`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Google Sheets OAuth2\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "4d044ae0-7b1f-404f-8299-23496f01cf98",
       "name": "Nowe zgłoszenie formularza (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "formularz-nowy",
         "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
-      }
+      },
+      "webhookId": "6db2d75e-f657-4825-a12d-89a0f205e640",
+      "position": [
+        80,
+        300
+      ],
+      "id": "2ff7b52a-6ba7-46ad-a3d2-7fc7b511f0e4"
     },
     {
-      "id": "35f8d9d6-8958-4902-a369-f73767ce3ee1",
-      "name": "Zmapuj do kolumn",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"name\",\"email\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
+      "id": "972ff47c-b94b-4818-a99e-d1407453ee30"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "parameters": {
+        "mode": "manual",
         "assignments": {
           "assignments": [
             {
-              "id": "82094c9a-15ed-4f0c-af70-6b4edd669571",
-              "name": "Data",
-              "value": "={{ $now }}",
+              "id": "cbb9ad3d-49f9-4d38-a51d-5d2ccb964a6f",
+              "name": "arkuszUrl",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR-SHEET-ID/edit",
               "type": "string"
             },
             {
-              "id": "9d49107b-e5ef-41aa-b648-3af6871672ec",
+              "id": "3becefd1-eeca-452b-aa17-ad3c3dddc5d4",
+              "name": "zakladka",
+              "value": "Arkusz1",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        600,
+        300
+      ],
+      "id": "99d60b2f-9945-4918-a43b-7d40131ce8f5"
+    },
+    {
+      "name": "Zmapuj do kolumn",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0e0ea7ef-9081-4a0f-a6bd-e27e59d2bbd2",
+              "name": "Data",
+              "value": "={{ $now.setZone('Europe/Warsaw').toFormat('yyyy-MM-dd HH:mm') }}",
+              "type": "string"
+            },
+            {
+              "id": "1d73036c-7854-4190-a3e7-1697cdba3580",
               "name": "Imię",
               "value": "={{ $json.name }}",
               "type": "string"
             },
             {
-              "id": "f1f008ce-1919-4b9c-91bc-4849c29f0887",
+              "id": "064cfd5c-3d41-4971-aee7-839ec00ada04",
               "name": "Email",
               "value": "={{ $json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "daa9cd26-d10e-4335-a288-5dac405986d5",
+              "name": "Telefon",
+              "value": "={{ $json.phone || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "a91036b7-000c-40d3-a82f-d23b108a33a9",
+              "name": "Wiadomość",
+              "value": "={{ $json.message || \"\" }}",
               "type": "string"
             }
           ]
         },
+        "includeOtherFields": false,
         "options": {}
-      }
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "2a30c9dc-f5ff-479a-ac82-df43129a39c8"
     },
     {
-      "id": "a0084d2b-3508-4b9e-a46f-e41093121012",
       "name": "Dopisz wiersz",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.4,
-      "position": [
-        600,
-        300
-      ],
       "parameters": {
         "operation": "append",
-        "sheetName": "Arkusz1"
-      }
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Konfiguracja').first().json.arkuszUrl }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Konfiguracja').first().json.zakladka }}"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        },
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "88978b21-d113-47b6-ad37-e0e249a35a2b"
     }
   ],
   "connections": {
     "Nowe zgłoszenie formularza (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -110,6 +209,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

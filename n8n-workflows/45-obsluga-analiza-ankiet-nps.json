@@ -1,0 +1,506 @@
+{
+  "name": "STFS — Analiza ankiet NPS i kontakt z niezadowolonymi",
+  "nodes": [
+    {
+      "id": "d2a6d2df-a9ad-4b4f-a3fa-f4f9c0024d7d",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 45 – Ankiety NPS\n\nOdpowiedź z ankiety (Tally / Typeform / własny formularz) → zapis → podział: **detraktor (0–6)** – AI streszcza komentarz, powstaje zgłoszenie „oddzwoń” i alert na Slacku; **promotor (9–10)** – podziękowanie e-mailem; **pasywny (7–8)** – tylko zapis.\n\nPromotorów NIE prosimy tu o opinię w Google – prośbę o opinię dostają wszyscy klienci równo (workflow 36), inaczej byłoby to „review gating”.\n\nWejście: `score` (0–10), `email`, opcjonalnie `comment`, `name`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- Slack\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Odpowiedź z ankiety (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ankieta-nps",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "9d4c4426-2b0e-4c79-a974-43df2074078e",
+      "position": [
+        80,
+        300
+      ],
+      "id": "987f9ced-2536-4d3c-a0a4-26baca4887b0"
+    },
+    {
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"score\",\"email\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "4c60d9e5-997a-4747-abc3-12aa71b24803"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "acc2413b-5af3-4be6-a78f-de4319378b41",
+              "name": "zapisUrl",
+              "value": "https://YOUR-CRM.example.com/api/nps",
+              "type": "string"
+            },
+            {
+              "id": "0f868af5-9c79-4488-add5-8cc58df7dbbc",
+              "name": "helpdeskUrl",
+              "value": "https://YOUR-HELPDESK.example.com/api/tickets",
+              "type": "string"
+            },
+            {
+              "id": "181ae4de-b52b-402b-ad98-93051540e8f6",
+              "name": "nazwaFirmy",
+              "value": "Nazwa firmy",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        600,
+        300
+      ],
+      "id": "801cb625-9f2b-4ad6-abb9-c70923cf8d1b"
+    },
+    {
+      "name": "Policz grupę NPS",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const score = Number($json.score);\nif (!Number.isInteger(score) || score < 0 || score > 10) throw new Error('Ocena musi być liczbą 0-10');\nconst grupa = score <= 6 ? 'detraktor' : score <= 8 ? 'pasywny' : 'promotor';\nreturn { json: { ...$json, score, grupa, comment: String($json.comment || '').slice(0, 2000) } };"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "f24dc867-af59-4c37-af85-33254ff21e7f"
+    },
+    {
+      "name": "Zapisz odpowiedź",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.zapisUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ email: $json.email, score: $json.score, grupa: $json.grupa, comment: $json.comment, date: $now.toISO() }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "acf2a10d-c68d-4777-a346-99ac957de1ec"
+    },
+    {
+      "name": "Detraktor?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "ed2e71c6-da42-460a-a39a-221ef0a8236c",
+              "leftValue": "={{ $('Policz grupę NPS').item.json.grupa }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "detraktor"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "d1620ffd-4224-4f3a-a552-ed18201f308f"
+    },
+    {
+      "name": "Weź odpowiedź z ankiety",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: $('Policz grupę NPS').item.json };"
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "3bbccb23-fe6b-4a73-abe4-26cf9bec7e22"
+    },
+    {
+      "name": "AI: prompt (komentarz detraktora)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Analizujesz komentarz niezadowolonego klienta z ankiety NPS. Streść problem jednym zdaniem i nazwij główny temat. Jeśli komentarza brak – napisz, że klient nie podał powodu.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"temat\\\": np. obsługa, cena, jakość, termin, inne, \\\"streszczenie\\\": 1 zdanie}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Ocena: ${$json.score}/10\\nKomentarz: ${$json.comment || '(brak)'}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "2e1ed900-fda5-415c-a3d5-76c4db704120"
+    },
+    {
+      "name": "AI: komentarz detraktora",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        2160,
+        300
+      ],
+      "id": "9ff78e2c-13a6-4e0f-af80-6d39bcfcdf75"
+    },
+    {
+      "name": "AI: wynik (komentarz detraktora)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (komentarz detraktora)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"temat\":\"\",\"streszczenie\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        2420,
+        300
+      ],
+      "id": "e9f1c55a-52e7-4c16-a31d-7d41c040c8e9"
+    },
+    {
+      "name": "Utwórz zgłoszenie „oddzwoń”",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.helpdeskUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ email: $json.email, subject: \"NPS \" + $json.score + \"/10 – skontaktuj się z klientem\", body: $json.streszczenie + \"\\n\\nKomentarz: \" + ($json.comment || \"-\"), priority: \"wysoki\", tags: [\"nps\", $json.temat] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2680,
+        300
+      ],
+      "id": "f5305ca7-b72f-4616-a233-1729abab9526"
+    },
+    {
+      "name": "Alert: niezadowolony klient",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=😟 NPS {{ $('AI: wynik (komentarz detraktora)').item.json.score }}/10 od {{ $('AI: wynik (komentarz detraktora)').item.json.email }} [{{ $('AI: wynik (komentarz detraktora)').item.json.temat }}]: {{ $('AI: wynik (komentarz detraktora)').item.json.streszczenie }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2940,
+        300
+      ],
+      "id": "c7693690-1b6f-478b-a7c0-c9dab24c11a8"
+    },
+    {
+      "name": "Promotor?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "183c68f3-c0aa-4b98-a38f-cdfc6f2da025",
+              "leftValue": "={{ $('Policz grupę NPS').item.json.grupa }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "promotor"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        1640,
+        520
+      ],
+      "id": "3106260e-1ba6-4fd1-aef7-1e64a423ceb9"
+    },
+    {
+      "name": "Podziękuj promotorowi",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Policz grupę NPS').item.json.email }}",
+        "subject": "=Dziękujemy za ocenę!",
+        "emailFormat": "text",
+        "text": "=Dzień dobry{{ $('Policz grupę NPS').item.json.name ? ' ' + $('Policz grupę NPS').item.json.name : '' }},\n\nbardzo dziękujemy za wysoką ocenę. To dla nas ważny sygnał, że idziemy w dobrą stronę.\n\nPozdrawiamy,\n{{ $('Konfiguracja').first().json.nazwaFirmy }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        520
+      ],
+      "id": "90cce6ae-d9a5-4f96-a50b-71841e809ad2"
+    },
+    {
+      "name": "Pasywny – tylko zapis",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        1900,
+        740
+      ],
+      "id": "64b99b44-1eaf-4074-a38f-eb9a9ac96776"
+    }
+  ],
+  "connections": {
+    "Odpowiedź z ankiety (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Policz grupę NPS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policz grupę NPS": {
+      "main": [
+        [
+          {
+            "node": "Zapisz odpowiedź",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapisz odpowiedź": {
+      "main": [
+        [
+          {
+            "node": "Detraktor?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detraktor?": {
+      "main": [
+        [
+          {
+            "node": "Weź odpowiedź z ankiety",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Promotor?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weź odpowiedź z ankiety": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (komentarz detraktora)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (komentarz detraktora)": {
+      "main": [
+        [
+          {
+            "node": "AI: komentarz detraktora",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: komentarz detraktora": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (komentarz detraktora)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (komentarz detraktora)": {
+      "main": [
+        [
+          {
+            "node": "Utwórz zgłoszenie „oddzwoń”",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Utwórz zgłoszenie „oddzwoń”": {
+      "main": [
+        [
+          {
+            "node": "Alert: niezadowolony klient",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Promotor?": {
+      "main": [
+        [
+          {
+            "node": "Podziękuj promotorowi",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pasywny – tylko zapis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

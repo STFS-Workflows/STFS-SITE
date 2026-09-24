@@ -2,112 +2,292 @@
   "name": "STFS — Przypomnienia o nieopłaconych fakturach",
   "nodes": [
     {
-      "id": "11e1b2aa-dfdb-44a7-a16b-5a70de152751",
+      "id": "9142b837-e330-4453-ad74-b21f9f76334e",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Przypomnienia o płatnościach\n\n**Trigger:** Schedule — codzienna kontrola.\n\n**Do zrobienia:**\n1. Podmień \"Pobierz nieopłacone faktury\" na API systemu księgowego.\n2. Dostosuj liczbę dni po terminie w węźle IF.",
-        "height": 300,
-        "width": 380,
+        "content": "## 18 – Przypomnienia o płatnościach\n\nW dni robocze o 9:00 sprawdza nieopłacone faktury. Po terminie → uprzejme przypomnienie, **maks. raz na tydzień** na fakturę. Po przekroczeniu limitu dni sprawa trafia do człowieka (Slack) zamiast kolejnych maili.\n\nFormat: `{ \"data\": [ { \"id\", \"number\", \"email\", \"amount\", \"dueDate\" } ] }`.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- Slack\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "a0a24115-d896-483c-9fbd-d229bee4b5d9",
-      "name": "Codziennie 9:00",
+      "name": "Dni robocze 9:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "rule": {
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 9 * * *"
+              "expression": "0 9 * * 1-5"
             }
           ]
         }
-      }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "ecbad0d3-f222-4b2e-aa23-46fdd38c8ce2"
     },
     {
-      "id": "8d9c5819-20fe-44af-b079-15c5a1e2bd0e",
-      "name": "Pobierz nieopłacone faktury",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "40fd06d6-2fee-4404-a303-c68957ce5d62",
+              "name": "fakturyUrl",
+              "value": "https://YOUR-BILLING.example.com/api/invoices?status=unpaid",
+              "type": "string"
+            },
+            {
+              "id": "64295ec7-68a5-4cef-a185-71a9d6d68f1c",
+              "name": "dniPoTerminie",
+              "value": 1,
+              "type": "number"
+            },
+            {
+              "id": "4f50ee6b-3bec-48df-a64b-b102e67d75a9",
+              "name": "dniDoEskalacji",
+              "value": 30,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "GET",
-        "url": "https://YOUR-BILLING.example.com/api/invoices?status=unpaid",
-        "sendBody": false,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na realny system księgowy."
+      "id": "261c4045-dd2e-489a-ac0e-a1b4bc155a7c"
     },
     {
-      "id": "80dc09a5-4e32-4049-9dcd-c8b4f28ed8f3",
-      "name": "Termin minął?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "name": "Pobierz nieopłacone faktury",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.fakturyUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [
         600,
         300
       ],
+      "id": "7380b9c4-b694-43a8-ac7a-bd47f96fb595"
+    },
+    {
+      "name": "Rozbij listę faktur",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "45137c81-4d05-4067-ab02-8986449d31ff"
+    },
+    {
+      "name": "Policz dni po terminie",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const due = Date.parse($json.dueDate);\nconst dni = Number.isFinite(due) ? Math.floor((Date.now() - due) / 86400000) : -1;\nreturn { json: { ...$json, dniPoTerminie: dni, kluczTygodnia: $json.id + '-' + Math.floor(dni / 7) } };"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "571dccb6-575d-4870-ad75-bd7178983fbb"
+    },
+    {
+      "name": "Termin minął?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
       "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
-              "id": "33784a4e-306d-4380-bb93-8d8507837781",
-              "leftValue": "={{ $json.daysOverdue }}",
-              "rightValue": 0,
+              "id": "df4435d5-4e89-4e19-a3eb-5110e1f667a8",
+              "leftValue": "={{ $json.dniPoTerminie }}",
               "operator": {
                 "type": "number",
-                "operation": "gt"
-              }
+                "operation": "gte"
+              },
+              "rightValue": "={{ $('Konfiguracja').first().json.dniPoTerminie }}"
             }
           ],
           "combinator": "and"
         },
         "options": {}
-      }
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "48d43fe6-6731-4e2e-a528-9e4037f5abfb"
     },
     {
-      "id": "2cdf1fbf-0c30-46c5-b1fc-b2f380a4cfdf",
+      "name": "Do eskalacji?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c30963e9-5c6d-4611-a020-2101ae5b079a",
+              "leftValue": "={{ $json.dniPoTerminie }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "rightValue": "={{ $('Konfiguracja').first().json.dniDoEskalacji }}"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "9e072ed5-91d9-4b9c-ad33-f6c25ee2d7f1"
+    },
+    {
+      "name": "Eskalacja do człowieka",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=💸 Faktura {{ $json.number }} ({{ $json.amount }} zł) jest {{ $json.dniPoTerminie }} dni po terminie – przypomnienia mailowe wstrzymane, potrzebny kontakt osobisty.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "f8ca8aa5-da35-4afa-a074-e9d30ba81806"
+    },
+    {
+      "name": "Maks. 1 przypomnienie w tygodniu",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"przypomnienia\"] = store[\"przypomnienia\"] || {};\nconst seen = store[\"przypomnienia\"];\nconst now = Date.now();\nconst ttl = 60 * 86400000;\nfor (const [k, t] of Object.entries(seen)) if (now - t > ttl) delete seen[k];\nconst out = [];\n$input.all().forEach((item, index) => {\n  const key = String(item.json.kluczTygodnia ?? '');\n  if (!key || seen[key]) return; // brak klucza albo już obsłużone -> pomiń\n  // pairedItem zachowuje powiązanie z danymi wejściowymi (potrzebne dla odwołań .item w kolejnych węzłach)\n  out.push({ json: item.json, binary: item.binary, pairedItem: { item: index } });\n});\nreturn out;"
+      },
+      "position": [
+        1900,
+        520
+      ],
+      "id": "cd79c02f-9ac8-4ef0-ad02-e071c8bbcf88"
+    },
+    {
       "name": "Wyślij przypomnienie",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [
-        860,
-        300
-      ],
       "parameters": {
-        "fromEmail": "hello@stfs.studio",
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
         "toEmail": "={{ $json.email }}",
-        "subject": "Przypomnienie o płatności",
-        "text": "Faktura {{$json.number}} jest przeterminowana o {{$json.daysOverdue}} dni.",
-        "options": {}
-      }
+        "subject": "=Przypomnienie o płatności – faktura {{ $json.number }}",
+        "emailFormat": "text",
+        "text": "=Dzień dobry,\n\nuprzejmie przypominamy, że termin płatności faktury {{ $json.number }} na kwotę {{ $json.amount }} zł minął {{ $json.dniPoTerminie }} dni temu.\nJeśli płatność została już zrealizowana – prosimy zignorować tę wiadomość.\n\nPozdrawiamy",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2160,
+        520
+      ],
+      "id": "5b9e74b2-61d8-4827-a520-5fbf0cc47f6c"
+    },
+    {
+      "name": "Zapamiętaj przypomnienie",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"przypomnienia\"] = store[\"przypomnienia\"] || {};\nconst src = $('Maks. 1 przypomnienie w tygodniu').item.json;\nconst key = String(src.kluczTygodnia ?? '');\nif (key) store[\"przypomnienia\"][key] = Date.now();\nreturn { json: $json };"
+      },
+      "position": [
+        2420,
+        520
+      ],
+      "id": "c353a610-e9ef-487c-a87f-cc37752172d4"
+    },
+    {
+      "name": "Jeszcze w terminie",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        1640,
+        740
+      ],
+      "id": "be3e72be-67ea-4652-a5ee-c237404b7bbd"
     }
   ],
   "connections": {
-    "Codziennie 9:00": {
+    "Dni robocze 9:00": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -122,6 +302,28 @@
       "main": [
         [
           {
+            "node": "Rozbij listę faktur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rozbij listę faktur": {
+      "main": [
+        [
+          {
+            "node": "Policz dni po terminie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policz dni po terminie": {
+      "main": [
+        [
+          {
             "node": "Termin minął?",
             "type": "main",
             "index": 0
@@ -133,7 +335,54 @@
       "main": [
         [
           {
+            "node": "Do eskalacji?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Jeszcze w terminie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Do eskalacji?": {
+      "main": [
+        [
+          {
+            "node": "Eskalacja do człowieka",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Maks. 1 przypomnienie w tygodniu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Maks. 1 przypomnienie w tygodniu": {
+      "main": [
+        [
+          {
             "node": "Wyślij przypomnienie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wyślij przypomnienie": {
+      "main": [
+        [
+          {
+            "node": "Zapamiętaj przypomnienie",
             "type": "main",
             "index": 0
           }
@@ -143,6 +392,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

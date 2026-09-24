@@ -1,0 +1,357 @@
+{
+  "name": "STFS — Monitoring dostępności stron",
+  "nodes": [
+    {
+      "id": "5483b43f-ca3a-4d1a-af55-4f2fda4d393e",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 39 – Czy strona działa?\n\nCo 5 minut sprawdza listę adresów (strony klientów, webhook chatbota, panel). Alarm dopiero po **2 nieudanych sprawdzeniach z rzędu** (bez fałszywych alarmów), jeden alert na awarię i jedna wiadomość po przywróceniu – z czasem trwania.\n\nZapisywanie udanych wykonań wyłączone (288 przebiegów dziennie zapchałoby bazę n8n).\n\n## Credentials do utworzenia\n- Slack\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Co 5 minut",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/5 * * * *"
+            }
+          ]
+        }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "3342c741-15a0-4f93-a265-81217f8e3366"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "11912a9b-bbae-4855-acea-20bf20c2db2a",
+              "name": "adresy",
+              "value": "https://stfs.pl,https://www.stfs.pl",
+              "type": "string"
+            },
+            {
+              "id": "e93b0766-12c7-47a9-a317-eeefdb2cf13d",
+              "name": "progAwarii",
+              "value": 2,
+              "type": "number"
+            },
+            {
+              "id": "459a3cde-fa8c-4c0e-ae19-c1f8cb27ab5d",
+              "name": "odbiorcaAlertow",
+              "value": "kontakt@stfs.pl",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "db3a643e-9aac-4f02-ae9b-6605bc811fec"
+    },
+    {
+      "name": "Lista adresów",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $('Konfiguracja').first().json.adresy.split(',').map((u) => u.trim()).filter(Boolean).map((url) => ({ json: { url } }));"
+      },
+      "position": [
+        600,
+        300
+      ],
+      "id": "b2f92dc0-d6ee-4f58-a287-70772854c69e"
+    },
+    {
+      "name": "Sprawdź adres",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "authentication": "none",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput",
+      "position": [
+        860,
+        300
+      ],
+      "id": "697c06d0-1f0e-493a-a5a9-c404122a5435"
+    },
+    {
+      "name": "Oceń odpowiedź",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const url = $('Lista adresów').item.json.url;\nconst kod = Number($json.statusCode || 0);\nconst ok = !$json.error && kod >= 200 && kod < 400;\nconst blad = $json.error ? String($json.error.message || $json.error).slice(0, 200) : (ok ? '' : 'HTTP ' + kod);\nreturn { json: { url, ok, kod, blad } };"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "49e1aad9-9e9d-448e-a3b1-484f4f5a0b7e"
+    },
+    {
+      "name": "Wykryj zmianę stanu",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore.strony = store.strony || {};\nconst prog = $('Konfiguracja').first().json.progAwarii;\nconst out = [];\nfor (const i of $input.all()) {\n  const s = store.strony[i.json.url] || { bledy: 0, awaria: false };\n  if (i.json.ok) {\n    if (s.awaria) out.push({ json: { ...i.json, zdarzenie: 'przywrocono', minuty: Math.round((Date.now() - s.od) / 60000) } });\n    store.strony[i.json.url] = { bledy: 0, awaria: false };\n  } else {\n    s.bledy += 1;\n    if (!s.awaria && s.bledy >= prog) { s.awaria = true; s.od = Date.now(); out.push({ json: { ...i.json, zdarzenie: 'awaria' } }); }\n    store.strony[i.json.url] = s;\n  }\n}\nreturn out;"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "12760932-0d82-4e9c-a825-eff26fc37567"
+    },
+    {
+      "name": "Awaria?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c9a6e04c-49db-474c-a374-07b9eac937c6",
+              "leftValue": "={{ $json.zdarzenie }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "awaria"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "80c6043f-0a37-4680-a6b2-79230d7f51f2"
+    },
+    {
+      "name": "Alert: strona nie działa",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=🔴 Strona nie działa: {{ $json.url }}\nPowód: {{ $json.blad }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "74f9f9fc-0323-4034-a24b-07a5b95927e3"
+    },
+    {
+      "name": "Alert e-mailem",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Konfiguracja').first().json.odbiorcaAlertow }}",
+        "subject": "=AWARIA: {{ $json.url }}",
+        "emailFormat": "text",
+        "text": "=Strona {{ $json.url }} nie odpowiada poprawnie.\nPowód: {{ $json.blad }}\nWykryto: {{ $now.setZone(\"Europe/Warsaw\").toFormat(\"dd.MM.yyyy HH:mm\") }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2160,
+        300
+      ],
+      "id": "67ff4c39-913e-4c94-a9a9-7933b07a9f45"
+    },
+    {
+      "name": "Strona przywrócona",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=🟢 Strona znów działa: {{ $json.url }} (awaria trwała ok. {{ $json.minuty }} min)",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        520
+      ],
+      "id": "bd764fba-5c90-43df-ac18-9a3e4a843cc4"
+    }
+  ],
+  "connections": {
+    "Co 5 minut": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Lista adresów",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lista adresów": {
+      "main": [
+        [
+          {
+            "node": "Sprawdź adres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sprawdź adres": {
+      "main": [
+        [
+          {
+            "node": "Oceń odpowiedź",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Oceń odpowiedź": {
+      "main": [
+        [
+          {
+            "node": "Wykryj zmianę stanu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wykryj zmianę stanu": {
+      "main": [
+        [
+          {
+            "node": "Awaria?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Awaria?": {
+      "main": [
+        [
+          {
+            "node": "Alert: strona nie działa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Strona przywrócona",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert: strona nie działa": {
+      "main": [
+        [
+          {
+            "node": "Alert e-mailem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

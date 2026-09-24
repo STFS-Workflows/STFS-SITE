@@ -2,102 +2,237 @@
   "name": "STFS — Wystawianie i wysyłka faktur",
   "nodes": [
     {
-      "id": "13c40d3b-775b-4b49-82af-1626769b94e5",
+      "id": "4e3d6f7e-3082-4bf5-a503-43f47d08ed8c",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Automatyczne faktury\n\n**Trigger:** Webhook — po opłaceniu zamówienia (np. z Stripe/systemu sprzedaży).\n\n**Do zrobienia:**\n1. Podmień \"Wystaw fakturę\" na API systemu księgowego (Fakturownia/iFirma/inny).\n2. Skonfiguruj SMTP do wysyłki maila z fakturą.",
-        "height": 300,
-        "width": 380,
+        "content": "## 13 – Faktury po opłaceniu zamówienia\n\nWebhook przekazuje TYLKO `orderId`. Kwotę, pozycje i status workflow pobiera sam z systemu sprzedaży (nie ufa danym z webhooka). Faktura jest wystawiana tylko dla zamówień o statusie `paid` i tylko raz na zamówienie (ochrona przed powtórzonym webhookiem).\n\nPotem e-mail z linkiem do faktury.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- SMTP\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "118a1032-c86d-4b48-ac95-61b38667fc83",
       "name": "Zamówienie opłacone (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "zamowienie-oplacone",
         "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
-      }
+      },
+      "webhookId": "71c16a0f-f00a-493d-adaf-62fe9b817382",
+      "position": [
+        80,
+        300
+      ],
+      "id": "c47aa416-e3c9-4d43-a505-3e186067fc51"
     },
     {
-      "id": "df728fb0-beea-4e32-b56e-372464eff40f",
-      "name": "Przygotuj dane faktury",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"orderId\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
+      "id": "19646682-bfca-4d2d-ac97-a14278b648f0"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
       "parameters": {
+        "mode": "manual",
         "assignments": {
           "assignments": [
             {
-              "id": "7ff41172-75f4-4f14-bb4b-3a6e120381f2",
-              "name": "client",
-              "value": "={{ $json.customerName }}",
+              "id": "91ad337e-aedf-478b-aaa9-0f7ce80de401",
+              "name": "zamowieniaUrl",
+              "value": "https://YOUR-SHOP.example.com/api/orders",
               "type": "string"
             },
             {
-              "id": "c569b217-2839-427c-b6a4-0ece599c8829",
-              "name": "amount",
-              "value": "={{ $json.amount }}",
-              "type": "number"
+              "id": "a6ca7c96-4f33-4637-a6b2-21409b26135d",
+              "name": "fakturyUrl",
+              "value": "https://YOUR-BILLING.example.com/api/invoices",
+              "type": "string"
             }
           ]
         },
+        "includeOtherFields": true,
         "options": {}
-      }
-    },
-    {
-      "id": "99290285-281e-4d27-b477-334c6597b472",
-      "name": "Wystaw fakturę",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      },
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://YOUR-BILLING.example.com/api/invoices",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na Fakturownia/iFirma/inny system księgowy."
+      "id": "21452f97-190f-4f3d-a9ed-7d8328a9abe3"
     },
     {
-      "id": "3959101b-df35-4282-a7af-e7e1df754063",
-      "name": "Wyślij fakturę mailem",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "name": "Pomiń już zafakturowane",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"faktury\"] = store[\"faktury\"] || {};\nconst seen = store[\"faktury\"];\nconst now = Date.now();\nconst ttl = 365 * 86400000;\nfor (const [k, t] of Object.entries(seen)) if (now - t > ttl) delete seen[k];\nconst out = [];\n$input.all().forEach((item, index) => {\n  const key = String(item.json.orderId ?? '');\n  if (!key || seen[key]) return; // brak klucza albo już obsłużone -> pomiń\n  // pairedItem zachowuje powiązanie z danymi wejściowymi (potrzebne dla odwołań .item w kolejnych węzłach)\n  out.push({ json: item.json, binary: item.binary, pairedItem: { item: index } });\n});\nreturn out;"
+      },
       "position": [
         860,
         300
       ],
+      "id": "0098c28f-8890-46a5-ade1-c41ae74acf1a"
+    },
+    {
+      "name": "Pobierz zamówienie ze źródła",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "parameters": {
-        "fromEmail": "hello@stfs.studio",
-        "toEmail": "={{ $json.email }}",
-        "subject": "Faktura za zamówienie",
-        "text": "W załączeniu faktura za Twoje zamówienie. Dziękujemy!",
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.zamowieniaUrl + '/' + encodeURIComponent($json.orderId) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "94c2fb7f-0b60-4448-a113-8a4fcca62247"
+    },
+    {
+      "name": "Zamówienie opłacone?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "5b8d4b29-bf5a-4270-a4ba-3a67a69ab125",
+              "leftValue": "={{ $json.status }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "paid"
+            }
+          ],
+          "combinator": "and"
+        },
         "options": {}
-      }
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "14a40f63-0021-4e2a-adb4-1b643f9344a9"
+    },
+    {
+      "name": "Wystaw fakturę",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.fakturyUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ orderId: $json.id, buyer: { name: $json.customerName, email: $json.email, taxId: $json.taxId || null }, positions: $json.items, currency: $json.currency || \"PLN\" }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "fd8e5fe3-5339-4120-aeaa-8408ab22d159"
+    },
+    {
+      "name": "Wyślij fakturę mailem",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Pobierz zamówienie ze źródła').item.json.email }}",
+        "subject": "=Faktura za zamówienie {{ $('Pobierz zamówienie ze źródła').item.json.id }}",
+        "emailFormat": "text",
+        "text": "=Dzień dobry,\n\nfaktura nr {{ $json.number }} za Twoje zamówienie jest dostępna tutaj: {{ $json.view_url }}\n\nDziękujemy!",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "2d9db59b-ab04-4de5-a999-0bbc9dc84de3"
+    },
+    {
+      "name": "Zapamiętaj zafakturowane",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"faktury\"] = store[\"faktury\"] || {};\nconst src = $('Walidacja danych').item.json;\nconst key = String(src.orderId ?? '');\nif (key) store[\"faktury\"][key] = Date.now();\nreturn { json: $json };"
+      },
+      "position": [
+        2160,
+        300
+      ],
+      "id": "7e70dfe7-f483-4481-a72d-2b6cadaaf2c5"
+    },
+    {
+      "name": "Zamówienie nieopłacone – pominięto",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=⚠️ Webhook faktury dla zamówienia {{ $('Walidacja danych').item.json.orderId }}, ale status w systemie to „{{ $json.status }}” – faktura NIE została wystawiona.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        520
+      ],
+      "id": "2c919706-ff6d-422e-a04c-a19818d53859"
     }
   ],
   "connections": {
@@ -105,18 +240,69 @@
       "main": [
         [
           {
-            "node": "Przygotuj dane faktury",
+            "node": "Walidacja danych",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Przygotuj dane faktury": {
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Pomiń już zafakturowane",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pomiń już zafakturowane": {
+      "main": [
+        [
+          {
+            "node": "Pobierz zamówienie ze źródła",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pobierz zamówienie ze źródła": {
+      "main": [
+        [
+          {
+            "node": "Zamówienie opłacone?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zamówienie opłacone?": {
       "main": [
         [
           {
             "node": "Wystaw fakturę",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Zamówienie nieopłacone – pominięto",
             "type": "main",
             "index": 0
           }
@@ -133,10 +319,29 @@
           }
         ]
       ]
+    },
+    "Wyślij fakturę mailem": {
+      "main": [
+        [
+          {
+            "node": "Zapamiętaj zafakturowane",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

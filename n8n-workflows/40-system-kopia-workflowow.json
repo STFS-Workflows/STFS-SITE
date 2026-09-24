@@ -1,0 +1,388 @@
+{
+  "name": "STFS — Kopia zapasowa workflowów n8n (GitHub)",
+  "nodes": [
+    {
+      "id": "37269151-b3ac-4bdf-a6ba-3b848276957c",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 40 – Kopia zapasowa workflowów\n\nCodziennie o 3:00 pobiera wszystkie workflowy przez API n8n i zapisuje je w **prywatnym** repozytorium GitHub (jeden plik na workflow). Commit powstaje tylko, gdy workflow się zmienił – historia gita pokazuje, kto i kiedy coś zmienił w edytorze. To też siatka bezpieczeństwa dla zmian robionych ręcznie poza generatorem.\n\nZ kopii usuwane są `staticData` (pamięć workflowów, m.in. adresy IP z limitów chatbota) i `pinData`. Credentiale w eksporcie to tylko odwołania – bez haseł.\n\nCredentiale: Header Auth „n8n API” (`X-N8N-API-KEY`) i Header Auth „GitHub” (`Authorization: Bearer <fine-grained token z prawem Contents: write do jednego repo>`).\n\n## Credentials do utworzenia\n- Header Auth (API)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Codziennie 3:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 * * *"
+            }
+          ]
+        }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "8ededd9e-d580-4031-adde-a64017f03777"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3ea55b45-a797-437b-a140-30daf7e2d433",
+              "name": "n8nApiUrl",
+              "value": "https://n8n.stfs.pl/api/v1",
+              "type": "string"
+            },
+            {
+              "id": "7586bf6f-83c9-4dbc-afcb-2ac9cd351d0c",
+              "name": "repo",
+              "value": "STFS-Workflows/n8n-backup",
+              "type": "string"
+            },
+            {
+              "id": "2fb16cfc-f791-45f4-afb7-2b9595f0ede3",
+              "name": "galaz",
+              "value": "main",
+              "type": "string"
+            },
+            {
+              "id": "88541de2-4886-44cf-a2e9-c14acfca5d35",
+              "name": "katalog",
+              "value": "workflows",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "564e3aac-d9a2-4514-a8cd-039bb034df16"
+    },
+    {
+      "name": "Pobierz workflowy z n8n",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.n8nApiUrl + '/workflows?limit=250' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Header Auth: X-N8N-API-KEY = klucz API n8n (Settings → n8n API).",
+      "notesInFlow": true,
+      "position": [
+        600,
+        300
+      ],
+      "id": "b28a2d1d-9e56-456c-a281-00125d2dc001"
+    },
+    {
+      "name": "Rozbij listę workflowów",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "536ac080-aab5-4f08-af89-a57039c292f3"
+    },
+    {
+      "name": "Przygotuj plik",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const c = $('Konfiguracja').first().json;\nconst wf = { ...$json };\ndelete wf.staticData; delete wf.pinData; delete wf.shared;\nconst slug = String(wf.name || 'bez-nazwy').replace(/ł/g, 'l').replace(/Ł/g, 'L').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);\nconst sciezka = c.katalog + '/' + slug + '-' + wf.id + '.json';\nconst zawartosc = Buffer.from(JSON.stringify(wf, null, 2) + '\\n', 'utf8').toString('base64');\nreturn { json: { sciezka, nazwa: wf.name, id: wf.id, zawartosc } };"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "1a7ce83d-5618-4949-ae4d-960f9ac080b1"
+    },
+    {
+      "name": "Sprawdź plik w repo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://api.github.com/repos/' + $('Konfiguracja').first().json.repo + '/contents/' + $json.sciezka + '?ref=' + $('Konfiguracja').first().json.galaz }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "404 = nowy plik (to normalne).",
+      "notesInFlow": true,
+      "position": [
+        1380,
+        300
+      ],
+      "id": "c77cb1e2-2d44-4ee7-a527-e1b3b7b4d9a2"
+    },
+    {
+      "name": "Porównaj z repo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const plik = $('Przygotuj plik').item.json;\nconst istnieje = $json.statusCode === 200 && $json.body && $json.body.sha;\nconst stara = istnieje ? String($json.body.content || '').replace(/\\n/g, '') : '';\nreturn { json: { ...plik, sha: istnieje ? $json.body.sha : null, zmieniony: stara !== plik.zawartosc } };"
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "c5c64e4c-9e53-4559-aac9-6e83430efa19"
+    },
+    {
+      "name": "Zmieniony?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "5697900f-4849-4b89-a78c-dfb78b99ea63",
+              "leftValue": "={{ $json.zmieniony }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "09ccb6b5-e2a0-4167-afc0-ef7134bc1fc3"
+    },
+    {
+      "name": "Zapisz w GitHub",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ 'https://api.github.com/repos/' + $('Konfiguracja').first().json.repo + '/contents/' + $json.sciezka }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.assign({ message: 'Kopia n8n: ' + $json.nazwa, content: $json.zawartosc, branch: $('Konfiguracja').first().json.galaz }, $json.sha ? { sha: $json.sha } : {})) }}",
+        "options": {
+          "timeout": 30000,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 500
+            }
+          }
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2160,
+        300
+      ],
+      "id": "6486f504-6f6c-4772-aca4-cb50f405b17b"
+    },
+    {
+      "name": "Bez zmian",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        2160,
+        520
+      ],
+      "id": "f000c733-cb6a-4f3c-aa76-62f84ec0276c"
+    }
+  ],
+  "connections": {
+    "Codziennie 3:00": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Pobierz workflowy z n8n",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pobierz workflowy z n8n": {
+      "main": [
+        [
+          {
+            "node": "Rozbij listę workflowów",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rozbij listę workflowów": {
+      "main": [
+        [
+          {
+            "node": "Przygotuj plik",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Przygotuj plik": {
+      "main": [
+        [
+          {
+            "node": "Sprawdź plik w repo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sprawdź plik w repo": {
+      "main": [
+        [
+          {
+            "node": "Porównaj z repo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Porównaj z repo": {
+      "main": [
+        [
+          {
+            "node": "Zmieniony?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zmieniony?": {
+      "main": [
+        [
+          {
+            "node": "Zapisz w GitHub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bez zmian",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

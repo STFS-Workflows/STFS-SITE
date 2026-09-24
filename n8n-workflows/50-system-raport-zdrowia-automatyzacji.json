@@ -1,0 +1,265 @@
+{
+  "name": "STFS — Tygodniowy raport zdrowia automatyzacji",
+  "nodes": [
+    {
+      "id": "b7566250-24d7-4abb-a37f-5e00c3c2ea66",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 50 – Raport zdrowia automatyzacji\n\nW poniedziałek 8:30 pyta API n8n o aktywne workflowy i błędy z ostatnich 7 dni. Raport: ile błędów, które workflowy psują się najczęściej, ostatni komunikat błędu, oraz **aktywne workflowy bez ustawionego Error Workflow** (czyli takie, których awarii nikt by nie zauważył). Slack + e-mail.\n\nUzupełnia 00 (alert przy każdym błędzie) i 40 (kopia) – razem to „opieka nad automatyzacjami” do sprzedania w abonamencie.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- Slack\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Poniedziałek 8:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 8 * * 1"
+            }
+          ]
+        }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "b47fb6f3-c8cc-4878-aa21-a6f1acd0e960"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ef07d3b0-8b59-44a8-a2c7-dfc23877bf8e",
+              "name": "n8nApiUrl",
+              "value": "https://n8n.stfs.pl/api/v1",
+              "type": "string"
+            },
+            {
+              "id": "aeaeb8b5-0036-4f7e-a64c-168c57ef864e",
+              "name": "odbiorca",
+              "value": "kontakt@stfs.pl",
+              "type": "string"
+            },
+            {
+              "id": "ee76e798-b7d7-4700-a4a0-9386406530ab",
+              "name": "dni",
+              "value": 7,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "6e7992c4-a0e1-4d0d-a56c-1a8ed3b26932"
+    },
+    {
+      "name": "Pobierz aktywne workflowy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.n8nApiUrl + '/workflows?active=true&limit=250' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Header Auth: X-N8N-API-KEY.",
+      "notesInFlow": true,
+      "position": [
+        600,
+        300
+      ],
+      "id": "688c6f57-a25c-4596-a00f-a8620f5b542a"
+    },
+    {
+      "name": "Pobierz błędy wykonań",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.n8nApiUrl + '/executions?status=error&limit=250' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        860,
+        300
+      ],
+      "id": "045ae63f-1c50-470e-a7ef-d419b9cbf26b"
+    },
+    {
+      "name": "Zbierz statystyki",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const c = $('Konfiguracja').first().json;\nconst wf = $('Pobierz aktywne workflowy').first().json.data || [];\nconst nazwy = Object.fromEntries(wf.map((w) => [w.id, w.name]));\nconst granica = Date.now() - c.dni * 86400000;\nconst bledy = ($('Pobierz błędy wykonań').first().json.data || []).filter((e) => Date.parse(e.startedAt) >= granica);\nconst licz = {};\nfor (const e of bledy) {\n  const k = e.workflowId;\n  licz[k] = licz[k] || { n: 0, ostatni: null };\n  licz[k].n++;\n  if (!licz[k].ostatni || e.startedAt > licz[k].ostatni) licz[k].ostatni = e.startedAt;\n}\nconst top = Object.entries(licz).sort((a, b) => b[1].n - a[1].n).slice(0, 5)\n  .map(([id, v]) => '• ' + (nazwy[id] || 'workflow ' + id) + ': ' + v.n + ' błędów (ostatni ' + String(v.ostatni).slice(0, 16).replace('T', ' ') + ')');\nconst bezOpieki = wf.filter((w) => !w.settings || !w.settings.errorWorkflow).map((w) => '• ' + w.name);\nconst tekst = '🩺 Automatyzacje – ostatnie ' + c.dni + ' dni\\n' +\n  'Aktywne workflowy: ' + wf.length + '\\nBłędy wykonań: ' + bledy.length + (bledy.length >= 250 ? '+ (limit zapytania)' : '') + '\\n\\n' +\n  (top.length ? 'Najczęściej psujące się:\\n' + top.join('\\n') : 'Brak błędów – wszystko działa.') +\n  (bezOpieki.length ? '\\n\\n⚠️ Aktywne bez Error Workflow (awaria przejdzie niezauważona):\\n' + bezOpieki.join('\\n') : '');\nreturn [{ json: { tekst, liczbaBledow: bledy.length } }];"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "98ccf473-ef58-4ed7-a28c-09e9c9620a6a"
+    },
+    {
+      "name": "Raport na Slacku",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "={{ $json.tekst }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1380,
+        300
+      ],
+      "id": "8569ca88-aa45-4140-a362-a74d2644d9c5"
+    },
+    {
+      "name": "Raport e-mailem",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Konfiguracja').first().json.odbiorca }}",
+        "subject": "=Raport automatyzacji: {{ $('Zbierz statystyki').item.json.liczbaBledow }} błędów w tygodniu",
+        "emailFormat": "text",
+        "text": "={{ $('Zbierz statystyki').item.json.tekst }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "156f3325-768b-41c1-a9cb-7a53092bbd45"
+    }
+  ],
+  "connections": {
+    "Poniedziałek 8:30": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Pobierz aktywne workflowy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pobierz aktywne workflowy": {
+      "main": [
+        [
+          {
+            "node": "Pobierz błędy wykonań",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pobierz błędy wykonań": {
+      "main": [
+        [
+          {
+            "node": "Zbierz statystyki",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zbierz statystyki": {
+      "main": [
+        [
+          {
+            "node": "Raport na Slacku",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Raport na Slacku": {
+      "main": [
+        [
+          {
+            "node": "Raport e-mailem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

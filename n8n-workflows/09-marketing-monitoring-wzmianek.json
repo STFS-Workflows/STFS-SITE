@@ -2,30 +2,25 @@
   "name": "STFS — Monitoring wzmianek o marce",
   "nodes": [
     {
-      "id": "e0e4a64a-9bf4-4f7f-abd3-b43752a5343a",
+      "id": "7e41f0fc-318e-4871-a09d-06c803e8f90d",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Monitoring marki\n\n**Trigger:** Schedule — co kilka godzin.\n\n**Do zrobienia:**\n1. Podmień \"Pobierz wzmianki\" na API narzędzia monitoringu (Brand24, Mention) lub RSS/wyszukiwarkę.\n2. Skonfiguruj Slack do alertów o negatywnym sentymencie.",
-        "height": 300,
-        "width": 380,
+        "content": "## 09 – Monitoring marki\n\nCo 4 godziny pobiera nowe wzmianki (Brand24/Mention/RSS), odrzuca już widziane, AI ocenia sentyment, negatywne → alert na Slacku.\n\nFormat źródła: `{ \"data\": [ { \"id\", \"text\", \"url\", \"source\" } ] }`.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "cd179f4f-9959-4a3c-8473-cf22e5c34d7c",
       "name": "Co 4 godziny",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -35,100 +30,238 @@
             }
           ]
         }
-      }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "c80df907-3b7c-4a8c-ad8b-af4a68088da8"
     },
     {
-      "id": "172728d5-cc3e-4b83-bd18-940bf97c79bb",
-      "name": "Pobierz wzmianki",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f8a24db5-644e-482f-aeb2-cfabd1969e2b",
+              "name": "wzmiankiUrl",
+              "value": "https://YOUR-MONITORING.example.com/api/mentions?since=4h",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "GET",
-        "url": "https://YOUR-MONITORING.example.com/api/mentions",
-        "sendBody": false,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na Brand24/Mention/RSS."
+      "id": "534fc592-f66d-4245-a7d2-c8e9e5763633"
     },
     {
-      "id": "8b286974-576c-4166-addb-36d6ccd58b97",
-      "name": "AI: analiza sentymentu",
+      "name": "Pobierz wzmianki",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.wzmiankiUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Model klasyfikuje każdą wzmiankę jako pozytywną/neutralną/negatywną."
+      "id": "f1b270ec-68f1-41f6-abaf-9be8409e7271"
     },
     {
-      "id": "da87e059-52ff-4fa2-bf79-8a2b2ed61321",
-      "name": "Czy sentyment negatywny?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "name": "Rozbij listę wzmianek",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
       "position": [
         860,
         300
       ],
+      "id": "f8e95283-047b-4536-aa47-394a4b7ee6cc"
+    },
+    {
+      "name": "Pomiń już widziane",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"wzmianki\"] = store[\"wzmianki\"] || {};\nconst seen = store[\"wzmianki\"];\nconst now = Date.now();\nconst ttl = 30 * 86400000;\nfor (const [k, t] of Object.entries(seen)) if (now - t > ttl) delete seen[k];\nconst out = [];\n$input.all().forEach((item, index) => {\n  const key = String(item.json.id ?? '');\n  if (!key || seen[key]) return; // brak klucza albo już obsłużone -> pomiń\n  // pairedItem zachowuje powiązanie z danymi wejściowymi (potrzebne dla odwołań .item w kolejnych węzłach)\n  out.push({ json: item.json, binary: item.binary, pairedItem: { item: index } });\n});\nreturn out;"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "4b622f65-774e-4362-a77b-4771b199ea9e"
+    },
+    {
+      "name": "AI: prompt (sentyment)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Klasyfikujesz wzmiankę o marce w internecie.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"sentyment\\\": \\\"pozytywna\\\" | \\\"neutralna\\\" | \\\"negatywna\\\", \\\"powod\\\": krótkie uzasadnienie}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Źródło: ${$json.source || '-'}\\nTreść: ${$json.text}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "a751bb88-41dd-413a-a37b-0efe0100d6f7"
+    },
+    {
+      "name": "AI: sentyment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "afff10a9-9011-48ed-a1dc-753bf9ec02a2"
+    },
+    {
+      "name": "AI: wynik (sentyment)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (sentyment)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"sentyment\":\"\",\"powod\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "ed3d52be-e97a-42d7-a59c-9bf8d170b481"
+    },
+    {
+      "name": "Zapamiętaj wzmiankę",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"wzmianki\"] = store[\"wzmianki\"] || {};\nconst src = $json;\nconst key = String(src.id ?? '');\nif (key) store[\"wzmianki\"][key] = Date.now();\nreturn { json: $json };"
+      },
+      "position": [
+        2160,
+        300
+      ],
+      "id": "e6513540-a02d-4505-ad9e-005388896430"
+    },
+    {
+      "name": "Czy negatywna?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
       "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
-              "id": "fa4e65f1-7963-4e0f-902e-89120ad58324",
-              "leftValue": "={{ $json.sentiment }}",
-              "rightValue": "negative",
+              "id": "88677bb4-f08c-4b62-a5ca-3ae85065d863",
+              "leftValue": "={{ $json.sentyment }}",
               "operator": {
                 "type": "string",
                 "operation": "equals"
-              }
+              },
+              "rightValue": "negatywna"
             }
           ],
           "combinator": "and"
         },
         "options": {}
-      }
+      },
+      "position": [
+        2420,
+        300
+      ],
+      "id": "7916c057-b14c-4faf-a5d9-5d572817a6e9"
     },
     {
-      "id": "2e7ab911-a0f9-4c2a-bcfd-b132f463fdf4",
       "name": "Alert: negatywna wzmianka",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [
-        1120,
-        300
-      ],
       "parameters": {
         "select": "channel",
         "channelId": {
+          "__rl": true,
           "mode": "name",
-          "value": "#automatyzacje"
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
         },
-        "text": "⚠️ Negatywna wzmianka o marce: {{$json.text}}",
-        "otherOptions": {}
-      }
+        "text": "=⚠️ Negatywna wzmianka ({{ $json.source }}): {{ $json.text.slice(0, 300) }}\nPowód: {{ $json.powod }}\n{{ $json.url }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2680,
+        300
+      ],
+      "id": "287af668-53e0-48f0-a4f0-94586855f331"
+    },
+    {
+      "name": "Neutralna/pozytywna",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        2680,
+        520
+      ],
+      "id": "2d4ba0af-10bc-4303-a878-da585f5945a3"
     }
   ],
   "connections": {
     "Co 4 godziny": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -143,29 +276,91 @@
       "main": [
         [
           {
-            "node": "AI: analiza sentymentu",
+            "node": "Rozbij listę wzmianek",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: analiza sentymentu": {
+    "Rozbij listę wzmianek": {
       "main": [
         [
           {
-            "node": "Czy sentyment negatywny?",
+            "node": "Pomiń już widziane",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Czy sentyment negatywny?": {
+    "Pomiń już widziane": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (sentyment)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (sentyment)": {
+      "main": [
+        [
+          {
+            "node": "AI: sentyment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: sentyment": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (sentyment)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (sentyment)": {
+      "main": [
+        [
+          {
+            "node": "Zapamiętaj wzmiankę",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapamiętaj wzmiankę": {
+      "main": [
+        [
+          {
+            "node": "Czy negatywna?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Czy negatywna?": {
       "main": [
         [
           {
             "node": "Alert: negatywna wzmianka",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Neutralna/pozytywna",
             "type": "main",
             "index": 0
           }
@@ -175,6 +370,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

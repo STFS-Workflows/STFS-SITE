@@ -2,98 +2,268 @@
   "name": "STFS — Kategoryzacja i priorytetyzacja zgłoszeń",
   "nodes": [
     {
-      "id": "19cc62ef-8d98-4cae-add9-cd9b8010831b",
+      "id": "358677c5-499e-403f-a6c9-f22b13ce96a6",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Kategoryzacja zgłoszeń\n\n**Trigger:** Webhook z formularza zgłoszeniowego / helpdesku.\n\n**Do zrobienia:**\n1. Podmień \"Zapisz w helpdesku\" na realny system (Zendesk/Freshdesk/inny).\n2. Dostosuj kategorie i priorytety do swojego zespołu.",
-        "height": 300,
-        "width": 380,
+        "content": "## 11 – Kategoryzacja zgłoszeń\n\nZgłoszenie → AI nadaje kategorię, priorytet i streszczenie → zapis w helpdesku → pilne (wysoki priorytet) od razu na Slacka.\n\nWejście: `email`, `subject`, `message`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "ccc8d0b3-202b-4cfe-baea-69afa4e16737",
       "name": "Nowe zgłoszenie (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "zgloszenie-nowe",
         "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
-      }
+      },
+      "webhookId": "c27f3fd8-af78-46ff-a058-2cb25c7d78b4",
+      "position": [
+        80,
+        300
+      ],
+      "id": "56176136-e410-4497-a380-805636483f80"
     },
     {
-      "id": "fd49a03d-6d19-41e8-9cd3-35a01f618afb",
-      "name": "AI: kategoria i priorytet",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"email\",\"subject\",\"message\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Model zwraca kategorię (techniczne/sprzedaż/inne) i priorytet (niski/średni/wysoki)."
+      "id": "9e3ea536-cb00-413b-a587-e844b7e01e27"
     },
     {
-      "id": "758fe866-851d-4b99-919f-d89ddcf11075",
-      "name": "Zapisz w helpdesku",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e7095a5d-45b7-4169-addc-a749fb7a65db",
+              "name": "helpdeskUrl",
+              "value": "https://YOUR-HELPDESK.example.com/api/tickets",
+              "type": "string"
+            },
+            {
+              "id": "5312fdfb-c3b1-4fed-abc2-4fb55c5ffbf7",
+              "name": "kategorie",
+              "value": "techniczne, sprzedaz, faktury, reklamacja, inne",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://YOUR-HELPDESK.example.com/api/tickets",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na Zendesk/Freshdesk/inny."
+      "id": "4b548f70-ab4a-4837-adea-7f164980d3eb"
     },
     {
-      "id": "894b6cfe-f167-4e6b-bdfd-26ab0150a61c",
-      "name": "Powiadom zespół",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "name": "AI: prompt (kategoria i priorytet)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Klasyfikujesz zgłoszenia klientów w helpdesku.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"kategoria\\\": jedna z dozwolonych, \\\"priorytet\\\": \\\"niski\\\" | \\\"sredni\\\" | \\\"wysoki\\\", \\\"streszczenie\\\": 1 zdanie}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Dozwolone kategorie: ${$('Konfiguracja').first().json.kategorie}\\nTemat: ${$json.subject}\\nTreść: ${$json.message}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
       "position": [
         860,
         300
       ],
+      "id": "a6fba1ab-dff1-41d9-a3a4-6b2a8135f4fc"
+    },
+    {
+      "name": "AI: kategoria i priorytet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "6d6b104c-ac8e-4b32-a924-5655fdbc8bfc"
+    },
+    {
+      "name": "AI: wynik (kategoria i priorytet)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (kategoria i priorytet)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"kategoria\":\"\",\"priorytet\":\"\",\"streszczenie\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "f2e21747-c4b8-4a5c-a877-401374a72f3e"
+    },
+    {
+      "name": "Zapisz w helpdesku",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.helpdeskUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ email: $json.email, subject: $json.subject, body: $json.message, category: $json.kategoria, priority: $json._aiOk ? $json.priorytet : \"sredni\", summary: $json.streszczenie }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "86332182-ad76-4be1-a365-328539344636"
+    },
+    {
+      "name": "Priorytet wysoki?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "e7dbe2f6-8cbc-4113-a576-d937e4fa2b05",
+              "leftValue": "={{ $('AI: wynik (kategoria i priorytet)').item.json.priorytet }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "wysoki"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "4d336462-e012-495f-ac57-a0f399facb2b"
+    },
+    {
+      "name": "Powiadom zespół (pilne)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
       "parameters": {
         "select": "channel",
         "channelId": {
+          "__rl": true,
           "mode": "name",
-          "value": "#automatyzacje"
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
         },
-        "text": "Nowe zgłoszenie [{{$json.priority}}]: {{$json.subject}}",
-        "otherOptions": {}
-      }
+        "text": "=🚨 Pilne zgłoszenie [{{ $('AI: wynik (kategoria i priorytet)').item.json.kategoria }}]: {{ $('AI: wynik (kategoria i priorytet)').item.json.subject }}\n{{ $('AI: wynik (kategoria i priorytet)').item.json.streszczenie }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2160,
+        300
+      ],
+      "id": "9b050ea5-98cf-46a8-aa81-dd6b026549e3"
+    },
+    {
+      "name": "Priorytet normalny",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        2160,
+        520
+      ],
+      "id": "6304748e-f2fb-4505-a432-7349088e3793"
     }
   ],
   "connections": {
     "Nowe zgłoszenie (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (kategoria i priorytet)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (kategoria i priorytet)": {
       "main": [
         [
           {
@@ -108,6 +278,17 @@
       "main": [
         [
           {
+            "node": "AI: wynik (kategoria i priorytet)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (kategoria i priorytet)": {
+      "main": [
+        [
+          {
             "node": "Zapisz w helpdesku",
             "type": "main",
             "index": 0
@@ -119,7 +300,25 @@
       "main": [
         [
           {
-            "node": "Powiadom zespół",
+            "node": "Priorytet wysoki?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Priorytet wysoki?": {
+      "main": [
+        [
+          {
+            "node": "Powiadom zespół (pilne)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Priorytet normalny",
             "type": "main",
             "index": 0
           }
@@ -129,6 +328,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

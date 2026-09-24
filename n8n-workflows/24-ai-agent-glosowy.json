@@ -2,149 +2,383 @@
   "name": "STFS — Agent głosowy (recepcja AI)",
   "nodes": [
     {
-      "id": "e1765504-7af1-41c5-9e55-95ba745befbf",
+      "id": "e70fad98-a77b-404f-ae1d-9c2c277d9699",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Agent głosowy\n\n**Trigger:** Webhook — wywoływany przez Twilio (przychodzące połączenie).\n\n**Do zrobienia (wymaga dodatkowej infrastruktury):**\n1. Konto Twilio + numer telefonu, webhook połączenia wskazuje na ten URL.\n2. Speech-to-Text (np. Whisper API) do zamiany mowy na tekst.\n3. Węzeł AI generuje odpowiedź.\n4. Text-to-Speech (np. ElevenLabs/OpenAI TTS) do wygenerowania odpowiedzi głosowej zwracanej do Twilio (TwiML).\nTo najbardziej złożony workflow w katalogu — potraktuj jako szkielet do rozbudowy.",
-        "height": 300,
-        "width": 380,
+        "content": "## 24 – Recepcja AI przez telefon (Twilio)\n\nPrzebudowane na prostą, działającą architekturę: **Twilio samo zamienia mowę na tekst** (`<Gather input=\"speech\">`) i czyta odpowiedź (`<Say>`). n8n dostaje tekst, AI odpowiada na podstawie informacji o firmie, n8n zwraca TwiML. Pętla trwa do końca rozmowy.\n\nKonfiguracja Twilio: numer → Voice → „A call comes in” → Webhook POST na Production URL tego workflow (ten sam adres wpisz w Konfiguracji).\n\nBezpieczeństwo: Twilio nie wysyła Header Auth, dlatego sprawdzany jest podpis `X-Twilio-Signature`.\n\n## Credentials do utworzenia\n- Header Auth (API)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "754eec28-15d2-465f-b751-32465e42a908",
-      "name": "Połączenie przychodzące (Twilio Webhook)",
+      "name": "Połączenie Twilio (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agent-glosowy",
+        "authentication": "none",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "9fa85aa8-3be4-46ba-a706-a0fc4f537edd",
       "position": [
         80,
         300
       ],
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "agent-glosowy",
-        "authentication": "headerAuth",
-        "responseMode": "onReceived",
-        "options": {}
-      }
+      "id": "b4df6839-cf48-4150-a09e-62b827a17c73"
     },
     {
-      "id": "e4c2d3a5-fc7c-49fe-b090-35bed448d8db",
-      "name": "Speech-to-Text",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/audio/transcriptions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na Whisper API lub inny STT."
+      "id": "b34de7e9-3f18-47bb-ad18-c473f0cf1135"
     },
     {
-      "id": "6ec6c3d5-6492-4f65-be13-0898bc5cdda9",
-      "name": "AI: wygeneruj odpowiedź",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1a647d0-5ac2-4d79-a890-074355dff16d",
+              "name": "publicznyUrlWebhooka",
+              "value": "https://n8n.YOUR-DOMAIN.pl/webhook/agent-glosowy",
+              "type": "string"
+            },
+            {
+              "id": "5ea9ec98-d5c5-4bcf-ada3-7a6a6929e1d7",
+              "name": "powitanie",
+              "value": "Dzień dobry, tu wirtualna recepcja. W czym mogę pomóc?",
+              "type": "string"
+            },
+            {
+              "id": "433ca440-23b5-4c09-a872-c0bd2178b467",
+              "name": "informacjeOFirmie",
+              "value": "Godziny otwarcia, adres, usługi, cennik orientacyjny…",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na węzeł dostawcy AI (OpenAI/Claude/inny) lub uzupełnij Authorization: Bearer w Headers. To placeholder pokazujący, gdzie w przepływie wchodzi model językowy."
+      "id": "87279b2a-7cc3-4fb6-a4f9-a9e92e2d3c07"
     },
     {
-      "id": "d72292c4-57e8-485d-be6c-897540d48f6f",
-      "name": "Text-to-Speech",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Weryfikuj podpis Twilio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Weryfikacja podpisu X-Twilio-Signature (Twilio nie wysyła nagłówka Header Auth).\n// Wymaga: NODE_FUNCTION_ALLOW_BUILTIN=crypto oraz zmiennej TWILIO_AUTH_TOKEN w środowisku n8n.\nconst crypto = require('crypto');\nconst token = $env.TWILIO_AUTH_TOKEN;\nif (!token) throw new Error('Brak TWILIO_AUTH_TOKEN – odrzucam żądanie');\nconst url = $('Konfiguracja').first().json.publicznyUrlWebhooka;\nconst params = $json.body || {};\nconst data = url + Object.keys(params).sort().map((k) => k + params[k]).join('');\nconst expected = crypto.createHmac('sha1', token).update(Buffer.from(data, 'utf-8')).digest('base64');\nconst got = $json.headers?.['x-twilio-signature'] || '';\nconst ok = got.length === expected.length && crypto.timingSafeEqual(Buffer.from(got), Buffer.from(expected));\nif (!ok) throw new Error('Niepoprawny podpis Twilio');\nreturn { json: { speech: String(params.SpeechResult || '').slice(0, 1000), callSid: params.CallSid || '' } };"
+      },
       "position": [
         860,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.elevenlabs.io/v1/text-to-speech",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na ElevenLabs/OpenAI TTS."
+      "id": "428955ed-dee5-4b50-a75e-96907aeca36f"
     },
     {
-      "id": "6c2de803-2627-4338-9a8d-a0697a15e1a7",
-      "name": "Zwróć TwiML do Twilio",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
+      "name": "Klient coś powiedział?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "46d71eca-e73c-4daa-a62e-2355d94b64ff",
+              "leftValue": "={{ Boolean($('Weryfikuj podpis Twilio').item.json.speech) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
       "position": [
         1120,
         300
       ],
+      "id": "66abb6d1-c1be-4a71-abb1-6ca542f127aa"
+    },
+    {
+      "name": "AI: prompt (odpowiedź głosowa)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { \"status\": \"ok\" } }}"
-      }
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Jesteś uprzejmą recepcjonistką firmy rozmawiającą przez telefon. Odpowiadasz maks. 2 krótkimi zdaniami, po polsku, tylko na podstawie informacji o firmie. Jeśli nie wiesz – zaproponuj kontakt mailowy lub oddzwonienie.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"odpowiedz\\\": tekst do przeczytania}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Informacje o firmie:\\n${$('Konfiguracja').first().json.informacjeOFirmie}\\n\\nKlient powiedział: ${$('Weryfikuj podpis Twilio').item.json.speech}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 200,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "1435e964-6353-4bfd-ac12-c6a0d091fa79"
+    },
+    {
+      "name": "AI: odpowiedź głosowa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "9d1cf7e5-9e56-415b-a0b0-1c5aa4d61462"
+    },
+    {
+      "name": "AI: wynik (odpowiedź głosowa)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (odpowiedź głosowa)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"odpowiedz\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "b1ba9eee-69d6-4f06-ae30-36434cd7336e"
+    },
+    {
+      "name": "Zbuduj TwiML odpowiedzi",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const esc = (s) => String(s).replace(/[<>&'\"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', \"'\": '&apos;', '\"': '&quot;' }[c]));\nconst url = esc($('Konfiguracja').first().json.publicznyUrlWebhooka);\nconst say = esc($json._aiOk && $json.odpowiedz ? $json.odpowiedz + ' Czy mogę pomóc w czymś jeszcze?' : 'Przepraszam, mam chwilowy problem. Proszę napisać na nasz adres e-mail.');\nreturn { json: { twiml: '<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Gather input=\"speech\" language=\"pl-PL\" speechTimeout=\"auto\" action=\"' + url + '\" method=\"POST\"><Say language=\"pl-PL\">' + say + '</Say></Gather><Say language=\"pl-PL\">Nie usłyszałem odpowiedzi. Do usłyszenia.</Say></Response>' } };"
+      },
+      "position": [
+        2160,
+        300
+      ],
+      "id": "9de53c5b-12cf-4476-a542-25c752198942"
+    },
+    {
+      "name": "Zwróć TwiML (odpowiedź)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.twiml }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/xml"
+              }
+            ]
+          }
+        }
+      },
+      "position": [
+        2420,
+        300
+      ],
+      "id": "00427987-3293-4ba8-ad15-e52393cf890b"
+    },
+    {
+      "name": "Zbuduj TwiML powitania",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const esc = (s) => String(s).replace(/[<>&'\"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', \"'\": '&apos;', '\"': '&quot;' }[c]));\nconst url = esc($('Konfiguracja').first().json.publicznyUrlWebhooka);\nconst say = esc($('Konfiguracja').first().json.powitanie);\nreturn { json: { twiml: '<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Gather input=\"speech\" language=\"pl-PL\" speechTimeout=\"auto\" action=\"' + url + '\" method=\"POST\"><Say language=\"pl-PL\">' + say + '</Say></Gather><Say language=\"pl-PL\">Nie usłyszałem odpowiedzi. Do usłyszenia.</Say></Response>' } };"
+      },
+      "position": [
+        1380,
+        520
+      ],
+      "id": "419a456e-e2cc-4e71-ac26-3c082747bc77"
+    },
+    {
+      "name": "Zwróć TwiML (powitanie)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.twiml }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/xml"
+              }
+            ]
+          }
+        }
+      },
+      "position": [
+        1640,
+        520
+      ],
+      "id": "75a80a92-7021-430d-a84f-e7c7e38012a5"
     }
   ],
   "connections": {
-    "Połączenie przychodzące (Twilio Webhook)": {
+    "Połączenie Twilio (Webhook)": {
       "main": [
         [
           {
-            "node": "Speech-to-Text",
+            "node": "Walidacja danych",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Speech-to-Text": {
+    "Walidacja danych": {
       "main": [
         [
           {
-            "node": "AI: wygeneruj odpowiedź",
+            "node": "Konfiguracja",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: wygeneruj odpowiedź": {
+    "Konfiguracja": {
       "main": [
         [
           {
-            "node": "Text-to-Speech",
+            "node": "Weryfikuj podpis Twilio",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Text-to-Speech": {
+    "Weryfikuj podpis Twilio": {
       "main": [
         [
           {
-            "node": "Zwróć TwiML do Twilio",
+            "node": "Klient coś powiedział?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Klient coś powiedział?": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (odpowiedź głosowa)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Zbuduj TwiML powitania",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (odpowiedź głosowa)": {
+      "main": [
+        [
+          {
+            "node": "AI: odpowiedź głosowa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: odpowiedź głosowa": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (odpowiedź głosowa)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (odpowiedź głosowa)": {
+      "main": [
+        [
+          {
+            "node": "Zbuduj TwiML odpowiedzi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zbuduj TwiML odpowiedzi": {
+      "main": [
+        [
+          {
+            "node": "Zwróć TwiML (odpowiedź)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zbuduj TwiML powitania": {
+      "main": [
+        [
+          {
+            "node": "Zwróć TwiML (powitanie)",
             "type": "main",
             "index": 0
           }
@@ -154,6 +388,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

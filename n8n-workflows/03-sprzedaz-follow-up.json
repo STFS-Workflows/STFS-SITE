@@ -2,131 +2,373 @@
   "name": "STFS — Follow-up po braku odpowiedzi",
   "nodes": [
     {
-      "id": "6ceddc63-5a19-4315-ada7-fb3b48582f1b",
+      "id": "c81a6d02-d3b1-41f8-a882-e612847165a6",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Follow-up sekwencyjny\n\n**Trigger:** Schedule — sprawdza codziennie leady bez odpowiedzi.\n\n**Do zrobienia:**\n1. Podmień \"Pobierz leady bez odpowiedzi\" na zapytanie do Twojego CRM/bazy.\n2. Ustaw liczbę dni bez odpowiedzi w węźle IF.\n3. Dostosuj treść follow-upu.",
-        "height": 300,
-        "width": 380,
+        "content": "## 03 – Follow-up\n\nCodziennie o 9:00 pobiera leady bez odpowiedzi, liczy dni od ostatniego kontaktu, wysyła JEDEN nienachalny follow-up i oznacza lead w CRM (plus pamięć workflow – nie wyśle drugi raz).\n\nOczekiwany format z CRM: `{ \"data\": [ { \"id\", \"name\", \"email\", \"lastContactAt\" } ] }`.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- SMTP\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "91c2bb8f-fc1c-490c-9a7f-aea45a2dbe3b",
       "name": "Codziennie 9:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "rule": {
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 9 * * *"
+              "expression": "0 9 * * 1-5"
             }
           ]
         }
-      }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "6e9ded34-f177-4f23-a6b7-c66dda3d6a8c"
     },
     {
-      "id": "2472bdb3-1fd5-4b45-9802-24be9fa70317",
-      "name": "Pobierz leady bez odpowiedzi",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1fcfab4-3564-4724-a7e9-d66b8d8c5a84",
+              "name": "dniBezOdpowiedzi",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "0f7a186f-8ef5-4dd2-a3f3-f787a3e58306",
+              "name": "crmListaUrl",
+              "value": "https://YOUR-CRM.example.com/api/leads?status=no_reply",
+              "type": "string"
+            },
+            {
+              "id": "b5956cb7-4d7d-4c58-ade7-83a4abd5da94",
+              "name": "crmAktualizacjaUrl",
+              "value": "https://YOUR-CRM.example.com/api/leads",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "GET",
-        "url": "https://YOUR-CRM.example.com/api/leads?status=no_reply",
-        "sendBody": false,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na realny endpoint CRM/bazy."
+      "id": "5e20db74-dc17-4a36-a72e-008e12620e45"
     },
     {
-      "id": "19f5c95a-fe56-461d-81bd-7f7e632e77ad",
-      "name": "Minęło 3+ dni?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "name": "Pobierz leady bez odpowiedzi",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.crmListaUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [
         600,
         300
       ],
+      "id": "c8266fac-92ae-4c7e-af94-8ee3e1632add"
+    },
+    {
+      "name": "Rozbij listę leadów",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "b7261fed-a546-446d-a149-dfaec81db057"
+    },
+    {
+      "name": "Policz dni od kontaktu",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const last = Date.parse($json.lastContactAt);\nconst dni = Number.isFinite(last) ? Math.floor((Date.now() - last) / 86400000) : null;\nreturn { json: { ...$json, dniOdKontaktu: dni } };"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "d777832d-f09c-41c0-a7d0-b26a6c553b3d"
+    },
+    {
+      "name": "Minęło wystarczająco dni?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
       "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
-              "id": "4c88ee02-cea7-4afb-9397-5d61d436d3f2",
-              "leftValue": "={{ $json.daysSinceContact }}",
-              "rightValue": 3,
+              "id": "e7a0784f-63f8-4b51-afa9-e0a0cbf19165",
+              "leftValue": "={{ $json.dniOdKontaktu }}",
               "operator": {
                 "type": "number",
                 "operation": "gte"
-              }
+              },
+              "rightValue": "={{ $('Konfiguracja').first().json.dniBezOdpowiedzi }}"
             }
           ],
           "combinator": "and"
         },
         "options": {}
-      }
-    },
-    {
-      "id": "27ae361f-bd74-440a-aad5-cf16bee2cb16",
-      "name": "AI: napisz follow-up",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      },
       "position": [
-        860,
+        1380,
         300
       ],
+      "id": "3166b5fb-49a6-4c77-ae78-002037b68181"
+    },
+    {
+      "name": "Pomiń już obsłużone",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"followup\"] = store[\"followup\"] || {};\nconst seen = store[\"followup\"];\nconst now = Date.now();\nconst ttl = 90 * 86400000;\nfor (const [k, t] of Object.entries(seen)) if (now - t > ttl) delete seen[k];\nconst out = [];\n$input.all().forEach((item, index) => {\n  const key = String(item.json.id ?? '');\n  if (!key || seen[key]) return; // brak klucza albo już obsłużone -> pomiń\n  // pairedItem zachowuje powiązanie z danymi wejściowymi (potrzebne dla odwołań .item w kolejnych węzłach)\n  out.push({ json: item.json, binary: item.binary, pairedItem: { item: index } });\n});\nreturn out;"
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "1b5f9915-f9fb-4184-a92c-7075ef6a3d0c"
+    },
+    {
+      "name": "AI: prompt (follow-up)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Piszesz krótki (2-3 zdania), nienachalny follow-up do potencjalnego klienta, który nie odpowiedział. Po polsku, uprzejmie, jedno pytanie na końcu. Bez emoji i bez presji.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"temat\\\": krótki temat, \\\"tresc\\\": treść wiadomości}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Imię: ${$json.name}\\nDni od ostatniego kontaktu: ${$json.dniOdKontaktu}\\nKontekst: ${$json.notes || '-'}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "3d6dd065-560d-4299-ad59-a9e8e1a477cf"
+    },
+    {
+      "name": "AI: follow-up",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "parameters": {
         "method": "POST",
         "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
       },
-      "notes": "Model generuje krótką, nienachalną wiadomość follow-up."
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        2160,
+        300
+      ],
+      "id": "b2003090-e2c8-443d-a664-0866273a3fbc"
     },
     {
-      "id": "7a9dfa8f-abce-4204-ba02-661258a5b937",
+      "name": "AI: wynik (follow-up)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (follow-up)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"temat\":\"\",\"tresc\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        2420,
+        300
+      ],
+      "id": "07f0b03b-891f-45ce-ad78-dc2f8b009b92"
+    },
+    {
+      "name": "AI zadziałało?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "3c6d8ff2-00a3-456e-a587-9b5a0039ffd5",
+              "leftValue": "={{ $('AI: wynik (follow-up)').item.json._aiOk }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        2680,
+        300
+      ],
+      "id": "661bc49f-3b85-42c0-a644-a2b986f9af3d"
+    },
+    {
       "name": "Wyślij follow-up",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $json.email }}",
+        "subject": "={{ $json.temat }}",
+        "emailFormat": "text",
+        "text": "={{ $json.tresc }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [
-        1120,
+        2940,
         300
       ],
+      "id": "f7bf2e44-2bcd-458e-a01d-3d2bde50745b"
+    },
+    {
+      "name": "Oznacz w CRM: follow-up wysłany",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "parameters": {
-        "fromEmail": "hello@stfs.studio",
-        "toEmail": "={{ $json.email }}",
-        "subject": "Czy nadal jesteś zainteresowany/a?",
-        "text": "={{ $json.aiResponse }}",
-        "options": {}
-      }
+        "method": "PATCH",
+        "url": "={{ $('Konfiguracja').first().json.crmAktualizacjaUrl + '/' + encodeURIComponent($('AI: wynik (follow-up)').item.json.id) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: \"followup_sent\", followupAt: $now.toISO() }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        3200,
+        300
+      ],
+      "id": "068905f0-30ff-42ab-a2e6-0a974542cc34"
+    },
+    {
+      "name": "Zapamiętaj wysłany follow-up",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"followup\"] = store[\"followup\"] || {};\nconst src = $('AI: wynik (follow-up)').item.json;\nconst key = String(src.id ?? '');\nif (key) store[\"followup\"][key] = Date.now();\nreturn { json: $json };"
+      },
+      "position": [
+        3460,
+        300
+      ],
+      "id": "b5170787-7e5a-4838-a109-073e54a74ffc"
+    },
+    {
+      "name": "Alert: AI nie odpowiedziało",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=⚠️ AI nie przygotowało odpowiedzi (follow-up) – obsłuż ręcznie.\nBłąd: {{ $('AI: wynik (follow-up)').item.json._aiError }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2940,
+        520
+      ],
+      "id": "aa7f8e29-599b-4592-af95-1becbd61d6a4"
+    },
+    {
+      "name": "Za wcześnie – pomiń",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        1640,
+        740
+      ],
+      "id": "4de3a91c-a12e-4472-a9f4-288334fa017b"
     }
   ],
   "connections": {
     "Codziennie 9:00": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -141,29 +383,131 @@
       "main": [
         [
           {
-            "node": "Minęło 3+ dni?",
+            "node": "Rozbij listę leadów",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Minęło 3+ dni?": {
+    "Rozbij listę leadów": {
       "main": [
         [
           {
-            "node": "AI: napisz follow-up",
+            "node": "Policz dni od kontaktu",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: napisz follow-up": {
+    "Policz dni od kontaktu": {
+      "main": [
+        [
+          {
+            "node": "Minęło wystarczająco dni?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Minęło wystarczająco dni?": {
+      "main": [
+        [
+          {
+            "node": "Pomiń już obsłużone",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Za wcześnie – pomiń",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pomiń już obsłużone": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (follow-up)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (follow-up)": {
+      "main": [
+        [
+          {
+            "node": "AI: follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: follow-up": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (follow-up)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (follow-up)": {
+      "main": [
+        [
+          {
+            "node": "AI zadziałało?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI zadziałało?": {
       "main": [
         [
           {
             "node": "Wyślij follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert: AI nie odpowiedziało",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wyślij follow-up": {
+      "main": [
+        [
+          {
+            "node": "Oznacz w CRM: follow-up wysłany",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Oznacz w CRM: follow-up wysłany": {
+      "main": [
+        [
+          {
+            "node": "Zapamiętaj wysłany follow-up",
             "type": "main",
             "index": 0
           }
@@ -173,6 +517,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

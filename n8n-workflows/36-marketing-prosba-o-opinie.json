@@ -1,0 +1,336 @@
+{
+  "name": "STFS — Prośba o opinię po zakupie lub wizycie",
+  "nodes": [
+    {
+      "id": "b54597a2-af45-476a-a9de-abca8fb91586",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 36 – Prośba o opinię\n\nPo zrealizowanym zamówieniu/wizycie workflow czeka X dni, sprawdza, czy zamówienie nie zostało anulowane lub zwrócone, i wysyła JEDNĄ prośbę o opinię z linkiem do Google.\n\n⚖️ Prośbę dostaje KAŻDY klient ze zrealizowanym zamówieniem. Nie filtrujemy „zadowolonych” (Google zakazuje tzw. review gating) i nie dajemy nagród za opinie. Działa w parze z Monitoringiem opinii.\n\nWejście: `orderId`, `email`, `name`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Zamówienie zrealizowane (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "zamowienie-zrealizowane",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "19199176-aa80-4aa8-a012-66f72f6c7154",
+      "position": [
+        80,
+        300
+      ],
+      "id": "7b5189fb-eda6-48f2-a37a-49d434ec5c32"
+    },
+    {
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"orderId\",\"email\",\"name\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "00245cbb-3028-4b78-a281-0794a365241f"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "eabf1c29-0623-47d7-a411-8946cf93463e",
+              "name": "nazwaFirmy",
+              "value": "Nazwa firmy",
+              "type": "string"
+            },
+            {
+              "id": "f2062529-6b76-4cb3-abd0-26cbcd60d1e9",
+              "name": "linkDoOpinii",
+              "value": "https://g.page/r/YOUR-PLACE-ID/review",
+              "type": "string"
+            },
+            {
+              "id": "93606fb7-9668-4a1f-a7fb-d9a214b1a3a2",
+              "name": "dniOczekiwania",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "dabac15b-4622-4868-ad79-bfae242dfc4e",
+              "name": "zamowieniaUrl",
+              "value": "https://YOUR-SHOP.example.com/api/orders",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        600,
+        300
+      ],
+      "id": "309fab2c-7b5f-453b-a73f-84c46a59eee7"
+    },
+    {
+      "name": "Pomiń już poproszone",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"opinie-prosba\"] = store[\"opinie-prosba\"] || {};\nconst seen = store[\"opinie-prosba\"];\nconst now = Date.now();\nconst ttl = 365 * 86400000;\nfor (const [k, t] of Object.entries(seen)) if (now - t > ttl) delete seen[k];\nconst out = [];\n$input.all().forEach((item, index) => {\n  const key = String(item.json.orderId ?? '');\n  if (!key || seen[key]) return; // brak klucza albo już obsłużone -> pomiń\n  // pairedItem zachowuje powiązanie z danymi wejściowymi (potrzebne dla odwołań .item w kolejnych węzłach)\n  out.push({ json: item.json, binary: item.binary, pairedItem: { item: index } });\n});\nreturn out;"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "2342f584-0d3e-4516-a19c-9690ed8119b0"
+    },
+    {
+      "name": "Odczekaj kilka dni",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": "={{ $('Konfiguracja').first().json.dniOczekiwania }}",
+        "unit": "days"
+      },
+      "webhookId": "6691668c-2f10-4705-a730-f820992bcc0d",
+      "position": [
+        1120,
+        300
+      ],
+      "id": "0ba42075-de92-4586-aaf5-42ad03a764a6"
+    },
+    {
+      "name": "Sprawdź status zamówienia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.zamowieniaUrl + '/' + encodeURIComponent($('Walidacja danych').item.json.orderId) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1380,
+        300
+      ],
+      "id": "b43d050e-a69a-46cb-af58-c09a61bbd406"
+    },
+    {
+      "name": "Nadal zrealizowane?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "1030227b-8ead-4dd6-a583-6f52217e484d",
+              "leftValue": "={{ $json.status }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "completed"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "61719d2a-111a-472e-ae43-8482e9431cec"
+    },
+    {
+      "name": "Poproś o opinię",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Walidacja danych').item.json.email }}",
+        "subject": "=Jak oceniasz {{ $('Konfiguracja').first().json.nazwaFirmy }}?",
+        "emailFormat": "text",
+        "text": "=Dzień dobry {{ $('Walidacja danych').item.json.name }},\n\ndziękujemy za zaufanie. Jeśli masz minutę, podziel się proszę opinią – pomaga nam i innym klientom:\n{{ $('Konfiguracja').first().json.linkDoOpinii }}\n\nJeśli coś poszło nie tak, po prostu odpisz na tę wiadomość – zajmiemy się tym.\n\nPozdrawiamy,\n{{ $('Konfiguracja').first().json.nazwaFirmy }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "89cba28e-6a01-4237-ab16-9c755c8540e1"
+    },
+    {
+      "name": "Zapamiętaj prośbę",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"opinie-prosba\"] = store[\"opinie-prosba\"] || {};\nconst src = $('Walidacja danych').item.json;\nconst key = String(src.orderId ?? '');\nif (key) store[\"opinie-prosba\"][key] = Date.now();\nreturn { json: $json };"
+      },
+      "position": [
+        2160,
+        300
+      ],
+      "id": "0bd808d3-1949-4523-aa2c-2f019694bb5a"
+    },
+    {
+      "name": "Anulowane lub zwrócone – bez prośby",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        1900,
+        520
+      ],
+      "id": "baa1e9bc-cb1a-4384-a4d0-f4a47349d8e9"
+    }
+  ],
+  "connections": {
+    "Zamówienie zrealizowane (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Pomiń już poproszone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pomiń już poproszone": {
+      "main": [
+        [
+          {
+            "node": "Odczekaj kilka dni",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Odczekaj kilka dni": {
+      "main": [
+        [
+          {
+            "node": "Sprawdź status zamówienia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sprawdź status zamówienia": {
+      "main": [
+        [
+          {
+            "node": "Nadal zrealizowane?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nadal zrealizowane?": {
+      "main": [
+        [
+          {
+            "node": "Poproś o opinię",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Anulowane lub zwrócone – bez prośby",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poproś o opinię": {
+      "main": [
+        [
+          {
+            "node": "Zapamiętaj prośbę",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

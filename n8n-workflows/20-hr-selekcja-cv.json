@@ -2,107 +2,243 @@
   "name": "STFS — Wstępna selekcja CV",
   "nodes": [
     {
-      "id": "ed11e5a0-4935-47ec-8879-9e404112c2ec",
+      "id": "6555f025-2111-4d1f-a284-3165450527d7",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Selekcja CV\n\n**Trigger:** Webhook — po przesłaniu CV przez formularz rekrutacyjny.\n\n**Do zrobienia:**\n1. Podmień węzeł AI na swój provider.\n2. Podmień \"Zapisz wynik\" na ATS / arkusz rekrutacyjny.",
-        "height": 300,
-        "width": 380,
+        "content": "## 20 – Wstępna selekcja CV\n\nCV → AI porównuje z wymaganiami (Konfiguracja) → **każda** aplikacja trafia do ATS z oceną → rekruter dostaje Slacka o najlepszych.\n\n⚖️ AI tylko PODPOWIADA. Decyzję o odrzuceniu zawsze podejmuje człowiek (RODO art. 22, AI Act – rekrutacja to system wysokiego ryzyka). Workflow nie wysyła żadnych odmów automatycznie.\n\nWejście: `name`, `email`, `cvText` (tekst CV).\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "c54774a4-14aa-442a-9bbb-87ffdb2d9966",
       "name": "Nowe CV (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "cv-nowe",
         "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
-      }
+      },
+      "webhookId": "686afd45-050b-487a-af04-a6a4139ee2e7",
+      "position": [
+        80,
+        300
+      ],
+      "id": "9b663a04-f709-44e6-a41c-8912aa740955"
     },
     {
-      "id": "3928a9df-a530-4314-9ae6-729c748c80d0",
-      "name": "AI: dopasuj CV do wymagań",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"name\",\"email\",\"cvText\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Model porównuje CV z opisem stanowiska i zwraca ocenę dopasowania."
+      "id": "e544724a-227b-41c4-a5e8-85a68d0c1c70"
     },
     {
-      "id": "c4f5e69d-46d4-4654-bf6a-c572544c642d",
-      "name": "Dopasowanie wysokie?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f2295e3b-c34d-427d-af5e-205a470ea055",
+              "name": "stanowisko",
+              "value": "Nazwa stanowiska",
+              "type": "string"
+            },
+            {
+              "id": "f110308f-9a68-4a32-a6ca-041b60c0581a",
+              "name": "wymagania",
+              "value": "Wypisz wymagania: doświadczenie, umiejętności, języki",
+              "type": "string"
+            },
+            {
+              "id": "b7f36402-eecc-4f98-ae11-8ce3adac5dd4",
+              "name": "progDopasowania",
+              "value": 70,
+              "type": "number"
+            },
+            {
+              "id": "32a06417-e41b-4754-a95f-342664de544e",
+              "name": "atsUrl",
+              "value": "https://YOUR-ATS.example.com/api/applications",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
+      "id": "6604ffcc-02d7-4e61-ad19-735025bb4d45"
+    },
+    {
+      "name": "AI: prompt (dopasowanie CV)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Porównujesz CV z wymaganiami stanowiska. Oceniaj wyłącznie kompetencje i doświadczenie. Ignoruj wiek, płeć, pochodzenie, zdjęcie, stan cywilny i inne cechy niezwiązane z pracą.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"matchScore\\\": liczba 0-100, \\\"mocneStrony\\\": tablica, \\\"braki\\\": tablica}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Stanowisko: ${$('Konfiguracja').first().json.stanowisko}\\nWymagania: ${$('Konfiguracja').first().json.wymagania}\\n\\nCV:\\n${$json.cvText}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "e2947235-1a1b-44e9-a62e-7a99fbe45f60"
+    },
+    {
+      "name": "AI: dopasowanie CV",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "4206bc58-dc3a-4ab9-a6a7-46b8641fa4b5"
+    },
+    {
+      "name": "AI: wynik (dopasowanie CV)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (dopasowanie CV)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"matchScore\":0,\"mocneStrony\":\"\",\"braki\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\nout.matchScore = Math.max(0, Math.min(100, Number(out.matchScore)));\nif (!Number.isFinite(out.matchScore)) out.matchScore = 0;\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "822d0461-d967-4e68-a043-51d10c3fdc76"
+    },
+    {
+      "name": "Zapisz w ATS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.atsUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: $json.name, email: $json.email, aiScore: $json.matchScore, strengths: $json.mocneStrony, gaps: $json.braki, status: \"do_przegladu\" }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "69b2815b-b812-4ee9-a775-18187b8d7831"
+    },
+    {
+      "name": "Dopasowanie wysokie?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
       "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
-              "id": "6e0a1df1-c074-4ec1-856f-6e6f1755c91e",
-              "leftValue": "={{ $json.matchScore }}",
-              "rightValue": 70,
+              "id": "4819a696-5cb3-48e7-ac2c-76028a8e68de",
+              "leftValue": "={{ $('AI: wynik (dopasowanie CV)').item.json.matchScore }}",
               "operator": {
                 "type": "number",
                 "operation": "gte"
-              }
+              },
+              "rightValue": "={{ $('Konfiguracja').first().json.progDopasowania }}"
             }
           ],
           "combinator": "and"
         },
         "options": {}
-      }
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "33c1a4f9-f97a-432e-a59b-661a3e82bff7"
     },
     {
-      "id": "d0583b76-536e-4192-a0e1-5e6205dd62e2",
       "name": "Powiadom rekrutera",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [
-        860,
-        300
-      ],
       "parameters": {
         "select": "channel",
         "channelId": {
+          "__rl": true,
           "mode": "name",
-          "value": "#automatyzacje"
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
         },
-        "text": "Dobre dopasowanie CV: {{$json.candidateName}} ({{$json.matchScore}}%)",
-        "otherOptions": {}
-      }
+        "text": "=👤 Mocne CV: {{ $('AI: wynik (dopasowanie CV)').item.json.name }} ({{ $('AI: wynik (dopasowanie CV)').item.json.matchScore }}%)\nMocne strony: {{ ($('AI: wynik (dopasowanie CV)').item.json.mocneStrony || []).join(', ') }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2160,
+        300
+      ],
+      "id": "c20b12da-dc39-43b8-ad7c-a405f38070d1"
+    },
+    {
+      "name": "Czeka na przegląd w ATS",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        2160,
+        520
+      ],
+      "id": "834e7c04-993b-475d-a998-14103fc2f0bd"
     }
   ],
   "connections": {
@@ -110,14 +246,69 @@
       "main": [
         [
           {
-            "node": "AI: dopasuj CV do wymagań",
+            "node": "Walidacja danych",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: dopasuj CV do wymagań": {
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (dopasowanie CV)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (dopasowanie CV)": {
+      "main": [
+        [
+          {
+            "node": "AI: dopasowanie CV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: dopasowanie CV": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (dopasowanie CV)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (dopasowanie CV)": {
+      "main": [
+        [
+          {
+            "node": "Zapisz w ATS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapisz w ATS": {
       "main": [
         [
           {
@@ -136,12 +327,27 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Czeka na przegląd w ATS",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     }
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

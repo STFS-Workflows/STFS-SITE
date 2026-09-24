@@ -2,139 +2,231 @@
   "name": "STFS — Kwalifikacja i scoring leadów",
   "nodes": [
     {
-      "id": "ee96ae62-eaba-4ea8-8a02-5bd7e8a95836",
+      "id": "cf0e1e31-9475-4c6a-aa8d-74fe7f296b70",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Kwalifikacja leadów\n\n**Trigger:** Webhook — podepnij formularz strony (np. STFS booking) lub CRM.\n\n**Do zrobienia:**\n1. Podmień węzeł AI na swój provider (OpenAI/Claude) + klucz API.\n2. W węźle \"Zapisz do CRM\" podmień URL na endpoint Twojego CRM (HubSpot/Pipedrive/inny) + auth.\n3. Ustaw próg scoringu w węźle IF.",
-        "height": 300,
-        "width": 380,
+        "content": "## 01 – Kwalifikacja leadów\n\nFormularz wysyła lead → AI ocenia go (0–100, kategoria, uzasadnienie) → **każdy** lead trafia do CRM ze scoringiem → handlowiec dostaje Slacka tylko o gorących.\n\nWejście (JSON): `name`, `email`, `message`, opcjonalnie `company`, `phone`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "6d9f8ed5-f20a-44d2-a547-d70d3564f9ac",
       "name": "Nowy lead (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "lead-nowy",
         "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
-      }
+      },
+      "webhookId": "59b209db-37ab-4ef0-a1a7-8a2073b26186",
+      "position": [
+        80,
+        300
+      ],
+      "id": "4e0fc372-e23e-4b5c-a986-d195a0fcecbe"
     },
     {
-      "id": "0a4f143d-24f0-48bd-985c-c39a4b6ec040",
-      "name": "AI: oceń i przypisz score",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"name\",\"email\",\"message\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Wysyła treść zapytania do modelu, który zwraca score 0-100 i kategorię leada."
+      "id": "857e3237-ef7b-421a-ab3b-2955c9420574"
     },
     {
-      "id": "d054dcbe-3bab-4102-ae8f-23527e427134",
-      "name": "Wyciągnij score",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "50edc6a8-7443-4802-af5b-12425b50f848",
+              "name": "progGoracegoLeada",
+              "value": 70,
+              "type": "number"
+            },
+            {
+              "id": "f66f9e78-f29b-43db-afb3-fa3692d53cd8",
+              "name": "crmUrl",
+              "value": "https://YOUR-CRM.example.com/api/leads",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "jsCode": "const score = $json.score ?? 50;\nreturn [{ json: { ...$json, score } }];"
-      }
+      "id": "b45acf9d-dac3-4708-aaab-4dd1efbef12a"
     },
     {
-      "id": "ac886ba4-9521-4fd7-a368-1e6fe895a2a2",
-      "name": "Czy lead gorący?",
-      "type": "n8n-nodes-base.if",
+      "name": "AI: prompt (ocena leada)",
+      "type": "n8n-nodes-base.code",
       "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Jesteś asystentem działu sprzedaży firmy usługowej B2B. Oceniasz, jak wartościowy jest lead na podstawie jego wiadomości (konkretność potrzeby, budżet, termin, dopasowanie do usług).\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"score\\\": liczba 0-100, \\\"kategoria\\\": \\\"goracy\\\" | \\\"cieply\\\" | \\\"zimny\\\", \\\"uzasadnienie\\\": jedno zdanie}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Imię: ${$json.name}\\nFirma: ${$json.company || '-'}\\nWiadomość: ${$json.message}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
       "position": [
         860,
         300
       ],
+      "id": "bbd925ff-dd00-4596-a709-a33ea351f600"
+    },
+    {
+      "name": "AI: ocena leada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "af97dab7-b288-4544-a5cc-29fec84d18e2"
+    },
+    {
+      "name": "AI: wynik (ocena leada)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (ocena leada)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"score\":0,\"kategoria\":\"\",\"uzasadnienie\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\nout.score = Math.max(0, Math.min(100, Number(out.score)));\nif (!Number.isFinite(out.score)) out.score = 0;\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "ba365899-0f2b-4c73-a712-39c92a5e7729"
+    },
+    {
+      "name": "Zapisz lead w CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.crmUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: $json.name, email: $json.email, phone: $json.phone || null, company: $json.company || null, message: $json.message, score: $json.score, kategoria: $json.kategoria, zrodlo: \"strona\" }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "8057d38d-fb10-46ea-aeb1-a73ddf8295f7"
+    },
+    {
+      "name": "Czy lead gorący?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
       "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
-              "id": "85856254-0ed0-4495-a00a-619805cdfcbc",
-              "leftValue": "={{ $json.score }}",
-              "rightValue": 70,
+              "id": "f74c412c-7b6f-4ffb-aca1-5e7ea81e4429",
+              "leftValue": "={{ $('AI: wynik (ocena leada)').item.json.score }}",
               "operator": {
                 "type": "number",
                 "operation": "gte"
-              }
+              },
+              "rightValue": "={{ $('Konfiguracja').first().json.progGoracegoLeada }}"
             }
           ],
           "combinator": "and"
         },
         "options": {}
-      }
-    },
-    {
-      "id": "7681a132-ed85-4a91-a118-4ad1a4c14cc7",
-      "name": "Zapisz do CRM",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      },
       "position": [
-        1120,
+        1900,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://YOUR-CRM.example.com/api/leads",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na realny endpoint CRM."
+      "id": "bf18da50-b51d-42f6-a2e3-8585ac2a4ba9"
     },
     {
-      "id": "5743df73-6522-41bf-8242-49e9768a08e8",
       "name": "Powiadom handlowca",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [
-        1380,
-        300
-      ],
       "parameters": {
         "select": "channel",
         "channelId": {
+          "__rl": true,
           "mode": "name",
-          "value": "#automatyzacje"
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
         },
-        "text": "Nowy gorący lead ({{$json.score}} pkt): {{$json.name}} — {{$json.email}}",
-        "otherOptions": {}
-      }
+        "text": "=🔥 Gorący lead ({{ $('AI: wynik (ocena leada)').item.json.score }} pkt): {{ $('AI: wynik (ocena leada)').item.json.name }} – {{ $('AI: wynik (ocena leada)').item.json.email }}\n{{ $('AI: wynik (ocena leada)').item.json.uzasadnienie }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2160,
+        300
+      ],
+      "id": "ab5ee4a5-45bd-4584-afc5-4ad12975db46"
+    },
+    {
+      "name": "Lead ciepły/zimny – tylko CRM",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        2160,
+        520
+      ],
+      "id": "3c11db27-671f-47fd-aba1-6f90e5b39f5d"
     }
   ],
   "connections": {
@@ -142,25 +234,69 @@
       "main": [
         [
           {
-            "node": "AI: oceń i przypisz score",
+            "node": "Walidacja danych",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: oceń i przypisz score": {
+    "Walidacja danych": {
       "main": [
         [
           {
-            "node": "Wyciągnij score",
+            "node": "Konfiguracja",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wyciągnij score": {
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (ocena leada)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (ocena leada)": {
+      "main": [
+        [
+          {
+            "node": "AI: ocena leada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: ocena leada": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (ocena leada)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (ocena leada)": {
+      "main": [
+        [
+          {
+            "node": "Zapisz lead w CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapisz lead w CRM": {
       "main": [
         [
           {
@@ -175,18 +311,14 @@
       "main": [
         [
           {
-            "node": "Zapisz do CRM",
+            "node": "Powiadom handlowca",
             "type": "main",
             "index": 0
           }
-        ]
-      ]
-    },
-    "Zapisz do CRM": {
-      "main": [
+        ],
         [
           {
-            "node": "Powiadom handlowca",
+            "node": "Lead ciepły/zimny – tylko CRM",
             "type": "main",
             "index": 0
           }
@@ -196,6 +328,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

@@ -2,96 +2,182 @@
   "name": "STFS — Onboarding nowych pracowników",
   "nodes": [
     {
-      "id": "bc45a6ba-3275-4156-87de-fd10509364e0",
+      "id": "ea04960a-7cc7-40a4-a04f-5edc458e1851",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Onboarding\n\n**Trigger:** Webhook — po zatrudnieniu (np. z ATS/HR systemu).\n\n**Do zrobienia:**\n1. Podmień \"Utwórz konta w narzędziach\" na API Twoich narzędzi (Google Workspace/Slack/inne).\n2. Dostosuj checklistę onboardingową.",
-        "height": 300,
-        "width": 380,
+        "content": "## 22 – Onboarding\n\nZatrudnienie → utworzenie kont (Workspace/Slack itd.) → info dla HR → e-mail powitalny z checklistą pierwszego tygodnia na prywatny adres pracownika.\n\nWejście: `fullName`, `email` (prywatny), `startDate`, `role`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- Slack\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "6dee35d3-7f92-4eb4-b87b-4a9aed86faa7",
       "name": "Nowy pracownik (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "pracownik-nowy",
         "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
-      }
+      },
+      "webhookId": "6dff4893-20ce-4d47-a36b-8d345af5e9a5",
+      "position": [
+        80,
+        300
+      ],
+      "id": "ead4af4f-2139-452c-aea2-b0bbc500f705"
     },
     {
-      "id": "eda7f09b-6c86-4462-9f5d-2783f8f294ab",
-      "name": "Utwórz konta w narzędziach",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"fullName\",\"email\",\"startDate\",\"role\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://YOUR-IDENTITY.example.com/api/accounts",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na Google Workspace/Slack/inne API."
+      "id": "9382ffe9-2495-415e-af61-2989adb09e21"
     },
     {
-      "id": "d049fdd6-e864-4910-83e7-73c62b10a510",
-      "name": "Powiadom zespół HR",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "653869c3-a1fd-46bf-a6fb-6127aacfb287",
+              "name": "kontaUrl",
+              "value": "https://YOUR-IDENTITY.example.com/api/accounts",
+              "type": "string"
+            },
+            {
+              "id": "8bca77b2-fdcf-407d-a947-8bee3a122d72",
+              "name": "checklista",
+              "value": "1. Odbierz sprzęt\n2. Zaloguj się do poczty\n3. Spotkanie z opiekunem\n4. Szkolenie BHP i RODO",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "select": "channel",
-        "channelId": {
-          "mode": "name",
-          "value": "#automatyzacje"
-        },
-        "text": "Nowy pracownik: {{$json.fullName}} — konta utworzone.",
-        "otherOptions": {}
-      }
+      "id": "c0c0df76-1dd0-47bd-a65e-8be63643e39b"
     },
     {
-      "id": "e4e6bc7f-6f3f-4925-ba55-277be917f007",
-      "name": "Wyślij checklistę onboardingową",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "name": "Utwórz konta w narzędziach",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.kontaUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ fullName: $json.fullName, role: $json.role, startDate: $json.startDate }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [
         860,
         300
       ],
+      "id": "3d7cba58-53fe-47de-ac4e-48ad3d89b624"
+    },
+    {
+      "name": "Powiadom zespół HR",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
       "parameters": {
-        "fromEmail": "hello@stfs.studio",
-        "toEmail": "={{ $json.email }}",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=👋 Nowy pracownik: {{ $('Walidacja danych').item.json.fullName }} ({{ $('Walidacja danych').item.json.role }}), start {{ $('Walidacja danych').item.json.startDate }} – konta utworzone.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "1097739d-616b-4706-a4bb-2dd231cd20de"
+    },
+    {
+      "name": "Wyślij checklistę onboardingową",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Walidacja danych').item.json.email }}",
         "subject": "Witaj w zespole!",
-        "text": "W załączeniu Twoja checklista pierwszego tygodnia.",
-        "options": {}
-      }
+        "emailFormat": "text",
+        "text": "=Cześć {{ $('Walidacja danych').item.json.fullName }},\n\ncieszymy się, że dołączasz {{ $('Walidacja danych').item.json.startDate }}! Twoja checklista na pierwszy tydzień:\n\n{{ $('Konfiguracja').first().json.checklista }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1380,
+        300
+      ],
+      "id": "460097f0-c7d1-4f9e-a68c-b6aaa5275277"
     }
   ],
   "connections": {
     "Nowy pracownik (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -127,6 +213,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

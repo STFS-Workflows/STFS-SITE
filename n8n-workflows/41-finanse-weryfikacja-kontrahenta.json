@@ -1,0 +1,368 @@
+{
+  "name": "STFS — Weryfikacja kontrahenta (biała lista VAT)",
+  "nodes": [
+    {
+      "id": "97109532-8acd-4754-a014-76a83185833b",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 41 – Biała lista VAT\n\nPrzed zapłatą faktury (albo przy dodawaniu kontrahenta) sprawdza w publicznym API Ministerstwa Finansów: czy NIP jest poprawny, status VAT („Czynny”) i czy podany rachunek jest na białej liście. Zapisuje `requestId` z MF jako dowód sprawdzenia. Problem → Slack.\n\nAPI MF jest publiczne (bez klucza), ale ma dzienne limity zapytań – nie odpytuj go w pętli.\n\nWejście: `nip`, opcjonalnie `bankAccount` (26 cyfr), `invoiceNumber`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Sprawdź kontrahenta (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "weryfikacja-kontrahenta",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "4239d13e-4d08-4bdb-a6b9-742022a063e1",
+      "position": [
+        80,
+        300
+      ],
+      "id": "168d4cc2-96e7-4d55-a155-9e29404d76d5"
+    },
+    {
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"nip\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "2a635daa-5c54-469f-ad25-a8e21f9bbf44"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "340f65f5-9071-475a-a5b3-b7fb5a2eab76",
+              "name": "archiwumUrl",
+              "value": "https://YOUR-ACCOUNTING.example.com/api/whitelist-checks",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        600,
+        300
+      ],
+      "id": "206e0ab3-17e6-4a9f-a4aa-fa265f42097c"
+    },
+    {
+      "name": "Sprawdź NIP i rachunek",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const nip = String($json.nip).replace(/\\D/g, '');\nconst w = [6, 5, 7, 2, 3, 4, 5, 6, 7];\nconst suma = nip.length === 10 ? w.reduce((s, x, i) => s + x * Number(nip[i]), 0) % 11 : -1;\nif (nip.length !== 10 || suma === 10 || suma !== Number(nip[9])) throw new Error('Niepoprawny NIP (suma kontrolna)');\nconst konto = $json.bankAccount ? String($json.bankAccount).replace(/\\D/g, '') : '';\nif (konto && konto.length !== 26) throw new Error('Rachunek musi mieć 26 cyfr (NRB)');\nreturn { json: { ...$json, nip, konto, dzis: new Date().toISOString().slice(0, 10) } };"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "64fbb120-319e-47eb-a7bb-b81a9cda8a0c"
+    },
+    {
+      "name": "Zapytaj białą listę MF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://wl-api.mf.gov.pl/api/search/nip/' + $json.nip + '?date=' + $json.dzis }}",
+        "authentication": "none",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Publiczne API Ministerstwa Finansów (Wykaz podatników VAT).",
+      "notesInFlow": true,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "e28c5b4f-93ed-4752-ade1-97a8b0108263"
+    },
+    {
+      "name": "Oceń wynik",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const we = $('Sprawdź NIP i rachunek').item.json;\nconst s = $json.result?.subject || null;\nconst statusVat = s?.statusVat || 'brak w wykazie';\nconst konta = s?.accountNumbers || [];\nconst kontoNaLiscie = we.konto ? konta.includes(we.konto) : null;\nconst ok = statusVat === 'Czynny' && kontoNaLiscie !== false;\nreturn { json: { nip: we.nip, invoiceNumber: we.invoiceNumber || null, nazwa: s?.name || null, statusVat, kontoNaLiscie, requestId: $json.result?.requestId || null, ok,\n  powod: ok ? '' : (statusVat !== 'Czynny' ? 'Status VAT: ' + statusVat : 'Rachunku nie ma na białej liście') } };"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "39af41f1-28b0-40ff-a110-13a4681cbf37"
+    },
+    {
+      "name": "Zapisz potwierdzenie (requestId)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.archiwumUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ nip: $json.nip, invoiceNumber: $json.invoiceNumber, statusVat: $json.statusVat, kontoNaLiscie: $json.kontoNaLiscie, requestId: $json.requestId, sprawdzono: $now.toISO() }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "requestId z MF to dowód, że rachunek był sprawdzony w dniu zapłaty – przechowuj go.",
+      "notesInFlow": true,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "9469c46f-1980-4e56-a055-8e15d3c5b920"
+    },
+    {
+      "name": "Kontrahent OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c6fe1423-2798-48d8-a14c-ed038c11a563",
+              "leftValue": "={{ $('Oceń wynik').item.json.ok }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "fb459928-8227-4034-aa29-a47acfc32aa4"
+    },
+    {
+      "name": "Zwróć: OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Oceń wynik').item.json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "position": [
+        2160,
+        300
+      ],
+      "id": "ed14f61c-296b-4576-a4f4-316a27be70d7"
+    },
+    {
+      "name": "Alert: problem z kontrahentem",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=⚠️ Biała lista VAT: {{ $('Oceń wynik').item.json.nazwa || $('Oceń wynik').item.json.nip }} – {{ $('Oceń wynik').item.json.powod }}{{ $('Oceń wynik').item.json.invoiceNumber ? ' (faktura ' + $('Oceń wynik').item.json.invoiceNumber + ')' : '' }}. Wstrzymaj płatność i sprawdź.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2160,
+        520
+      ],
+      "id": "32968cb1-401c-4571-adf6-e0df41731793"
+    },
+    {
+      "name": "Zwróć: problem",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Oceń wynik').item.json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "position": [
+        2420,
+        520
+      ],
+      "id": "611f1e5f-b387-44f5-a261-96109ae55672"
+    }
+  ],
+  "connections": {
+    "Sprawdź kontrahenta (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Sprawdź NIP i rachunek",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sprawdź NIP i rachunek": {
+      "main": [
+        [
+          {
+            "node": "Zapytaj białą listę MF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapytaj białą listę MF": {
+      "main": [
+        [
+          {
+            "node": "Oceń wynik",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Oceń wynik": {
+      "main": [
+        [
+          {
+            "node": "Zapisz potwierdzenie (requestId)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapisz potwierdzenie (requestId)": {
+      "main": [
+        [
+          {
+            "node": "Kontrahent OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kontrahent OK?": {
+      "main": [
+        [
+          {
+            "node": "Zwróć: OK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert: problem z kontrahentem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert: problem z kontrahentem": {
+      "main": [
+        [
+          {
+            "node": "Zwróć: problem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

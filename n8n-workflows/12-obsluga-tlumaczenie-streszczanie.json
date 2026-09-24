@@ -2,75 +2,150 @@
   "name": "STFS — Tłumaczenie i streszczanie zgłoszeń",
   "nodes": [
     {
-      "id": "b87a82e2-beb2-4443-8975-4e7285d09d12",
+      "id": "63be19da-c337-49f5-a1ba-1709241cf114",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Tłumaczenie i streszczanie\n\n**Trigger:** Webhook z systemu zgłoszeń.\n\n**Do zrobienia:**\n1. Podmień węzeł AI na swój provider.\n2. Podmień \"Wyślij streszczenie\" na kanał zespołu (Slack/e-mail/helpdesk komentarz).",
-        "height": 300,
-        "width": 380,
+        "content": "## 12 – Tłumaczenie i streszczenie\n\nZgłoszenie w dowolnym języku → AI wykrywa język, tłumaczy na polski i streszcza w 2–3 zdaniach → Slack zespołu.\n\nWejście: `message`, opcjonalnie `email`, `subject`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "083373c8-d447-4473-80c2-8e5bb4cf5f90",
       "name": "Nowe zgłoszenie (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "zgloszenie-jezykowe",
         "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
-      }
+      },
+      "webhookId": "b6c88871-0c6f-495b-a55a-06e09f587446",
+      "position": [
+        80,
+        300
+      ],
+      "id": "0361703b-cbc7-4aa1-a013-115a066b05d8"
     },
     {
-      "id": "f76104ac-94a5-4f28-b90a-38256b9f40d4",
-      "name": "AI: przetłumacz i streść",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"message\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Model tłumaczy na polski i tworzy 2-3 zdaniowe streszczenie."
+      "id": "dd57c2cf-57cd-403e-a1c3-24a5367d9aab"
     },
     {
-      "id": "e75d9a20-fe40-4be4-8ea5-05ece6fe5879",
-      "name": "Wyślij streszczenie do zespołu",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": []
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
+      "id": "dba7d525-3bda-4326-a7dd-93fd58429d8d"
+    },
+    {
+      "name": "AI: prompt (tłumaczenie)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Wykrywasz język wiadomości, tłumaczysz ją wiernie na polski i piszesz streszczenie 2-3 zdania.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"jezyk\\\": kod ISO języka oryginału, np. \\\"en\\\", \\\"tlumaczenie\\\": tekst po polsku, \\\"streszczenie\\\": 2-3 zdania}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `${$json.message}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 1500,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "649567ae-1dd9-4c4d-a8a0-193d6f322d39"
+    },
+    {
+      "name": "AI: tłumaczenie",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "72d1eee2-b7fb-41c1-a12b-fa9d269a92c8"
+    },
+    {
+      "name": "AI: wynik (tłumaczenie)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (tłumaczenie)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"jezyk\":\"\",\"tlumaczenie\":\"\",\"streszczenie\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "9cb8585a-f107-4ce6-a4f5-4efa12d16f9f"
+    },
+    {
+      "name": "Wyślij streszczenie do zespołu",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
       "parameters": {
         "select": "channel",
         "channelId": {
+          "__rl": true,
           "mode": "name",
-          "value": "#automatyzacje"
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
         },
-        "text": "Streszczenie zgłoszenia:\n{{$json.aiResponse}}",
-        "otherOptions": {}
-      }
+        "text": "=🌍 Zgłoszenie ({{ $json.jezyk }}) od {{ $json.email || 'nieznany' }}\n*Streszczenie:* {{ $json.streszczenie }}\n*Tłumaczenie:* {{ $json.tlumaczenie.slice(0, 1500) }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "120b0925-fa8b-49b5-a127-d85fde5ace01"
     }
   ],
   "connections": {
@@ -78,14 +153,58 @@
       "main": [
         [
           {
-            "node": "AI: przetłumacz i streść",
+            "node": "Walidacja danych",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: przetłumacz i streść": {
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (tłumaczenie)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (tłumaczenie)": {
+      "main": [
+        [
+          {
+            "node": "AI: tłumaczenie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: tłumaczenie": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (tłumaczenie)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (tłumaczenie)": {
       "main": [
         [
           {
@@ -99,6 +218,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

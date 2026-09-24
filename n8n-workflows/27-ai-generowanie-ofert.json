@@ -2,92 +2,304 @@
   "name": "STFS — Generowanie ofert i wycen",
   "nodes": [
     {
-      "id": "407f6137-1a3b-4136-bbe8-6f43c2d149f5",
+      "id": "14ddafca-b2e0-47e4-ad3f-825cd1eaeefd",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Generator ofert\n\n**Trigger:** Webhook — po zebraniu briefu od klienta (formularz/e-mail).\n\n**Do zrobienia:**\n1. Podmień węzeł AI na swój provider + dodaj cennik/szablon oferty do kontekstu.\n2. Podmień \"Wygeneruj PDF\" na narzędzie generujące PDF (np. PDF.co, Carbone).",
-        "height": 300,
-        "width": 380,
+        "content": "## 27 – Generator ofert (z akceptacją)\n\nBrief → AI przygotowuje ofertę na podstawie cennika z Konfiguracji → PDF → **handlowiec dostaje link do formularza akceptacji** → dopiero po „Zatwierdź” oferta idzie do klienta. Nic z ceną nie wychodzi bez człowieka.\n\nWymaga n8n z węzłem Wait w trybie „On Form Submitted”.\n\nWejście: `name`, `email`, `brief`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "4427b594-c23b-4bf0-a757-461f077736e0",
       "name": "Brief klienta (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "brief-oferta",
         "authentication": "headerAuth",
         "responseMode": "onReceived",
         "options": {}
-      }
+      },
+      "webhookId": "20b780d9-f37e-44d1-a252-3bf737b7f04e",
+      "position": [
+        80,
+        300
+      ],
+      "id": "700cbf0c-9a07-4c23-a98b-6cd4c4fe630f"
     },
     {
-      "id": "f88f2380-ab57-47f5-b44f-e58ed64fa425",
-      "name": "AI: wypełnij szablon oferty",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"name\",\"email\",\"brief\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Model wypełnia szablon oferty na podstawie briefu i cennika w kontekście."
+      "id": "d0e674d7-10dc-4fb3-afb2-999ee6d9af36"
     },
     {
-      "id": "4978beef-9a9b-48cc-8915-27a3350958f7",
-      "name": "Wygeneruj PDF",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "36026401-51b8-40af-a8bd-3c1b134da631",
+              "name": "cennik",
+              "value": "Wklej cennik usług (pozycja – cena netto)",
+              "type": "string"
+            },
+            {
+              "id": "17e5d08c-8da2-4020-ac84-86496c62d054",
+              "name": "pdfUrl",
+              "value": "https://YOUR-PDF-SERVICE.example.com/api/generate",
+              "type": "string"
+            },
+            {
+              "id": "d62ae56f-c6ca-4290-a63f-21a70ad96358",
+              "name": "emailHandlowca",
+              "value": "handlowiec@twojafirma.pl",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://YOUR-PDF-SERVICE.example.com/api/generate",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na PDF.co/Carbone/inny generator PDF."
+      "id": "e14cbad7-8f81-4b35-a6bd-bbda61572422"
     },
     {
-      "id": "57384df8-711b-445b-831a-b868f8eb3f45",
-      "name": "Wyślij ofertę",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "name": "AI: prompt (oferta)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Przygotowujesz ofertę handlową po polsku. Ceny bierzesz WYŁĄCZNIE z cennika; jeśli czegoś nie ma w cenniku – wpisz pozycję z ceną null i dodaj uwagę. Nie udzielaj rabatów.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"tytul\\\": tekst, \\\"pozycje\\\": tablica { \\\"nazwa\\\", \\\"cenaNetto\\\" }, \\\"sumaNetto\\\": liczba lub null, \\\"uwagi\\\": tekst}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Cennik:\\n${$('Konfiguracja').first().json.cennik}\\n\\nKlient: ${$json.name}\\nBrief: ${$json.brief}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 1000,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
       "position": [
         860,
         300
       ],
+      "id": "8cbed00e-6513-4b7a-ae43-54f1f46bc225"
+    },
+    {
+      "name": "AI: oferta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "parameters": {
-        "fromEmail": "hello@stfs.studio",
-        "toEmail": "={{ $json.email }}",
-        "subject": "Twoja oferta od STFS",
-        "text": "W załączeniu przygotowana dla Ciebie oferta.",
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "9eda1451-234c-4d9b-a37e-2f5e2c6201b1"
+    },
+    {
+      "name": "AI: wynik (oferta)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (oferta)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"tytul\":\"\",\"pozycje\":\"\",\"sumaNetto\":\"\",\"uwagi\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "0c4440e9-01b2-4284-af7f-c0751737de37"
+    },
+    {
+      "name": "Wygeneruj PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.pdfUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ template: \"oferta\", data: { klient: $json.name, tytul: $json.tytul, pozycje: $json.pozycje, sumaNetto: $json.sumaNetto, uwagi: $json.uwagi } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Serwis PDF powinien zwrócić { \"url\": \"...\" }.",
+      "notesInFlow": true,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "f622f169-2754-407b-a491-06d3b14d95ca"
+    },
+    {
+      "name": "Poproś handlowca o akceptację",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Konfiguracja').first().json.emailHandlowca }}",
+        "subject": "=Do akceptacji: oferta dla {{ $('AI: wynik (oferta)').item.json.name }}",
+        "emailFormat": "text",
+        "text": "=Oferta: {{ $json.url }}\nSuma netto: {{ $('AI: wynik (oferta)').item.json.sumaNetto }}\nUwagi AI: {{ $('AI: wynik (oferta)').item.json.uwagi }}\n\nZatwierdź lub odrzuć: {{ $execution.resumeFormUrl }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "d5aafd68-6c49-42d4-abda-d1f737bd8143"
+    },
+    {
+      "name": "Czekaj na akceptację",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "parameters": {
+        "resume": "form",
+        "formTitle": "Akceptacja oferty",
+        "formDescription": "Zatwierdź, aby wysłać ofertę do klienta. W polu „Poprawiona treść” możesz dopisać komentarz do klienta.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decyzja",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Zatwierdź"
+                  },
+                  {
+                    "option": "Odrzuć"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Poprawiona treść",
+              "fieldType": "textarea",
+              "requiredField": false
+            }
+          ]
+        },
+        "limitWaitTime": true,
+        "limitType": "afterTimeInterval",
+        "resumeAmount": 72,
+        "resumeUnit": "hours",
         "options": {}
-      }
+      },
+      "position": [
+        2160,
+        300
+      ],
+      "id": "d209c9fc-7c9d-4b8b-aef1-cbcd7cbdd2d5"
+    },
+    {
+      "name": "Zatwierdzona?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "e6816d5a-e50d-4180-a4fe-f1f56d604b86",
+              "leftValue": "={{ $json['Decyzja'] }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "Zatwierdź"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        2420,
+        300
+      ],
+      "id": "b376a2ca-b807-401d-a232-2f2bc5c97f79"
+    },
+    {
+      "name": "Wyślij ofertę do klienta",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('AI: wynik (oferta)').item.json.email }}",
+        "subject": "={{ $('AI: wynik (oferta)').item.json.tytul }}",
+        "emailFormat": "text",
+        "text": "=Dzień dobry {{ $('AI: wynik (oferta)').item.json.name }},\n\nprzesyłamy przygotowaną ofertę: {{ $('Wygeneruj PDF').item.json.url }}\n\n{{ $json['Poprawiona treść'] || '' }}\n\nPozdrawiamy",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2680,
+        300
+      ],
+      "id": "026d18c8-e1ac-4605-a20f-53180d2e65c2"
+    },
+    {
+      "name": "Odrzucona lub wygasła",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        2680,
+        520
+      ],
+      "id": "639fdbe1-f4cb-4eb3-ac9b-44e5e7bb74cf"
     }
   ],
   "connections": {
@@ -95,14 +307,58 @@
       "main": [
         [
           {
-            "node": "AI: wypełnij szablon oferty",
+            "node": "Walidacja danych",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: wypełnij szablon oferty": {
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (oferta)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (oferta)": {
+      "main": [
+        [
+          {
+            "node": "AI: oferta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: oferta": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (oferta)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (oferta)": {
       "main": [
         [
           {
@@ -117,7 +373,47 @@
       "main": [
         [
           {
-            "node": "Wyślij ofertę",
+            "node": "Poproś handlowca o akceptację",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poproś handlowca o akceptację": {
+      "main": [
+        [
+          {
+            "node": "Czekaj na akceptację",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Czekaj na akceptację": {
+      "main": [
+        [
+          {
+            "node": "Zatwierdzona?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zatwierdzona?": {
+      "main": [
+        [
+          {
+            "node": "Wyślij ofertę do klienta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Odrzucona lub wygasła",
             "type": "main",
             "index": 0
           }
@@ -127,6 +423,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

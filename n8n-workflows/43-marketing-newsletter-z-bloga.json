@@ -1,0 +1,354 @@
+{
+  "name": "STFS — Newsletter z nowych wpisów na blogu",
+  "nodes": [
+    {
+      "id": "4ff9dd8f-179d-42f8-a7ad-be5bb62a6827",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 43 – Newsletter z bloga\n\nW czwartek o 10:00 czyta RSS bloga, bierze wpisy z ostatnich 7 dni (maks. 5), AI pisze krótki wstęp, a workflow tworzy **szkic kampanii** w systemie mailingowym i daje znać na Slacku. Wysyłkę klikasz sam – nic nie idzie do subskrybentów automatycznie. Brak nowych wpisów = brak newslettera.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Czwartek 10:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * 4"
+            }
+          ]
+        }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "65e0e7f8-ec8b-410a-ad49-1a43fc53a756"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "57eaed91-3814-4a54-ac50-357254a98766",
+              "name": "rssUrl",
+              "value": "https://stfs.pl/blog/rss.xml",
+              "type": "string"
+            },
+            {
+              "id": "5df9e6ac-3c88-4d69-a182-8d43ab779fe4",
+              "name": "dni",
+              "value": 7,
+              "type": "number"
+            },
+            {
+              "id": "28eb7fc0-d688-4d38-a8c1-be70570bff36",
+              "name": "nazwaFirmy",
+              "value": "STFS",
+              "type": "string"
+            },
+            {
+              "id": "1de720d9-00bc-4726-a7a1-503018c6b62e",
+              "name": "espUrl",
+              "value": "https://YOUR-ESP.example.com/api/campaigns",
+              "type": "string"
+            },
+            {
+              "id": "7aa965b4-990f-4d48-a3e3-ea28c2732e10",
+              "name": "listaId",
+              "value": "YOUR_LIST_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "5e5210b7-5394-4463-a457-125fdf170cee"
+    },
+    {
+      "name": "Czytaj RSS bloga",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "parameters": {
+        "url": "={{ $('Konfiguracja').first().json.rssUrl }}",
+        "options": {}
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        600,
+        300
+      ],
+      "id": "723de457-180e-4d23-a9aa-7790523b13ab"
+    },
+    {
+      "name": "Wybierz nowe wpisy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const dni = $('Konfiguracja').first().json.dni;\nconst granica = Date.now() - dni * 86400000;\nconst wpisy = $input.all().map((i) => i.json)\n  .filter((w) => Date.parse(w.isoDate || w.pubDate || 0) >= granica)\n  .slice(0, 5)\n  .map((w) => ({ tytul: w.title, link: w.link, zajawka: String(w.contentSnippet || '').slice(0, 280) }));\nif (!wpisy.length) return []; // brak nowych wpisów – koniec bez newslettera\nreturn [{ json: { wpisy, lista: wpisy.map((w) => '• ' + w.tytul + ' – ' + w.zajawka).join('\\n') } }];"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "81042e88-ccd4-43c8-a519-56150187482e"
+    },
+    {
+      "name": "AI: prompt (wstęp newslettera)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Piszesz krótki, przyjazny wstęp do newslettera firmowego (2-3 zdania) i temat e-maila (maks. 60 znaków). Po polsku, bez clickbaitu i emoji. Opieraj się tylko na liście wpisów.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"temat\\\": temat e-maila, \\\"wstep\\\": 2-3 zdania}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Firma: ${$('Konfiguracja').first().json.nazwaFirmy}\\nNowe wpisy:\\n${$json.lista}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "a1774ece-fdce-47b5-ae83-96e287b53c75"
+    },
+    {
+      "name": "AI: wstęp newslettera",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1380,
+        300
+      ],
+      "id": "182690bf-7b3b-488d-a266-61c273f46725"
+    },
+    {
+      "name": "AI: wynik (wstęp newslettera)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (wstęp newslettera)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"temat\":\"\",\"wstep\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "d8117c90-b579-4744-a45c-bdb5ba2cc704"
+    },
+    {
+      "name": "Złóż treść newslettera",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const esc = (s) => String(s || '').replace(/[&<>\"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[c]));\nconst html = '<p>' + esc($json.wstep) + '</p>' + $json.wpisy.map((w) => '<h3><a href=\"' + esc(w.link) + '\">' + esc(w.tytul) + '</a></h3><p>' + esc(w.zajawka) + '</p>').join('');\nreturn { json: { ...$json, html } };"
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "1cbecc19-d109-40e9-ad7f-f62e5b50220b"
+    },
+    {
+      "name": "Utwórz szkic kampanii",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.espUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: 'Newsletter ' + $now.toISODate(), subject: $json.temat || 'Nowości na blogu', listId: $('Konfiguracja').first().json.listaId, html: $json.html, status: 'draft' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Mailchimp / Brevo / MailerLite – zawsze jako szkic (draft).",
+      "notesInFlow": true,
+      "position": [
+        2160,
+        300
+      ],
+      "id": "d72b1273-e2fe-4cb1-a2c1-5f95acbf1655"
+    },
+    {
+      "name": "Szkic newslettera gotowy",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=📰 Szkic newslettera gotowy w systemie mailingowym: „{{ $('Złóż treść newslettera').item.json.temat }}” ({{ $('Złóż treść newslettera').item.json.wpisy.length }} wpisy). Sprawdź i wyślij.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2420,
+        300
+      ],
+      "id": "ed449933-f832-403c-a474-e11b627297bd"
+    }
+  ],
+  "connections": {
+    "Czwartek 10:00": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Czytaj RSS bloga",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Czytaj RSS bloga": {
+      "main": [
+        [
+          {
+            "node": "Wybierz nowe wpisy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wybierz nowe wpisy": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (wstęp newslettera)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (wstęp newslettera)": {
+      "main": [
+        [
+          {
+            "node": "AI: wstęp newslettera",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wstęp newslettera": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (wstęp newslettera)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (wstęp newslettera)": {
+      "main": [
+        [
+          {
+            "node": "Złóż treść newslettera",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Złóż treść newslettera": {
+      "main": [
+        [
+          {
+            "node": "Utwórz szkic kampanii",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Utwórz szkic kampanii": {
+      "main": [
+        [
+          {
+            "node": "Szkic newslettera gotowy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

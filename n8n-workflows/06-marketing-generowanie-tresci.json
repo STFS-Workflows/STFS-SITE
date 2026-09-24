@@ -2,122 +2,206 @@
   "name": "STFS — Generowanie treści i reklam",
   "nodes": [
     {
-      "id": "98ee67ef-be10-4501-8a74-273883809c08",
+      "id": "9eb0790a-6c10-42d4-a556-b2977fc633d3",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Generator treści marketingowych\n\n**Trigger:** Manual — uruchamiasz ręcznie z brief-em wejściowym, lub podepnij pod formularz brief-u.\n\n**Do zrobienia:**\n1. Podmień węzeł AI na swój provider.\n2. Podmień \"Zapisz wersję roboczą\" na Google Sheets / Notion / CMS.",
-        "height": 300,
-        "width": 380,
+        "content": "## 06 – Generator treści\n\nUruchamiany ręcznie. Wpisz brief, kanał i ton w węźle **Konfiguracja** → AI tworzy 3 warianty (nagłówek, treść, CTA) → zapis jako wersje robocze (nic nie jest publikowane).\n\n## Credentials do utworzenia\n- Header Auth (API)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "e201621f-a0ba-4e11-aded-2227cc7aef68",
-      "name": "Start (podaj brief)",
+      "name": "Start (uzupełnij brief w Konfiguracji)",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
+      "parameters": {},
       "position": [
         80,
         300
       ],
-      "parameters": {}
+      "id": "bf3b81cc-ad46-43b5-aa37-2bb1d5bf3672"
     },
     {
-      "id": "72a414b9-d668-4d6f-89eb-8b760ecdc064",
-      "name": "Brief wejściowy",
+      "name": "Konfiguracja",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [
-        340,
-        300
-      ],
       "parameters": {
+        "mode": "manual",
         "assignments": {
           "assignments": [
             {
-              "id": "d1c5290a-9f40-44f5-9d45-8752639258b2",
+              "id": "f354c1b2-218b-4d76-aa15-f6d6fd1039d9",
               "name": "brief",
               "value": "Opisz produkt/kampanię tutaj",
+              "type": "string"
+            },
+            {
+              "id": "21448cd7-fbd3-4ea9-abeb-b89d41500b77",
+              "name": "kanal",
+              "value": "Facebook / Instagram",
+              "type": "string"
+            },
+            {
+              "id": "6fac36e6-dd27-49e5-aa86-ade956dd1578",
+              "name": "ton",
+              "value": "konkretny, przyjazny, bez przesady",
+              "type": "string"
+            },
+            {
+              "id": "91a77773-ac4b-44c8-a62f-6af9e68b4670",
+              "name": "szkiceUrl",
+              "value": "https://YOUR-CMS.example.com/api/drafts",
               "type": "string"
             }
           ]
         },
+        "includeOtherFields": true,
         "options": {}
-      }
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "a8a8fc65-5abf-4713-ac10-510d82ddc910"
     },
     {
-      "id": "af8faef8-6311-4279-bb4d-d63905c4dc95",
-      "name": "AI: wygeneruj 3 warianty treści",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "AI: prompt (3 warianty treści)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Jesteś copywriterem. Tworzysz 3 różne warianty reklamy/posta po polsku zgodnie z briefem, kanałem i tonem. Każdy wariant ma inny kąt (korzyść, problem, dowód).\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"warianty\\\": tablica 3 obiektów { \\\"naglowek\\\", \\\"tresc\\\", \\\"cta\\\" }}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Brief: ${$json.brief}\\nKanał: ${$json.kanal}\\nTon: ${$json.ton}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 900,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
       "position": [
         600,
         300
       ],
+      "id": "b5a50dd0-5ef1-4d3c-aa90-06a55f6a1034"
+    },
+    {
+      "name": "AI: 3 warianty treści",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "parameters": {
         "method": "POST",
         "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
       },
-      "notes": "Podmień na węzeł dostawcy AI (OpenAI/Claude/inny) lub uzupełnij Authorization: Bearer w Headers. To placeholder pokazujący, gdzie w przepływie wchodzi model językowy."
-    },
-    {
-      "id": "68abccfe-a07f-4dec-8576-7f7f4b6588a0",
-      "name": "Zapisz wersję roboczą",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
       "position": [
         860,
         300
       ],
+      "id": "39aa1eea-a7bf-4e66-abd9-e0afbe2994f9"
+    },
+    {
+      "name": "AI: wynik (3 warianty treści)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (3 warianty treści)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"warianty\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "46b92cec-241b-4636-a374-85fa3f143440"
+    },
+    {
+      "name": "Zapisz wersje robocze",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "parameters": {
         "method": "POST",
-        "url": "https://YOUR-CMS.example.com/api/drafts",
+        "url": "={{ $('Konfiguracja').first().json.szkiceUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
+        "jsonBody": "={{ JSON.stringify({ brief: $json.brief, kanal: $json.kanal, warianty: $json.warianty, status: \"draft\" }) }}",
+        "options": {
+          "timeout": 30000
+        }
       },
-      "notes": "Podmień na Google Sheets/Notion/CMS."
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1380,
+        300
+      ],
+      "id": "6a9101b3-cb8c-456c-abf4-0319d2a4af8e"
     }
   ],
   "connections": {
-    "Start (podaj brief)": {
+    "Start (uzupełnij brief w Konfiguracji)": {
       "main": [
         [
           {
-            "node": "Brief wejściowy",
+            "node": "Konfiguracja",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Brief wejściowy": {
+    "Konfiguracja": {
       "main": [
         [
           {
-            "node": "AI: wygeneruj 3 warianty treści",
+            "node": "AI: prompt (3 warianty treści)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: wygeneruj 3 warianty treści": {
+    "AI: prompt (3 warianty treści)": {
       "main": [
         [
           {
-            "node": "Zapisz wersję roboczą",
+            "node": "AI: 3 warianty treści",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: 3 warianty treści": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (3 warianty treści)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (3 warianty treści)": {
+      "main": [
+        [
+          {
+            "node": "Zapisz wersje robocze",
             "type": "main",
             "index": 0
           }
@@ -127,6 +211,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

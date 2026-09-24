@@ -1,76 +1,307 @@
 {
-  "name": "STFS — Automatyczne odpowiedzi na opinie",
+  "name": "STFS — Odpowiedzi na opinie (z akceptacją)",
   "nodes": [
     {
-      "id": "5ec335f7-e31f-41d1-89d8-1da6d043e17d",
+      "id": "221983b2-01b0-446e-abd9-9ae932e0f56b",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Odpowiedzi na opinie\n\n**Trigger:** Webhook — nowa opinia (Google/sklep/Allegro).\n\n**Do zrobienia:**\n1. Podepnij realne źródło opinii pod webhook (lub Schedule + pobieranie przez API platformy).\n2. Podmień \"Opublikuj odpowiedź\" na API platformy z opiniami.",
-        "height": 300,
-        "width": 380,
+        "content": "## 29 – Odpowiedzi na opinie w sklepie\n\nNowa opinia → AI pisze projekt odpowiedzi → właściciel dostaje e-mail z linkiem do formularza (może poprawić treść) → **publikacja dopiero po zatwierdzeniu**. Zgodnie z obietnicą na stronie: nic nie wychodzi bez zgody klienta.\n\n(Wcześniej publikowało automatycznie. Ścieżka webhooka zmieniona na `opinia-sklep`, bo `opinia-nowa` zajmuje workflow „Monitoring opinii”.)\n\nWejście: `reviewId`, `text`, `rating`, opcjonalnie `author`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "f19cd54b-a040-45ac-93b5-7bad63b259ad",
       "name": "Nowa opinia (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "opinia-sklep",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "8c7ab102-026e-4295-a596-c70f9c80bf3e",
       "position": [
         80,
         300
       ],
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "opinia-nowa",
-        "authentication": "headerAuth",
-        "responseMode": "onReceived",
-        "options": {}
-      }
+      "id": "d8f06780-f7eb-4c67-ae20-c153fb100486"
     },
     {
-      "id": "3ced8779-9cd3-4826-91e0-7234836bea6c",
-      "name": "AI: napisz odpowiedź na opinię",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"reviewId\",\"text\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Model dobiera ton odpowiedzi do sentymentu opinii."
+      "id": "b408bf6f-bb25-4fc7-a18d-54a5d302e5d6"
     },
     {
-      "id": "276d67d9-d906-456f-b740-5ca4d8d4e858",
-      "name": "Opublikuj odpowiedź",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fe834547-7d49-486a-a6a5-f061d388b17d",
+              "name": "nazwaFirmy",
+              "value": "Nazwa sklepu",
+              "type": "string"
+            },
+            {
+              "id": "b8ab518a-e28f-4785-a2dd-32c05873c191",
+              "name": "emailWlasciciela",
+              "value": "wlasciciel@twojafirma.pl",
+              "type": "string"
+            },
+            {
+              "id": "ecebbfd2-f44b-4d3c-a0ee-cd46e6ba6439",
+              "name": "publikacjaUrl",
+              "value": "https://YOUR-PLATFORM.example.com/api/reviews",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
+      "id": "fc00a40a-7e18-46dd-a13d-d53bf6279175"
+    },
+    {
+      "name": "Pomiń już obsłużone opinie",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"opinie\"] = store[\"opinie\"] || {};\nconst seen = store[\"opinie\"];\nconst now = Date.now();\nconst ttl = 365 * 86400000;\nfor (const [k, t] of Object.entries(seen)) if (now - t > ttl) delete seen[k];\nconst out = [];\n$input.all().forEach((item, index) => {\n  const key = String(item.json.reviewId ?? '');\n  if (!key || seen[key]) return; // brak klucza albo już obsłużone -> pomiń\n  // pairedItem zachowuje powiązanie z danymi wejściowymi (potrzebne dla odwołań .item w kolejnych węzłach)\n  out.push({ json: item.json, binary: item.binary, pairedItem: { item: index } });\n});\nreturn out;"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "d7977ad1-e00a-4878-a178-6a3c672866b9"
+    },
+    {
+      "name": "AI: prompt (odpowiedź na opinię)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Odpowiadasz w imieniu firmy na opinię klienta. 2-4 zdania, po polsku, bez emoji. Pozytywna – podziękuj konkretnie. Negatywna – przeproś, zaproponuj kontakt bezpośredni, nie obiecuj rekompensat. Nie wymyślaj faktów.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"sentyment\\\": \\\"pozytywna\\\" | \\\"neutralna\\\" | \\\"negatywna\\\", \\\"odpowiedz\\\": tekst}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Firma: ${$('Konfiguracja').first().json.nazwaFirmy}\\nOcena: ${$json.rating ?? 'brak'}/5\\nOpinia: ${$json.text}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "96f81c66-bf35-43ea-ae4e-a30f5d5536d4"
+    },
+    {
+      "name": "AI: odpowiedź na opinię",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "parameters": {
         "method": "POST",
-        "url": "https://YOUR-PLATFORM.example.com/api/reviews/reply",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1380,
+        300
+      ],
+      "id": "6e2c0f4e-622f-46d4-a43c-b26aa125f487"
+    },
+    {
+      "name": "AI: wynik (odpowiedź na opinię)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (odpowiedź na opinię)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"sentyment\":\"\",\"odpowiedz\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "c96e202d-31a8-498a-a5b1-90c4972005b3"
+    },
+    {
+      "name": "Wyślij projekt do akceptacji",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Konfiguracja').first().json.emailWlasciciela }}",
+        "subject": "=Nowa opinia ({{ $json.rating }}/5) – odpowiedź do akceptacji",
+        "emailFormat": "text",
+        "text": "=Opinia: {{ $json.text }}\n\nProponowana odpowiedź:\n{{ $json.odpowiedz }}\n\nZatwierdź, popraw lub odrzuć: {{ $execution.resumeFormUrl }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "0d7a3822-ee23-45a7-a0e1-447d91ece3dd"
+    },
+    {
+      "name": "Czekaj na decyzję właściciela",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "parameters": {
+        "resume": "form",
+        "formTitle": "Odpowiedź na opinię",
+        "formDescription": "Wybierz decyzję. Jeśli chcesz zmienić treść – wpisz nową w polu „Poprawiona treść”.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decyzja",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Zatwierdź"
+                  },
+                  {
+                    "option": "Odrzuć"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Poprawiona treść",
+              "fieldType": "textarea",
+              "requiredField": false
+            }
+          ]
+        },
+        "limitWaitTime": true,
+        "limitType": "afterTimeInterval",
+        "resumeAmount": 72,
+        "resumeUnit": "hours",
         "options": {}
       },
-      "notes": "Podmień na API platformy z opiniami."
+      "position": [
+        2160,
+        300
+      ],
+      "id": "04c23ffb-8215-4f34-ae13-99e4f050cae9"
+    },
+    {
+      "name": "Zatwierdzona?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "51f98c61-1a1e-4a30-aa27-68cf911e2db4",
+              "leftValue": "={{ $json['Decyzja'] }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "Zatwierdź"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        2420,
+        300
+      ],
+      "id": "ef66a20b-9276-4dec-a22d-2b5921d07314"
+    },
+    {
+      "name": "Opublikuj odpowiedź",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.publikacjaUrl + '/' + encodeURIComponent($('AI: wynik (odpowiedź na opinię)').item.json.reviewId) + '/reply' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json['Poprawiona treść'] || $('AI: wynik (odpowiedź na opinię)').item.json.odpowiedz }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2680,
+        300
+      ],
+      "id": "ad1bfe86-bfe1-4274-a654-c861948b8a7e"
+    },
+    {
+      "name": "Zapamiętaj opinię",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"opinie\"] = store[\"opinie\"] || {};\nconst src = $('AI: wynik (odpowiedź na opinię)').item.json;\nconst key = String(src.reviewId ?? '');\nif (key) store[\"opinie\"][key] = Date.now();\nreturn { json: $json };"
+      },
+      "position": [
+        2940,
+        300
+      ],
+      "id": "5e661ef7-6d95-4c26-ae49-8b387f8de744"
+    },
+    {
+      "name": "Odrzucona lub wygasła",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        2680,
+        520
+      ],
+      "id": "fc835e53-6fe2-4e18-a76a-34991467fa1c"
     }
   ],
   "connections": {
@@ -78,18 +309,124 @@
       "main": [
         [
           {
-            "node": "AI: napisz odpowiedź na opinię",
+            "node": "Walidacja danych",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: napisz odpowiedź na opinię": {
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Pomiń już obsłużone opinie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pomiń już obsłużone opinie": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (odpowiedź na opinię)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (odpowiedź na opinię)": {
+      "main": [
+        [
+          {
+            "node": "AI: odpowiedź na opinię",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: odpowiedź na opinię": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (odpowiedź na opinię)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (odpowiedź na opinię)": {
+      "main": [
+        [
+          {
+            "node": "Wyślij projekt do akceptacji",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wyślij projekt do akceptacji": {
+      "main": [
+        [
+          {
+            "node": "Czekaj na decyzję właściciela",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Czekaj na decyzję właściciela": {
+      "main": [
+        [
+          {
+            "node": "Zatwierdzona?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zatwierdzona?": {
       "main": [
         [
           {
             "node": "Opublikuj odpowiedź",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Odrzucona lub wygasła",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Opublikuj odpowiedź": {
+      "main": [
+        [
+          {
+            "node": "Zapamiętaj opinię",
             "type": "main",
             "index": 0
           }
@@ -99,6 +436,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

@@ -1,0 +1,295 @@
+{
+  "name": "STFS — Weryfikacja numeru kodem SMS",
+  "nodes": [
+    {
+      "id": "36262bf8-59cc-41d2-a71c-70a343c5a7dd",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 34 – Kod SMS (weryfikacja telefonu)\n\nJeden webhook, dwie akcje:\n- `{\"action\":\"start\",\"phone\":\"+48600100200\"}` → wysyła 6-cyfrowy kod ważny 10 min,\n- `{\"action\":\"verify\",\"phone\":\"…\",\"code\":\"123456\"}` → `{ \"ok\": true }` tylko przy poprawnym kodzie.\n\nTo są `smsStartEndpoint` / `smsVerifyEndpoint` ze stron Dom Przyjęć (np. przed zamówieniem cateringu).\n\nBezpieczeństwo: kod trzymany tylko jako HMAC, maks. 3 próby, maks. 3 SMS na numer na godzinę, porównanie w stałym czasie. Zapisywanie danych wykonań jest WYŁĄCZONE (kod nie trafia do historii n8n).\n\nWymaga w n8n: `NODE_FUNCTION_ALLOW_BUILTIN=crypto`, `OTP_SEKRET`. Przed webhookiem: własny backend z CAPTCHA i limitem na IP.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Żądanie kodu / weryfikacji (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "weryfikacja-sms",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "e3633c58-d58f-4e12-af7a-9350a4b0286d",
+      "position": [
+        80,
+        300
+      ],
+      "id": "73d17211-a08f-466f-ac9d-e92915d3ddc8"
+    },
+    {
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"action\",\"phone\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "efe76d0e-0889-4a13-a349-75ffc0b86f09"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a9f985db-41c6-4858-afc2-96e7fd58fecb",
+              "name": "smsUrl",
+              "value": "https://YOUR-SMS-GATEWAY.example.com/api/sms",
+              "type": "string"
+            },
+            {
+              "id": "93419ddc-3c50-4fcd-ac29-7c95a3819091",
+              "name": "nazwaNadawcy",
+              "value": "Twoja firma",
+              "type": "string"
+            },
+            {
+              "id": "d40798a4-9ce6-4e4b-a9e1-3fae949e69ad",
+              "name": "waznoscMin",
+              "value": 10,
+              "type": "number"
+            },
+            {
+              "id": "3a48d757-24af-4f79-aef9-53083b6bfa3a",
+              "name": "maksProb",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "deedde6d-3e4f-46e3-aadd-a122cd7dc971",
+              "name": "maksWysylekNaGodzine",
+              "value": 3,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        600,
+        300
+      ],
+      "id": "b7995df9-3b5d-4805-a285-58712a0a9fea"
+    },
+    {
+      "name": "Obsłuż kod SMS",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Kody SMS: generowanie, limit wysyłek, weryfikacja. Kod NIE jest przechowywany jawnie (tylko HMAC).\n// Wymaga: NODE_FUNCTION_ALLOW_BUILTIN=crypto oraz zmiennej OTP_SEKRET (losowe min. 32 znaki) w n8n.\nconst crypto = require('crypto');\nconst cfg = $('Konfiguracja').first().json;\nconst sekret = $env.OTP_SEKRET;\nif (!sekret) throw new Error('Brak OTP_SEKRET – odrzucam');\nconst store = $getWorkflowStaticData('global');\nstore.otp = store.otp || {};\nconst now = Date.now();\nfor (const [k, v] of Object.entries(store.otp)) {\n  if ((v.exp || 0) < now && (v.wysylki || []).every((t) => now - t > 3600000)) delete store.otp[k];\n}\nlet tel = String($json.phone || '').replace(/[\\s()-]/g, '');\nif (/^\\d{9}$/.test(tel)) tel = '+48' + tel;\nif (!/^\\+\\d{10,15}$/.test(tel)) return { json: { wyslij: false, ok: false, status: 'zly-numer' } };\nconst klucz = crypto.createHmac('sha256', sekret).update('tel:' + tel).digest('hex').slice(0, 32);\nconst skrot = (kod) => crypto.createHmac('sha256', sekret).update(tel + ':' + kod).digest('hex');\nconst rec = store.otp[klucz] || { wysylki: [] };\nrec.wysylki = (rec.wysylki || []).filter((t) => now - t < 3600000);\n\nif ($json.action === 'start') {\n  if (rec.wysylki.length >= cfg.maksWysylekNaGodzine) return { json: { wyslij: false, ok: false, status: 'limit-wysylek' } };\n  const kod = String(crypto.randomInt(0, 1000000)).padStart(6, '0');\n  Object.assign(rec, { hash: skrot(kod), exp: now + cfg.waznoscMin * 60000, proby: 0 });\n  rec.wysylki.push(now);\n  store.otp[klucz] = rec;\n  return { json: { wyslij: true, ok: true, status: 'wyslano', phone: tel, kod } };\n}\nif ($json.action === 'verify') {\n  const kod = String($json.code || '').replace(/\\D/g, '');\n  if (!rec.hash || rec.exp < now) return { json: { wyslij: false, ok: false, status: 'kod-wygasl' } };\n  if (rec.proby >= cfg.maksProb) return { json: { wyslij: false, ok: false, status: 'za-duzo-prob' } };\n  rec.proby += 1;\n  store.otp[klucz] = rec;\n  const ok = kod.length === 6 && crypto.timingSafeEqual(Buffer.from(skrot(kod)), Buffer.from(rec.hash));\n  if (ok) store.otp[klucz] = { wysylki: rec.wysylki }; // kod zużyty, limit wysyłek zostaje\n  return { json: { wyslij: false, ok, status: ok ? 'zweryfikowano' : 'zly-kod' } };\n}\nreturn { json: { wyslij: false, ok: false, status: 'nieznana-akcja' } };"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "952242f5-f43c-4556-abb8-d470c7a99d97"
+    },
+    {
+      "name": "Wysłać SMS?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "a9b8f879-b170-49c5-afda-3a162cc427b4",
+              "leftValue": "={{ $json.wyslij }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "21d10cb4-0261-4577-a4ec-65d1427c2709"
+    },
+    {
+      "name": "Wyślij SMS z kodem",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.smsUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ to: $json.phone, message: $('Konfiguracja').first().json.nazwaNadawcy + ': Twój kod weryfikacyjny to ' + $json.kod + '. Ważny ' + $('Konfiguracja').first().json.waznoscMin + ' min. Nie podawaj go nikomu.' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1380,
+        300
+      ],
+      "id": "8b74021e-974b-4bde-a51b-628b42cea131"
+    },
+    {
+      "name": "Potwierdź wysłanie",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true, \"status\": \"wyslano\" } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "4d753a52-6945-4b64-a482-c7a7850cc625"
+    },
+    {
+      "name": "Zwróć wynik",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": $json.ok, \"status\": $json.status } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "position": [
+        1380,
+        520
+      ],
+      "id": "a8702958-4ec8-4f6a-a6f3-d182562b73cd"
+    }
+  ],
+  "connections": {
+    "Żądanie kodu / weryfikacji (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Obsłuż kod SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obsłuż kod SMS": {
+      "main": [
+        [
+          {
+            "node": "Wysłać SMS?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wysłać SMS?": {
+      "main": [
+        [
+          {
+            "node": "Wyślij SMS z kodem",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Zwróć wynik",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wyślij SMS z kodem": {
+      "main": [
+        [
+          {
+            "node": "Potwierdź wysłanie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

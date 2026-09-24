@@ -2,30 +2,25 @@
   "name": "STFS — Automatyczne raportowanie kampanii",
   "nodes": [
     {
-      "id": "9b685c16-7d6f-4af8-8346-86902dd28374",
+      "id": "b5a8a64c-5c79-4f11-abb4-84b51aeab8e3",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Cotygodniowy raport kampanii\n\n**Trigger:** Schedule — co poniedziałek rano.\n\n**Do zrobienia:**\n1. Podmień \"Pobierz dane Meta/Google Ads\" na oficjalne węzły/API tych platform (wymaga kont reklamowych + tokenów).\n2. Skonfiguruj Slack/e-mail do wysyłki raportu.",
-        "height": 300,
-        "width": 380,
+        "content": "## 07 – Tygodniowy raport kampanii\n\nW poniedziałek 8:00 pobiera wyniki z ostatnich 7 dni z Meta Ads i Google Ads, sumuje wydatki/kliknięcia/konwersje, AI pisze krótki komentarz i rekomendacje → Slack.\n\nMeta: Header Auth `Authorization: Bearer <token>`. Google Ads: credential OAuth2 Google Ads + nagłówek developer-token w Konfiguracji.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- googleAdsOAuth2Api\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "ed8f7597-eaa1-41f4-a21b-80e9cc36abb1",
       "name": "Poniedziałek 8:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -35,81 +30,214 @@
             }
           ]
         }
-      }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "e7a73d8e-1cc1-43a2-a4db-0257434c1b2b"
     },
     {
-      "id": "8db29c0b-89a4-4520-9f61-c1d6bf0dd8bf",
-      "name": "Pobierz dane Meta Ads",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cb8ea11c-4a44-4863-a614-2aaf7c40ce77",
+              "name": "metaKontoReklamowe",
+              "value": "act_YOUR_ID",
+              "type": "string"
+            },
+            {
+              "id": "5d95a342-d37d-4595-a5e4-dbe46f1b6b5f",
+              "name": "googleIdKlienta",
+              "value": "YOUR_CUSTOMER_ID",
+              "type": "string"
+            },
+            {
+              "id": "58df1ca1-71f7-40b2-af32-0a5c0d4ae98c",
+              "name": "googleDeveloperToken",
+              "value": "YOUR_DEV_TOKEN",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "GET",
-        "url": "https://graph.facebook.com/v20.0/act_YOUR_ID/insights",
-        "sendBody": false,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Wymaga tokenu Meta Marketing API."
+      "id": "e1308e57-3258-4139-a373-0a1a138af59b"
     },
     {
-      "id": "926823a6-2519-4878-99df-e81d2d56bf8b",
-      "name": "Pobierz dane Google Ads",
+      "name": "Pobierz dane Meta Ads",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://graph.facebook.com/v20.0/' + $('Konfiguracja').first().json.metaKontoReklamowe + '/insights?date_preset=last_7d&fields=spend,clicks,impressions,actions' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "method": "GET",
-        "url": "https://googleads.googleapis.com/v16/customers/YOUR_ID/googleAds:search",
-        "sendBody": false,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Wymaga Google Ads API + OAuth."
+      "id": "538ad2d8-9104-4465-a5a6-14704df47234"
     },
     {
-      "id": "7f3aa538-aa7a-4aad-bb18-0da2a1549c83",
-      "name": "Połącz dane w raport",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "name": "Pobierz dane Google Ads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://googleads.googleapis.com/v17/customers/' + $('Konfiguracja').first().json.googleIdKlienta + '/googleAds:search' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleAdsOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "developer-token",
+              "value": "={{ $('Konfiguracja').first().json.googleDeveloperToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: \"SELECT metrics.cost_micros, metrics.clicks, metrics.impressions, metrics.conversions FROM customer WHERE segments.date DURING LAST_7_DAYS\" }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [
         860,
         300
       ],
-      "parameters": {
-        "jsCode": "return [{ json: { summary: \"Połącz dane z obu źródeł tutaj\" } }];"
-      }
+      "id": "a228ee5b-a898-4c14-aee8-2cf65b0a30aa"
     },
     {
-      "id": "a9f71001-c8db-421f-a11f-c238842105e8",
-      "name": "Wyślij raport na Slack",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "name": "Połącz dane w raport",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const meta = $('Pobierz dane Meta Ads').first().json.data?.[0] || {};\nconst rows = $('Pobierz dane Google Ads').first().json.results || [];\nconst g = rows.reduce((a, r) => ({\n  koszt: a.koszt + Number(r.metrics?.costMicros || 0) / 1e6,\n  klikniecia: a.klikniecia + Number(r.metrics?.clicks || 0),\n  wyswietlenia: a.wyswietlenia + Number(r.metrics?.impressions || 0),\n  konwersje: a.konwersje + Number(r.metrics?.conversions || 0),\n}), { koszt: 0, klikniecia: 0, wyswietlenia: 0, konwersje: 0 });\nconst m = { koszt: Number(meta.spend || 0), klikniecia: Number(meta.clicks || 0), wyswietlenia: Number(meta.impressions || 0) };\nconst f = (n) => n.toLocaleString('pl-PL', { maximumFractionDigits: 2 });\nconst tabela = 'Meta: ' + f(m.koszt) + ' zł, ' + f(m.klikniecia) + ' klik., ' + f(m.wyswietlenia) + ' wyśw.\\n' +\n  'Google: ' + f(g.koszt) + ' zł, ' + f(g.klikniecia) + ' klik., ' + f(g.konwersje) + ' konw.';\nreturn { json: { meta: m, google: g, tabela } };"
+      },
       "position": [
         1120,
         300
       ],
+      "id": "4dffb87f-a3f3-403f-a8b2-1edfcebec192"
+    },
+    {
+      "name": "AI: prompt (komentarz do raportu)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Jesteś analitykiem marketingu. Na podstawie liczb z ostatnich 7 dni napisz 2-3 zdania komentarza i maksymalnie 3 konkretne rekomendacje. Opieraj się wyłącznie na podanych liczbach.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"komentarz\\\": tekst, \\\"rekomendacje\\\": tablica krótkich zdań}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Wyniki z ostatnich 7 dni:\\n${$json.tabela}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "a54a3b96-8f82-42a4-ad29-bc21dfc19cdc"
+    },
+    {
+      "name": "AI: komentarz do raportu",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "9d9e7072-c935-47dc-a0b2-1b691cf63c96"
+    },
+    {
+      "name": "AI: wynik (komentarz do raportu)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (komentarz do raportu)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"komentarz\":\"\",\"rekomendacje\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "c3cd44a1-c587-4a64-aff3-383a62f08875"
+    },
+    {
+      "name": "Wyślij raport na Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
       "parameters": {
         "select": "channel",
         "channelId": {
+          "__rl": true,
           "mode": "name",
-          "value": "#automatyzacje"
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
         },
-        "text": "Tygodniowy raport kampanii:\n{{$json.summary}}",
-        "otherOptions": {}
-      }
+        "text": "=📊 Raport kampanii (7 dni)\n{{ $json.tabela }}\n\n{{ $json.komentarz }}\n{{ ($json.rekomendacje || []).map(r => '• ' + r).join('\\n') }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2160,
+        300
+      ],
+      "id": "c2587498-7946-4b91-a166-98dc108f3bc4"
     }
   ],
   "connections": {
     "Poniedziałek 8:00": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -146,6 +274,39 @@
       "main": [
         [
           {
+            "node": "AI: prompt (komentarz do raportu)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (komentarz do raportu)": {
+      "main": [
+        [
+          {
+            "node": "AI: komentarz do raportu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: komentarz do raportu": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (komentarz do raportu)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (komentarz do raportu)": {
+      "main": [
+        [
+          {
             "node": "Wyślij raport na Slack",
             "type": "main",
             "index": 0
@@ -156,6 +317,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

@@ -2,75 +2,155 @@
   "name": "STFS — Chatbot HR",
   "nodes": [
     {
-      "id": "32913146-7204-490c-985a-010e093b61a3",
+      "id": "18f52529-2b34-49b0-a28d-fa035d975ba6",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Chatbot HR\n\n**Trigger:** Webhook — podepnij pod Slack/Teams/wewnętrzny czat.\n\n**Do zrobienia:**\n1. Podmień węzeł AI na swój provider + dodaj politykę urlopową/regulamin do kontekstu.\n2. Podmień \"Odpowiedz w kanale\" na Slack/Teams node.",
-        "height": 300,
-        "width": 380,
+        "content": "## 23 – Chatbot HR\n\nPytanie pracownika (z wewnętrznego czatu / intranetu) → AI odpowiada WYŁĄCZNIE na podstawie polityk HR z Konfiguracji → odpowiedź wraca w odpowiedzi HTTP `{ \"answer\": \"...\" }`.\n\nWejście: `question`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "2c8b7b5c-7fd0-4609-8a9a-0ee4128ccccd",
       "name": "Pytanie pracownika (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "hr-pytanie",
         "authentication": "headerAuth",
-        "responseMode": "onReceived",
+        "responseMode": "responseNode",
         "options": {}
-      }
+      },
+      "webhookId": "b486e323-3ec6-49d1-abc0-bfda4e9b7738",
+      "position": [
+        80,
+        300
+      ],
+      "id": "254ee4fa-8dea-456e-a902-40e939340e13"
     },
     {
-      "id": "bd727e2a-c982-4866-85a6-46e398a716b6",
-      "name": "AI: odpowiedz na podstawie polityk HR",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"question\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Model odpowiada na podstawie regulaminu/polityki urlopowej w kontekście."
+      "id": "78d921fc-3c66-40b7-a659-208976a2df1e"
     },
     {
-      "id": "8e29129a-bcfe-4798-9b4f-2a0c521dfe44",
-      "name": "Odpowiedz w kanale",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d9420afe-198b-4b44-aba6-055338b2aead",
+              "name": "politykiHR",
+              "value": "Wklej tu regulamin pracy, politykę urlopową, benefity…",
+              "type": "string"
+            },
+            {
+              "id": "368e91d4-6eb4-4e05-afc8-7f8ca9131da9",
+              "name": "kontaktHR",
+              "value": "hr@twojafirma.pl",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
+      "id": "764802bb-1615-4b2a-a2bf-e172273a2ed1"
+    },
+    {
+      "name": "AI: prompt (odpowiedź HR)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "parameters": {
-        "select": "channel",
-        "channelId": {
-          "mode": "name",
-          "value": "#automatyzacje"
-        },
-        "text": "={{ $json.aiResponse }}",
-        "otherOptions": {}
-      }
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Jesteś asystentem HR. Odpowiadasz krótko, po polsku, WYŁĄCZNIE na podstawie podanych polityk. Jeśli odpowiedzi nie ma w politykach – ustaw \\\"znaleziono\\\": false. Nie udzielaj porad prawnych.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"znaleziono\\\": true/false, \\\"odpowiedz\\\": tekst}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Polityki HR:\\n${$('Konfiguracja').first().json.politykiHR}\\n\\nPytanie: ${$json.question}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "cdb2a65b-5d95-478e-ab32-f8199f3f3c37"
+    },
+    {
+      "name": "AI: odpowiedź HR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "5b613432-b776-49f5-a62f-9bf5dcd40428"
+    },
+    {
+      "name": "AI: wynik (odpowiedź HR)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (odpowiedź HR)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"znaleziono\":\"\",\"odpowiedz\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "200057ce-fb66-4539-a056-aa0b6f9f7059"
+    },
+    {
+      "name": "Zwróć odpowiedź",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"answer\": $json._aiOk && $json.znaleziono !== false ? $json.odpowiedz : \"Nie znalazłem tego w politykach. Napisz proszę do HR: \" + $('Konfiguracja').first().json.kontaktHR } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "0af4c95d-86d0-4d1a-a5dc-f678d4c52f37"
     }
   ],
   "connections": {
@@ -78,18 +158,62 @@
       "main": [
         [
           {
-            "node": "AI: odpowiedz na podstawie polityk HR",
+            "node": "Walidacja danych",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: odpowiedz na podstawie polityk HR": {
+    "Walidacja danych": {
       "main": [
         [
           {
-            "node": "Odpowiedz w kanale",
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (odpowiedź HR)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (odpowiedź HR)": {
+      "main": [
+        [
+          {
+            "node": "AI: odpowiedź HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: odpowiedź HR": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (odpowiedź HR)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (odpowiedź HR)": {
+      "main": [
+        [
+          {
+            "node": "Zwróć odpowiedź",
             "type": "main",
             "index": 0
           }
@@ -99,6 +223,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

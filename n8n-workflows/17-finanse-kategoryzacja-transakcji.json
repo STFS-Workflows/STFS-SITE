@@ -2,30 +2,25 @@
   "name": "STFS — Kategoryzacja transakcji i wydatków",
   "nodes": [
     {
-      "id": "4123441b-0a21-44b1-935b-1beb23ea535c",
+      "id": "f834cf28-5071-4f4a-a4e9-40c82d680390",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Kategoryzacja transakcji\n\n**Trigger:** Schedule — codzienne pobranie nowych transakcji.\n\n**Do zrobienia:**\n1. Podmień \"Pobierz transakcje\" na API banku/systemu księgowego.\n2. Podmień \"Zapisz kategorię\" na docelową bazę/arkusz.",
-        "height": 300,
-        "width": 380,
+        "content": "## 17 – Kategoryzacja transakcji\n\nCodziennie 5:00 pobiera nowe transakcje, AI przypisuje kategorię z Twojej listy i pewność. Pewne → zapis automatycznie, niepewne → do ręcznej weryfikacji. Każda transakcja jest przetwarzana tylko raz.\n\nFormat: `{ \"data\": [ { \"id\", \"date\", \"amount\", \"counterparty\", \"title\" } ] }`.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "1ee15add-8892-4e91-a5b9-b2762c07e77f",
       "name": "Codziennie 5:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -35,68 +30,270 @@
             }
           ]
         }
-      }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "26747ac9-379b-4600-ab94-8374fc25bd20"
     },
     {
-      "id": "77b0cf00-b7db-48e6-975a-1b0f06790f15",
-      "name": "Pobierz transakcje",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "aa49cb33-aba4-45e9-af0f-b9c8eb9ea986",
+              "name": "transakcjeUrl",
+              "value": "https://YOUR-BANK.example.com/api/transactions?since=yesterday",
+              "type": "string"
+            },
+            {
+              "id": "61eeb24b-f5f4-436e-a3da-8a0ff135df76",
+              "name": "zapisUrl",
+              "value": "https://YOUR-ACCOUNTING.example.com/api/transactions/categorize",
+              "type": "string"
+            },
+            {
+              "id": "083b9d80-efe4-4eb0-a8e0-e8d60bbc2a8b",
+              "name": "kategorie",
+              "value": "paliwo, biuro, marketing, oprogramowanie, podroze, wynagrodzenia, podatki, inne",
+              "type": "string"
+            },
+            {
+              "id": "a360ff46-d6ee-47ce-a55b-cf525ce5c2ae",
+              "name": "progPewnosci",
+              "value": 0.75,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "GET",
-        "url": "https://YOUR-BANK.example.com/api/transactions",
-        "sendBody": false,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na API banku/systemu księgowego."
+      "id": "fa8cb8f6-5ceb-49ba-ac71-4850a33b73c2"
     },
     {
-      "id": "12ef7058-ec5e-47ae-b634-8befde6a7305",
-      "name": "AI: przypisz kategorię kosztów",
+      "name": "Pobierz transakcje",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.transakcjeUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Model klasyfikuje transakcję do kategorii (paliwo, biuro, marketing itd.)."
+      "id": "401fab0f-d668-4fa9-a426-92e0bef81949"
     },
     {
-      "id": "0c3841d9-63a0-407f-a727-d8299cb571c9",
-      "name": "Zapisz kategorię",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Rozbij listę transakcji",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
       "position": [
         860,
         300
       ],
+      "id": "e404e2a6-d1c3-4441-a1a0-6fc5bbc5c17a"
+    },
+    {
+      "name": "Pomiń już skategoryzowane",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"transakcje\"] = store[\"transakcje\"] || {};\nconst seen = store[\"transakcje\"];\nconst now = Date.now();\nconst ttl = 400 * 86400000;\nfor (const [k, t] of Object.entries(seen)) if (now - t > ttl) delete seen[k];\nconst out = [];\n$input.all().forEach((item, index) => {\n  const key = String(item.json.id ?? '');\n  if (!key || seen[key]) return; // brak klucza albo już obsłużone -> pomiń\n  // pairedItem zachowuje powiązanie z danymi wejściowymi (potrzebne dla odwołań .item w kolejnych węzłach)\n  out.push({ json: item.json, binary: item.binary, pairedItem: { item: index } });\n});\nreturn out;"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "321571af-b311-4acf-a310-27bd5d2dbda8"
+    },
+    {
+      "name": "AI: prompt (kategoria kosztu)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Przypisujesz transakcję bankową do jednej kategorii kosztowej z podanej listy.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"kategoria\\\": jedna z listy, \\\"pewnosc\\\": liczba 0-1}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Kategorie: ${$('Konfiguracja').first().json.kategorie}\\nKontrahent: ${$json.counterparty}\\nTytuł: ${$json.title}\\nKwota: ${$json.amount}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "31b8ac5f-a600-47e0-ac8a-0a2c8f1999ce"
+    },
+    {
+      "name": "AI: kategoria kosztu",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "parameters": {
         "method": "POST",
-        "url": "https://YOUR-ACCOUNTING.example.com/api/transactions/categorize",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "ed7cd370-e210-4ef7-ac6f-dd14175365eb"
+    },
+    {
+      "name": "AI: wynik (kategoria kosztu)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (kategoria kosztu)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"kategoria\":\"\",\"pewnosc\":0};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\nout.pewnosc = Math.max(0, Math.min(1, Number(out.pewnosc)));\nif (!Number.isFinite(out.pewnosc)) out.pewnosc = 0;\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "63f0e1c5-b6e4-4c52-aa83-e875d0563bc0"
+    },
+    {
+      "name": "Zapamiętaj transakcję",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"transakcje\"] = store[\"transakcje\"] || {};\nconst src = $json;\nconst key = String(src.id ?? '');\nif (key) store[\"transakcje\"][key] = Date.now();\nreturn { json: $json };"
+      },
+      "position": [
+        2160,
+        300
+      ],
+      "id": "8f4c47f8-e866-444c-a8f1-11c58c136e6f"
+    },
+    {
+      "name": "Pewna kategoria?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "e8ed778c-477f-4483-a0b9-7d97c7ce98fc",
+              "leftValue": "={{ $json.pewnosc }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "rightValue": "={{ $('Konfiguracja').first().json.progPewnosci }}"
+            }
+          ],
+          "combinator": "and"
+        },
         "options": {}
       },
-      "notes": "Podmień na docelową bazę/arkusz."
+      "position": [
+        2420,
+        300
+      ],
+      "id": "252fc26d-6ed8-4c8b-a4a9-e8312a80065c"
+    },
+    {
+      "name": "Zapisz kategorię",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.zapisUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: $json.id, category: $json.kategoria, confidence: $json.pewnosc }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2680,
+        300
+      ],
+      "id": "4bfb1377-ee6d-442a-a5cd-7de94b10e478"
+    },
+    {
+      "name": "Do ręcznej weryfikacji",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=🧾 Transakcja do sprawdzenia: {{ $json.counterparty }} – {{ $json.amount }} zł („{{ $json.title }}”), propozycja: {{ $json.kategoria }} ({{ $json.pewnosc }})",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2680,
+        520
+      ],
+      "id": "cf0b4e2d-4aa9-4036-aa21-e9d3eea1ca55"
     }
   ],
   "connections": {
     "Codziennie 5:00": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -111,18 +308,91 @@
       "main": [
         [
           {
-            "node": "AI: przypisz kategorię kosztów",
+            "node": "Rozbij listę transakcji",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: przypisz kategorię kosztów": {
+    "Rozbij listę transakcji": {
+      "main": [
+        [
+          {
+            "node": "Pomiń już skategoryzowane",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pomiń już skategoryzowane": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (kategoria kosztu)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (kategoria kosztu)": {
+      "main": [
+        [
+          {
+            "node": "AI: kategoria kosztu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: kategoria kosztu": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (kategoria kosztu)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (kategoria kosztu)": {
+      "main": [
+        [
+          {
+            "node": "Zapamiętaj transakcję",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapamiętaj transakcję": {
+      "main": [
+        [
+          {
+            "node": "Pewna kategoria?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pewna kategoria?": {
       "main": [
         [
           {
             "node": "Zapisz kategorię",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Do ręcznej weryfikacji",
             "type": "main",
             "index": 0
           }
@@ -132,6 +402,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

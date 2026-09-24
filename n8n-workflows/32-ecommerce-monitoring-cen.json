@@ -2,30 +2,25 @@
   "name": "STFS — Monitoring cen konkurencji",
   "nodes": [
     {
-      "id": "7c9d485f-9624-4ae5-88cf-77d3fa8e6835",
+      "id": "4852ecdf-fbf5-4c5f-a777-8056ba2bd298",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Monitoring cen konkurencji\n\n**Trigger:** Schedule — codzienne sprawdzenie.\n\n**Do zrobienia:**\n1. Podmień \"Pobierz ceny konkurencji\" na własny scraper/API (uważaj na regulaminy stron — rozważ oficjalne API porównywarek).\n2. Ustaw próg różnicy cenowej w węźle IF.",
-        "height": 300,
-        "width": 380,
+        "content": "## 32 – Monitoring cen konkurencji\n\nCodziennie 6:00 porównuje Twoje ceny z cenami konkurencji (w obie strony – drożej i taniej), produkty z różnicą ponad próg trafiają do JEDNEGO zbiorczego raportu na Slacku.\n\nŹródło danych: oficjalne API porównywarki/feed – sprawdź regulamin przed scrapowaniem.\n\nFormat: `{ \"data\": [ { \"productName\", \"ownPrice\", \"competitorPrice\", \"competitor\" } ] }`.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "ac71c86b-f8f9-4dec-86ef-46d4f35bcea1",
       "name": "Codziennie 6:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -35,94 +30,189 @@
             }
           ]
         }
-      }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "c5083225-abc2-4c4c-ae48-a27246f10b91"
     },
     {
-      "id": "e5f6af19-8e8f-4193-9092-5471bc5cfa24",
-      "name": "Pobierz ceny konkurencji",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e4cb46ee-ff21-4fe6-afec-516a7e3450da",
+              "name": "cenyUrl",
+              "value": "https://YOUR-PRICE-SOURCE.example.com/api/prices",
+              "type": "string"
+            },
+            {
+              "id": "99bf14dd-1422-4f0b-a71b-a4a9811591b2",
+              "name": "progRoznicy",
+              "value": 10,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "GET",
-        "url": "https://YOUR-PRICE-SOURCE.example.com/api/prices",
-        "sendBody": false,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na własny scraper/API porównywarki cen — sprawdź regulamin źródła."
+      "id": "ef4b65bf-bdbc-4890-add8-515a06868fbe"
     },
     {
-      "id": "d46e0970-d1fb-4fd6-aa28-08455d005ac6",
-      "name": "Porównaj z własną ceną",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "name": "Pobierz ceny konkurencji",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.cenyUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "jsCode": "const diffPct = ((($json.ownPrice || 0) - ($json.competitorPrice || 1)) / ($json.competitorPrice || 1)) * 100;\nreturn [{ json: { ...$json, diffPct } }];"
-      }
+      "id": "92729b01-0c5d-4fe1-a479-d83284bf2104"
     },
     {
-      "id": "02d5b5ba-b1f1-433a-a258-5ff6de7c0982",
-      "name": "Różnica > 10%?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "name": "Rozbij listę cen",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
       "position": [
         860,
         300
       ],
+      "id": "ce677c6c-a694-4b63-abea-e7d84671a744"
+    },
+    {
+      "name": "Porównaj z własną ceną",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const own = Number($json.ownPrice);\nconst comp = Number($json.competitorPrice);\nconst ok = Number.isFinite(own) && Number.isFinite(comp) && comp > 0;\nconst diffPct = ok ? Math.round(((own - comp) / comp) * 1000) / 10 : 0;\nreturn { json: { ...$json, diffPct, diffAbs: Math.abs(diffPct) } };"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "9175ce82-4b7c-49ac-aa3d-92622e9f9d96"
+    },
+    {
+      "name": "Różnica ponad próg?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
       "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
-              "id": "01705787-17bf-401f-8800-637cc7982e8f",
-              "leftValue": "={{ $json.diffPct }}",
-              "rightValue": 10,
+              "id": "5f5a36a1-f46d-45bb-a0c8-ac1d277c8ab1",
+              "leftValue": "={{ $json.diffAbs }}",
               "operator": {
                 "type": "number",
                 "operation": "gt"
-              }
+              },
+              "rightValue": "={{ $('Konfiguracja').first().json.progRoznicy }}"
             }
           ],
           "combinator": "and"
         },
         "options": {}
-      }
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "5a93c28e-49b9-4451-a304-88347da2c0db"
     },
     {
-      "id": "445d4238-7dce-4e1b-a1ec-e9d7883ca22a",
+      "name": "Zbierz raport cenowy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const lines = $input.all().map((i) => '• ' + i.json.productName + ': Ty ' + i.json.ownPrice + ' zł vs ' + (i.json.competitor || 'konkurencja') + ' ' + i.json.competitorPrice + ' zł (' + (i.json.diffPct > 0 ? '+' : '') + i.json.diffPct + '%)');\nreturn [{ json: { liczba: lines.length, lista: lines.join('\\n') } }];"
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "aa9504d0-97b6-4b15-acbf-a9d24cb5af33"
+    },
+    {
       "name": "Alert cenowy",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [
-        1120,
-        300
-      ],
       "parameters": {
         "select": "channel",
         "channelId": {
+          "__rl": true,
           "mode": "name",
-          "value": "#automatyzacje"
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
         },
-        "text": "💰 {{$json.productName}}: Twoja cena różni się o {{$json.diffPct}}% od konkurencji.",
-        "otherOptions": {}
-      }
+        "text": "=💰 Różnice cen ponad próg – {{ $json.liczba }} produktów:\n{{ $json.lista }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "04547838-f586-4f72-a8fa-33416257d8a9"
+    },
+    {
+      "name": "Ceny w normie",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        1640,
+        520
+      ],
+      "id": "45ab0537-4d20-4739-a5f8-0447a4b87ca9"
     }
   ],
   "connections": {
     "Codziennie 6:00": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -137,6 +227,17 @@
       "main": [
         [
           {
+            "node": "Rozbij listę cen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rozbij listę cen": {
+      "main": [
+        [
+          {
             "node": "Porównaj z własną ceną",
             "type": "main",
             "index": 0
@@ -148,14 +249,32 @@
       "main": [
         [
           {
-            "node": "Różnica > 10%?",
+            "node": "Różnica ponad próg?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Różnica > 10%?": {
+    "Różnica ponad próg?": {
+      "main": [
+        [
+          {
+            "node": "Zbierz raport cenowy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ceny w normie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zbierz raport cenowy": {
       "main": [
         [
           {
@@ -169,6 +288,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

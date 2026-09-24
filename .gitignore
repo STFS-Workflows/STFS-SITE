@@ -26,3 +26,6 @@ menu/
 kontakt/
 przyjecia/
 refinement.css
+
+# Konfiguracja lokalnego IDE.
+.idea/

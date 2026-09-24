@@ -2,30 +2,25 @@
   "name": "STFS — Alerty o stanach magazynowych",
   "nodes": [
     {
-      "id": "6164f02c-cfec-4b3d-98dd-02da347108da",
+      "id": "a85f904d-ad16-4b2d-acc5-84a0b0162b1c",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Alerty magazynowe\n\n**Trigger:** Schedule — codzienna kontrola stanów.\n\n**Do zrobienia:**\n1. Podmień \"Pobierz stany magazynowe\" na API Twojego systemu (Baselinker/Shopify/WMS).\n2. Ustaw próg minimalnego stanu w węźle IF.",
-        "height": 300,
-        "width": 380,
+        "content": "## 16 – Alerty magazynowe\n\nCodziennie 6:00 pobiera stany, wybiera produkty poniżej progu i wysyła JEDNĄ zbiorczą wiadomość (zamiast osobnej na każdy produkt).\n\nFormat: `{ \"data\": [ { \"sku\", \"productName\", \"quantity\" } ] }`.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "7a91303a-2f56-4068-a2af-b3a79a88fcb6",
       "name": "Codziennie 6:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -35,81 +30,175 @@
             }
           ]
         }
-      }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "3372787c-5fe3-46b0-af13-ac541d301587"
     },
     {
-      "id": "c202068a-6907-4da3-ad62-482f2c723a38",
-      "name": "Pobierz stany magazynowe",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "058cbcf8-80fa-47db-a573-0e99b910bf37",
+              "name": "stanyUrl",
+              "value": "https://YOUR-WMS.example.com/api/stock",
+              "type": "string"
+            },
+            {
+              "id": "54294ada-cd9a-4baf-a826-c96919735065",
+              "name": "progMinimalny",
+              "value": 10,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "GET",
-        "url": "https://YOUR-WMS.example.com/api/stock",
-        "sendBody": false,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na Baselinker/Shopify/WMS."
+      "id": "9ee93efa-bf82-4152-ad4c-8d6b1d7e7aaf"
     },
     {
-      "id": "3663c790-0d97-4e02-be34-7d3d573d0e2d",
-      "name": "Stan poniżej progu?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "name": "Pobierz stany magazynowe",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.stanyUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [
         600,
         300
       ],
+      "id": "ac5ec123-0350-4141-a19f-7542c0463b73"
+    },
+    {
+      "name": "Rozbij listę produktów",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "6d33fb69-3e08-4ff1-acb9-af07d38d2117"
+    },
+    {
+      "name": "Stan poniżej progu?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
       "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
-              "id": "87e6bbec-e0df-45b0-a059-d09f7c68ee56",
-              "leftValue": "={{ $json.quantity }}",
-              "rightValue": 10,
+              "id": "4d08581b-7aaa-4258-a231-2db5d7579e89",
+              "leftValue": "={{ Number($json.quantity) }}",
               "operator": {
                 "type": "number",
                 "operation": "lt"
-              }
+              },
+              "rightValue": "={{ $('Konfiguracja').first().json.progMinimalny }}"
             }
           ],
           "combinator": "and"
         },
         "options": {}
-      }
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "805b4adf-bdbf-4d81-af3b-d84e772da901"
     },
     {
-      "id": "9264c0bc-c9b2-40b4-91ec-7c0e038df1a1",
+      "name": "Zbierz listę braków",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const lines = $input.all().map((i) => '• ' + i.json.productName + ' (' + i.json.sku + '): ' + i.json.quantity + ' szt.');\nreturn [{ json: { liczba: lines.length, lista: lines.join('\\n') } }];"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "f55eeb96-fdfa-4f6d-a0dd-226fe34b9e8c"
+    },
+    {
       "name": "Alert niskiego stanu",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [
-        860,
-        300
-      ],
       "parameters": {
         "select": "channel",
         "channelId": {
+          "__rl": true,
           "mode": "name",
-          "value": "#automatyzacje"
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
         },
-        "text": "📦 Niski stan magazynowy: {{$json.productName}} ({{$json.quantity}} szt.)",
-        "otherOptions": {}
-      }
+        "text": "=📦 Niski stan magazynowy – {{ $json.liczba }} produktów:\n{{ $json.lista }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "e3c197ce-50a7-4000-a2df-be2f827a7922"
+    },
+    {
+      "name": "Stan OK",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        1380,
+        520
+      ],
+      "id": "f8e874b8-ee1c-44c1-a9a1-9905059a79a5"
     }
   ],
   "connections": {
     "Codziennie 6:00": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -124,6 +213,17 @@
       "main": [
         [
           {
+            "node": "Rozbij listę produktów",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rozbij listę produktów": {
+      "main": [
+        [
+          {
             "node": "Stan poniżej progu?",
             "type": "main",
             "index": 0
@@ -132,6 +232,24 @@
       ]
     },
     "Stan poniżej progu?": {
+      "main": [
+        [
+          {
+            "node": "Zbierz listę braków",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stan OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zbierz listę braków": {
       "main": [
         [
           {
@@ -145,6 +263,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

@@ -2,30 +2,25 @@
   "name": "STFS — Wykrywanie anomalii w danych",
   "nodes": [
     {
-      "id": "43114c17-5414-41ad-8824-97532a9f826c",
+      "id": "5aba1576-cf7d-48ec-a613-34f50a66cd58",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Wykrywanie anomalii\n\n**Trigger:** Schedule — cogodzinna kontrola kluczowych metryk.\n\n**Do zrobienia:**\n1. Podmień \"Pobierz metryki\" na źródło danych (Analytics/CRM/sprzedaż).\n2. Dostosuj próg odchylenia w węźle IF do swoich danych historycznych.",
-        "height": 300,
-        "width": 380,
+        "content": "## 28 – Wykrywanie anomalii\n\nCo godzinę porównuje bieżące wartości metryk ze średnią. Brak danych = brak alertu (wcześniej brak średniej dawał fałszywe alarmy). Ta sama metryka alarmuje maks. raz na dobę.\n\nFormat: `{ \"data\": [ { \"metricName\", \"current\", \"average\" } ] }`.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "3b6287b7-9c0a-488b-b356-35ce733bd6a9",
       "name": "Co godzinę",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -35,94 +30,203 @@
             }
           ]
         }
-      }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "b26da9c8-e6f4-4b85-a4da-641a8bbe0e2e"
     },
     {
-      "id": "4f4b6000-b4b0-44c0-a584-d3113c27dc8d",
-      "name": "Pobierz metryki",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b4bf6a6c-1467-4727-ac94-2dd78a739f5a",
+              "name": "metrykiUrl",
+              "value": "https://YOUR-ANALYTICS.example.com/api/metrics",
+              "type": "string"
+            },
+            {
+              "id": "edad501f-5620-4930-aa75-55d91b267efd",
+              "name": "progOdchylenia",
+              "value": 30,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "GET",
-        "url": "https://YOUR-ANALYTICS.example.com/api/metrics",
-        "sendBody": false,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na Analytics/CRM/system sprzedaży."
+      "id": "ef4949aa-0263-44f2-a384-5a0808affbf4"
     },
     {
-      "id": "5f81e84a-4e7b-4fe4-b9b4-a0e1d6217494",
-      "name": "Oblicz odchylenie",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "name": "Pobierz metryki",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.metrykiUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "jsCode": "const deviation = Math.abs((($json.current || 0) - ($json.average || 1)) / ($json.average || 1)) * 100;\nreturn [{ json: { ...$json, deviation } }];"
-      }
+      "id": "bab9639a-46ce-4614-ad59-d23d7b5827f1"
     },
     {
-      "id": "0b7d14cf-55f5-479e-9aa7-812d8aedea8f",
-      "name": "Odchylenie > 30%?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "name": "Rozbij listę metryk",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
       "position": [
         860,
         300
       ],
+      "id": "b9cc0244-681c-4637-ac2d-5158278ee0e3"
+    },
+    {
+      "name": "Oblicz odchylenie",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const cur = Number($json.current);\nconst avg = Number($json.average);\nconst ok = Number.isFinite(cur) && Number.isFinite(avg) && avg !== 0;\nconst deviation = ok ? Math.round(Math.abs((cur - avg) / avg) * 1000) / 10 : 0;\nreturn { json: { ...$json, deviation, kierunek: cur > avg ? 'wzrost' : 'spadek', kluczDnia: $json.metricName + '-' + $now.toISODate() } };"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "4a11ae5e-a5d2-49ff-a248-424c50b162f8"
+    },
+    {
+      "name": "Odchylenie ponad próg?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
       "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
-              "id": "3d520324-c848-4e71-ae5a-1fc56395e65d",
+              "id": "0aa7feee-94ec-4135-af07-ea99931fa0a8",
               "leftValue": "={{ $json.deviation }}",
-              "rightValue": 30,
               "operator": {
                 "type": "number",
                 "operation": "gt"
-              }
+              },
+              "rightValue": "={{ $('Konfiguracja').first().json.progOdchylenia }}"
             }
           ],
           "combinator": "and"
         },
         "options": {}
-      }
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "1641127d-58c8-4850-ad7e-1468864fd860"
     },
     {
-      "id": "0c463460-8b69-4ac6-a573-a9784b608939",
+      "name": "Maks. 1 alert dziennie na metrykę",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"anomalie\"] = store[\"anomalie\"] || {};\nconst seen = store[\"anomalie\"];\nconst now = Date.now();\nconst ttl = 3 * 86400000;\nfor (const [k, t] of Object.entries(seen)) if (now - t > ttl) delete seen[k];\nconst out = [];\n$input.all().forEach((item, index) => {\n  const key = String(item.json.kluczDnia ?? '');\n  if (!key || seen[key]) return; // brak klucza albo już obsłużone -> pomiń\n  // pairedItem zachowuje powiązanie z danymi wejściowymi (potrzebne dla odwołań .item w kolejnych węzłach)\n  out.push({ json: item.json, binary: item.binary, pairedItem: { item: index } });\n});\nreturn out;"
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "6ad25999-e4de-4b97-ab54-10cf8501c864"
+    },
+    {
       "name": "Alert anomalii",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
-      "position": [
-        1120,
-        300
-      ],
       "parameters": {
         "select": "channel",
         "channelId": {
+          "__rl": true,
           "mode": "name",
-          "value": "#automatyzacje"
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
         },
-        "text": "⚠️ Wykryto anomalię: {{$json.metricName}} odchylenie {{$json.deviation}}%",
-        "otherOptions": {}
-      }
+        "text": "=⚠️ Anomalia: {{ $json.metricName }} – {{ $json.kierunek }} o {{ $json.deviation }}% (teraz {{ $json.current }}, średnio {{ $json.average }})",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "8b97591d-58be-4329-a4b0-9944b5cdda1b"
+    },
+    {
+      "name": "Zapamiętaj alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"anomalie\"] = store[\"anomalie\"] || {};\nconst src = $('Maks. 1 alert dziennie na metrykę').item.json;\nconst key = String(src.kluczDnia ?? '');\nif (key) store[\"anomalie\"][key] = Date.now();\nreturn { json: $json };"
+      },
+      "position": [
+        2160,
+        300
+      ],
+      "id": "2174c7b6-ec73-41b2-ac77-fbaeefff5c4f"
+    },
+    {
+      "name": "W normie",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        1640,
+        520
+      ],
+      "id": "6be8cc33-925d-4773-a3f2-a8642a3be5cd"
     }
   ],
   "connections": {
     "Co godzinę": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -137,6 +241,17 @@
       "main": [
         [
           {
+            "node": "Rozbij listę metryk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rozbij listę metryk": {
+      "main": [
+        [
+          {
             "node": "Oblicz odchylenie",
             "type": "main",
             "index": 0
@@ -148,14 +263,32 @@
       "main": [
         [
           {
-            "node": "Odchylenie > 30%?",
+            "node": "Odchylenie ponad próg?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Odchylenie > 30%?": {
+    "Odchylenie ponad próg?": {
+      "main": [
+        [
+          {
+            "node": "Maks. 1 alert dziennie na metrykę",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "W normie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Maks. 1 alert dziennie na metrykę": {
       "main": [
         [
           {
@@ -165,10 +298,29 @@
           }
         ]
       ]
+    },
+    "Alert anomalii": {
+      "main": [
+        [
+          {
+            "node": "Zapamiętaj alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

@@ -2,30 +2,25 @@
   "name": "STFS — Przypomnienia o porzuconym koszyku",
   "nodes": [
     {
-      "id": "b4c74999-7bb0-4b42-9946-8b82666615c5",
+      "id": "a7fd74fa-382c-4706-a199-fde79fe41bb2",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Porzucone koszyki\n\n**Trigger:** Schedule — sprawdza koszyki porzucone 1h+ temu.\n\n**Do zrobienia:**\n1. Podmień \"Pobierz porzucone koszyki\" na API sklepu (Shopify/WooCommerce).\n2. Skonfiguruj SMTP do wysyłki przypomnienia.",
-        "height": 300,
-        "width": 380,
+        "content": "## 31 – Porzucone koszyki\n\nCo godzinę pobiera koszyki porzucone 1–24 h temu. Wysyła JEDNO spersonalizowane przypomnienie na koszyk i **tylko osobom ze zgodą marketingową** (RODO/UŚUDE).\n\nFormat: `{ \"data\": [ { \"cartId\", \"email\", \"firstName\", \"items\": [..], \"cartUrl\", \"marketingConsent\" } ] }`.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "1f1d7d4f-0152-466c-84f6-3ecc0a8f1a5b",
       "name": "Co godzinę",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -35,66 +30,287 @@
             }
           ]
         }
-      }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "2136de7a-e07e-498f-a796-bebabecb162e"
     },
     {
-      "id": "092119d4-57a8-4900-b68d-11009732ccfe",
-      "name": "Pobierz porzucone koszyki",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3c05e709-744b-4c86-af6c-8cd396feb2ce",
+              "name": "koszykiUrl",
+              "value": "https://YOUR-SHOP.example.com/api/carts/abandoned?minAge=1h&maxAge=24h",
+              "type": "string"
+            },
+            {
+              "id": "99435e7b-c0f3-473e-ab87-a8dcf489980f",
+              "name": "nazwaSklepu",
+              "value": "Nazwa sklepu",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "GET",
-        "url": "https://YOUR-SHOP.example.com/api/carts/abandoned",
-        "sendBody": false,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na Shopify/WooCommerce API."
+      "id": "ecef50cb-3645-4ff1-aa6a-b0eb740577ac"
     },
     {
-      "id": "d8ea0332-adda-4833-9f9d-7676c8c2af96",
-      "name": "AI: napisz spersonalizowaną wiadomość",
+      "name": "Pobierz porzucone koszyki",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.koszykiUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na węzeł dostawcy AI (OpenAI/Claude/inny) lub uzupełnij Authorization: Bearer w Headers. To placeholder pokazujący, gdzie w przepływie wchodzi model językowy."
+      "id": "4451450d-5f27-404b-a94b-2ead1694c6dd"
     },
     {
-      "id": "231deddc-a274-411c-beb8-0ceeab537db3",
-      "name": "Wyślij przypomnienie",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "name": "Rozbij listę koszyków",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
       "position": [
         860,
         300
       ],
+      "id": "feadf2f8-fa62-4096-a9ef-77eced1c5d24"
+    },
+    {
+      "name": "Ma zgodę marketingową?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
       "parameters": {
-        "fromEmail": "hello@stfs.studio",
-        "toEmail": "={{ $json.email }}",
-        "subject": "Zostawiłeś/aś coś w koszyku",
-        "text": "={{ $json.aiResponse }}",
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "7d911222-c575-46c6-a8c5-ea177796ed93",
+              "leftValue": "={{ $json.marketingConsent === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
         "options": {}
-      }
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "21f24e52-c1a9-4227-ace3-609d8ff3e792"
+    },
+    {
+      "name": "Pomiń już przypomniane",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"koszyki\"] = store[\"koszyki\"] || {};\nconst seen = store[\"koszyki\"];\nconst now = Date.now();\nconst ttl = 30 * 86400000;\nfor (const [k, t] of Object.entries(seen)) if (now - t > ttl) delete seen[k];\nconst out = [];\n$input.all().forEach((item, index) => {\n  const key = String(item.json.cartId ?? '');\n  if (!key || seen[key]) return; // brak klucza albo już obsłużone -> pomiń\n  // pairedItem zachowuje powiązanie z danymi wejściowymi (potrzebne dla odwołań .item w kolejnych węzłach)\n  out.push({ json: item.json, binary: item.binary, pairedItem: { item: index } });\n});\nreturn out;"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "c394c252-f2c4-495b-a590-2de6b7bd40ab"
+    },
+    {
+      "name": "AI: prompt (przypomnienie)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Piszesz krótkie (2-3 zdania), przyjazne przypomnienie o pozostawionym koszyku. Po polsku, bez presji, bez wymyślania rabatów.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"temat\\\": krótki temat, \\\"tresc\\\": treść bez linku}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Sklep: ${$('Konfiguracja').first().json.nazwaSklepu}\\nImię: ${$json.firstName || ''}\\nProdukty: ${(($json.items || []).map((i) => i.name || i.title)).join(', ')}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "9dae55e2-4135-4132-aff7-ca5578bfba8d"
+    },
+    {
+      "name": "AI: przypomnienie",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "257e1710-8dd5-4505-a91c-9734d4737cc8"
+    },
+    {
+      "name": "AI: wynik (przypomnienie)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (przypomnienie)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"temat\":\"\",\"tresc\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        2160,
+        300
+      ],
+      "id": "8ff363fa-f18a-42b1-a237-c510713942ba"
+    },
+    {
+      "name": "AI zadziałało?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "999a3597-c0c5-405e-a74c-130448df6891",
+              "leftValue": "={{ $('AI: wynik (przypomnienie)').item.json._aiOk }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        2420,
+        300
+      ],
+      "id": "33d6310e-323a-4854-a603-026069a9150c"
+    },
+    {
+      "name": "Wyślij przypomnienie",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $json.email }}",
+        "subject": "={{ $json.temat }}",
+        "emailFormat": "text",
+        "text": "={{ $json.tresc }}\n\nTwój koszyk: {{ $json.cartUrl }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2680,
+        300
+      ],
+      "id": "13f97922-b9d4-4145-ad57-644fb84333d9"
+    },
+    {
+      "name": "Zapamiętaj koszyk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"koszyki\"] = store[\"koszyki\"] || {};\nconst src = $('AI: wynik (przypomnienie)').item.json;\nconst key = String(src.cartId ?? '');\nif (key) store[\"koszyki\"][key] = Date.now();\nreturn { json: $json };"
+      },
+      "position": [
+        2940,
+        300
+      ],
+      "id": "dd3502d8-4016-44d9-a56b-384baa899720"
+    },
+    {
+      "name": "AI nie odpowiedziało – spróbuj w kolejnym przebiegu",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        2680,
+        520
+      ],
+      "id": "846b0ca2-0705-4e15-a51d-7a6117c20def"
+    },
+    {
+      "name": "Brak zgody – nie wysyłaj",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        1380,
+        740
+      ],
+      "id": "b8ca73d0-efad-492e-a9af-bfc2156979b0"
     }
   ],
   "connections": {
     "Co godzinę": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -109,18 +325,109 @@
       "main": [
         [
           {
-            "node": "AI: napisz spersonalizowaną wiadomość",
+            "node": "Rozbij listę koszyków",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: napisz spersonalizowaną wiadomość": {
+    "Rozbij listę koszyków": {
+      "main": [
+        [
+          {
+            "node": "Ma zgodę marketingową?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ma zgodę marketingową?": {
+      "main": [
+        [
+          {
+            "node": "Pomiń już przypomniane",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Brak zgody – nie wysyłaj",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pomiń już przypomniane": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (przypomnienie)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (przypomnienie)": {
+      "main": [
+        [
+          {
+            "node": "AI: przypomnienie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: przypomnienie": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (przypomnienie)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (przypomnienie)": {
+      "main": [
+        [
+          {
+            "node": "AI zadziałało?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI zadziałało?": {
       "main": [
         [
           {
             "node": "Wyślij przypomnienie",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI nie odpowiedziało – spróbuj w kolejnym przebiegu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wyślij przypomnienie": {
+      "main": [
+        [
+          {
+            "node": "Zapamiętaj koszyk",
             "type": "main",
             "index": 0
           }
@@ -130,6 +437,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

@@ -2,112 +2,248 @@
   "name": "STFS — RAG chatbot na dokumentacji firmy",
   "nodes": [
     {
-      "id": "511202cd-8204-431b-941e-ac4d08330c2e",
+      "id": "8767b098-5958-44f6-aefd-3f184b0ae749",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## RAG chatbot\n\n**Trigger:** Webhook — pytanie użytkownika (strona/Slack/WhatsApp).\n\n**Do zrobienia (wymaga bazy wektorowej):**\n1. Osobny (jednorazowy) workflow do zaindeksowania dokumentów: podziel dokumenty na fragmenty, wygeneruj embeddingi, zapisz w bazie wektorowej (Pinecone/Supabase pgvector/Qdrant).\n2. Ten workflow: embedduj pytanie, wyszukaj najbliższe fragmenty, wyślij je jako kontekst do modelu.\n3. Podmień URL bazy wektorowej na swoją instancję.",
-        "height": 300,
-        "width": 380,
+        "content": "## 25 – RAG chatbot\n\nPytanie → embedding (OpenAI) → wyszukanie 5 najbliższych fragmentów w Supabase pgvector (funkcja `match_documents`) → złożenie kontekstu → AI odpowiada TYLKO na jego podstawie i podaje źródła → `{ \"answer\", \"sources\" }`.\n\nWymaga osobnego procesu indeksowania dokumentów (tabela `documents` z kolumnami content, metadata, embedding). Dla małej bazy wiedzy (< ~20 stron) prościej wkleić ją do promptu – jak w chatbocie strony STFS.\n\nWejście: `question`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "8d1a7fd1-f6cc-411f-8cc7-edee42462c15",
       "name": "Pytanie użytkownika (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "httpMethod": "POST",
         "path": "rag-pytanie",
         "authentication": "headerAuth",
-        "responseMode": "onReceived",
+        "responseMode": "responseNode",
         "options": {}
-      }
+      },
+      "webhookId": "d1b0b309-e088-42a5-a817-06264fef404a",
+      "position": [
+        80,
+        300
+      ],
+      "id": "fd13f538-feec-4a19-a6cc-4edd65c16c56"
     },
     {
-      "id": "c27acfc4-8fc5-4b4d-81f7-982cbe70e163",
-      "name": "Embedduj pytanie",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Walidacja danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dane z webhooka są w $json.body - spłaszczamy je, żeby dalej używać $json.pole\nconst src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst required = [\"question\"];\nconst missing = required.filter((k) => src[k] === undefined || src[k] === null || String(src[k]).trim() === '');\nif (missing.length) {\n  throw new Error('Brak wymaganych pól: ' + missing.join(', '));\n}\nconst clean = {};\nfor (const [k, v] of Object.entries(src)) {\n  clean[k] = typeof v === 'string' ? v.trim().slice(0, 5000) : v;\n}\nif (clean.email !== undefined && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(clean.email))) {\n  throw new Error('Niepoprawny adres e-mail');\n}\nreturn { json: { ...clean, _odebrano: new Date().toISOString() } };"
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/embeddings",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Wywołanie modelu embeddingów."
+      "id": "1a60b662-47f3-45bf-ab13-8ef9a05007be"
     },
     {
-      "id": "bb5c3fcf-cd05-45e4-95a0-571eb0db0056",
-      "name": "Szukaj w bazie wektorowej",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "adf3da72-1d5d-4dfb-a88f-a7d66f18dec0",
+              "name": "supabaseRpcUrl",
+              "value": "https://YOUR-PROJECT.supabase.co/rest/v1/rpc/match_documents",
+              "type": "string"
+            },
+            {
+              "id": "f695be66-bb46-43d6-a1fa-506dd1da5245",
+              "name": "liczbaFragmentow",
+              "value": 5,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://YOUR-VECTOR-DB.example.com/query",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na Pinecone/Supabase pgvector/Qdrant."
+      "id": "2822b132-0988-4b2b-abc0-bcceb15cfcd8"
     },
     {
-      "id": "7fce2971-4aba-483c-8259-f3591dbd189a",
-      "name": "AI: odpowiedz na podstawie kontekstu",
+      "name": "Embedduj pytanie",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: \"text-embedding-3-small\", input: $json.question }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Ten sam credential OpenAI co węzły AI.",
+      "notesInFlow": true,
       "position": [
         860,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Model odpowiada wyłącznie na podstawie znalezionych fragmentów dokumentacji."
+      "id": "28842b7e-11ad-4e6a-a2c1-caa89604bae5"
     },
     {
-      "id": "a9622516-15a0-4504-bb56-8cdd27ef1d56",
-      "name": "Zwróć odpowiedź",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
+      "name": "Szukaj w bazie wektorowej",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.supabaseRpcUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query_embedding: $json.data[0].embedding, match_count: $('Konfiguracja').first().json.liczbaFragmentow }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Header Auth: apikey = klucz Supabase (secret, tylko po stronie serwera).",
+      "notesInFlow": true,
       "position": [
         1120,
         300
       ],
+      "id": "54a3448c-e489-4e11-a8c8-2cd8b167f7d3"
+    },
+    {
+      "name": "Złóż kontekst",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const rows = $input.all().map((i) => i.json).filter((r) => r && r.content);\nconst kontekst = rows.map((r, n) => '[' + (n + 1) + '] ' + r.content).join('\\n\\n').slice(0, 10000);\nconst zrodla = rows.map((r) => r.metadata?.source || r.metadata?.title || null).filter(Boolean);\nreturn [{ json: { question: $('Walidacja danych').first().json.question, kontekst, zrodla } }];"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "e17aca3f-ad65-41a2-ad2d-29621aa4e7f4"
+    },
+    {
+      "name": "AI: prompt (odpowiedź RAG)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Odpowiadasz na pytanie WYŁĄCZNIE na podstawie ponumerowanych fragmentów dokumentacji. Jeśli fragmenty nie zawierają odpowiedzi – powiedz to wprost. Po polsku, zwięźle.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"odpowiedz\\\": tekst, \\\"wykorzystaneFragmenty\\\": tablica numerów fragmentów}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Fragmenty:\\n${$json.kontekst || \"(brak)\"}\\n\\nPytanie: ${$json.question}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 700,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "938d6389-e98f-45f8-a621-531d790a1f74"
+    },
+    {
+      "name": "AI: odpowiedź RAG",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "b23c539c-4cdb-4ccf-a98c-901f6b5d857b"
+    },
+    {
+      "name": "AI: wynik (odpowiedź RAG)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (odpowiedź RAG)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"odpowiedz\":\"\",\"wykorzystaneFragmenty\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        2160,
+        300
+      ],
+      "id": "da617ae9-4b7e-4421-ac0d-d670b31483f5"
+    },
+    {
+      "name": "Zwróć odpowiedź",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { \"status\": \"ok\" } }}"
-      }
+        "responseBody": "={{ { \"answer\": $json._aiOk ? $json.odpowiedz : \"Nie udało się teraz odpowiedzieć, spróbuj ponownie.\", \"sources\": $json.zrodla || [] } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "position": [
+        2420,
+        300
+      ],
+      "id": "1daf0c5e-4f67-470e-a3b5-9b43366e9749"
     }
   ],
   "connections": {
     "Pytanie użytkownika (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Walidacja danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja danych": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -133,14 +269,47 @@
       "main": [
         [
           {
-            "node": "AI: odpowiedz na podstawie kontekstu",
+            "node": "Złóż kontekst",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: odpowiedz na podstawie kontekstu": {
+    "Złóż kontekst": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (odpowiedź RAG)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (odpowiedź RAG)": {
+      "main": [
+        [
+          {
+            "node": "AI: odpowiedź RAG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: odpowiedź RAG": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (odpowiedź RAG)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (odpowiedź RAG)": {
       "main": [
         [
           {
@@ -154,6 +323,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

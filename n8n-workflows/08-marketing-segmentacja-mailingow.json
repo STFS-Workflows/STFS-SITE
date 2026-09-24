@@ -2,30 +2,25 @@
   "name": "STFS — Segmentacja i personalizacja mailingów",
   "nodes": [
     {
-      "id": "a6fc7f72-85ab-44ba-982a-b3d488f77673",
+      "id": "03cbd6e6-6199-4e24-a955-3e58f786b4b8",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Segmentacja bazy mailingowej\n\n**Trigger:** Schedule lub Webhook po dodaniu kontaktu.\n\n**Do zrobienia:**\n1. Podmień \"Pobierz kontakty\" na Twoją bazę/CRM.\n2. Podmień \"Wyślij do segmentu\" na Mailchimp/Brevo/inny ESP.",
-        "height": 300,
-        "width": 380,
+        "content": "## 08 – Segmentacja bazy\n\nCodziennie przypisuje każdemu kontaktowi segment (klient aktywny / klient uśpiony / lead) i **aktualizuje tag w systemie mailingowym**. Kampanie wysyłasz z ESP do segmentu.\n\n(Poprzednia wersja wysyłała kampanię do każdego kontaktu codziennie – to było błędem.)\n\nWymagana zgoda marketingowa: kontakty bez `marketingConsent: true` są pomijane.\n\n## Credentials do utworzenia\n- Header Auth (API)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "96ff1400-b390-48b1-ab2d-b0f4b5141d6c",
       "name": "Codziennie 7:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -35,62 +30,183 @@
             }
           ]
         }
-      }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "0d8b9c73-2e68-430c-a38c-b7b45daf293c"
     },
     {
-      "id": "28daf8cf-3903-40e5-93c1-4cfd34c69723",
-      "name": "Pobierz kontakty",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1b9d1d83-6019-4dd7-acd0-aa9bc9648432",
+              "name": "kontaktyUrl",
+              "value": "https://YOUR-CRM.example.com/api/contacts",
+              "type": "string"
+            },
+            {
+              "id": "b8a693d9-c76e-40f4-ac9a-666498771434",
+              "name": "espAktualizacjaUrl",
+              "value": "https://YOUR-ESP.example.com/api/contacts/upsert",
+              "type": "string"
+            },
+            {
+              "id": "0ee198bc-caa6-47aa-a778-4dcf2cf0fc2e",
+              "name": "dniDoUspienia",
+              "value": 90,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "GET",
-        "url": "https://YOUR-CRM.example.com/api/contacts",
-        "sendBody": false,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na realną bazę kontaktów."
+      "id": "e6e07bb1-e3ca-4010-a39a-40d2038adf43"
     },
     {
-      "id": "9d7c2efa-eee2-4a04-818b-8f8c7ef138a2",
-      "name": "Przypisz segment",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "name": "Pobierz kontakty",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.kontaktyUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "jsCode": "const segment = ($json.purchases || 0) > 0 ? 'klienci' : 'leady';\nreturn [{ json: { ...$json, segment } }];"
-      }
+      "id": "731bd950-4b51-465e-a980-18fa2bcf14b1"
     },
     {
-      "id": "5bb4e41d-b416-443c-a189-efed850d0ed1",
-      "name": "Wyślij do segmentu (ESP)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Rozbij listę kontaktów",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
       "position": [
         860,
         300
       ],
+      "id": "143f4495-96e4-4f2c-adb9-71b0558a3df3"
+    },
+    {
+      "name": "Ma zgodę marketingową?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
       "parameters": {
-        "method": "POST",
-        "url": "https://YOUR-ESP.example.com/api/campaigns/send",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "68244659-af63-4e19-aa5f-77626b83b331",
+              "leftValue": "={{ $json.marketingConsent === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
         "options": {}
       },
-      "notes": "Podmień na Mailchimp/Brevo/inny ESP."
+      "position": [
+        1120,
+        300
+      ],
+      "id": "9c4d233c-fdc9-418b-a6c0-3d3817b3dfdf"
+    },
+    {
+      "name": "Przypisz segment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const dni = $json.lastOrderAt ? (Date.now() - Date.parse($json.lastOrderAt)) / 86400000 : null;\nconst limit = $('Konfiguracja').first().json.dniDoUspienia;\nlet segment = 'lead';\nif ((Number($json.purchases) || 0) > 0) segment = dni !== null && dni > limit ? 'klient-uspiony' : 'klient-aktywny';\nreturn { json: { email: $json.email, segment } };"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "369d183c-21d9-46ae-a023-350c16473beb"
+    },
+    {
+      "name": "Zaktualizuj tag w ESP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Konfiguracja').first().json.espAktualizacjaUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ email: $json.email, tags: [$json.segment] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "29eb997e-6a05-49d6-a428-c29f9aa63067"
+    },
+    {
+      "name": "Brak zgody – pomiń",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        1380,
+        520
+      ],
+      "id": "76d9400f-f39d-4526-ab11-dc572e544306"
     }
   ],
   "connections": {
     "Codziennie 7:00": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -105,7 +221,36 @@
       "main": [
         [
           {
+            "node": "Rozbij listę kontaktów",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rozbij listę kontaktów": {
+      "main": [
+        [
+          {
+            "node": "Ma zgodę marketingową?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ma zgodę marketingową?": {
+      "main": [
+        [
+          {
             "node": "Przypisz segment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Brak zgody – pomiń",
             "type": "main",
             "index": 0
           }
@@ -116,7 +261,7 @@
       "main": [
         [
           {
-            "node": "Wyślij do segmentu (ESP)",
+            "node": "Zaktualizuj tag w ESP",
             "type": "main",
             "index": 0
           }
@@ -126,6 +271,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

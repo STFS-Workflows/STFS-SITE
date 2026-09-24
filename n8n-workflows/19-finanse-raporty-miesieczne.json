@@ -2,30 +2,25 @@
   "name": "STFS — Raporty finansowe na koniec miesiąca",
   "nodes": [
     {
-      "id": "a8fea23f-1ba9-4371-b608-918069b6bd9a",
+      "id": "3df14515-7683-4c08-a2fe-e2754c5d7848",
       "name": "Notatka: konfiguracja",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         80,
-        -40
+        -260
       ],
       "parameters": {
-        "content": "## Raport finansowy miesięczny\n\n**Trigger:** Schedule — 1. dzień miesiąca.\n\n**Do zrobienia:**\n1. Podmień \"Pobierz dane finansowe\" na API systemu księgowego.\n2. Podmień odbiorcę raportu (Slack/e-mail) na właściwą osobę.",
-        "height": 300,
-        "width": 380,
+        "content": "## 19 – Raport miesięczny\n\n1. dnia miesiąca o 7:00 pobiera podsumowanie POPRZEDNIEGO miesiąca (daty liczone automatycznie), AI pisze czytelny komentarz → e-mail do odbiorcy z Konfiguracji.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
         "color": 4
       }
     },
     {
-      "id": "502629c2-1a69-4ea0-88be-c61348824530",
       "name": "1. dzień miesiąca 7:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        80,
-        300
-      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -35,66 +30,158 @@
             }
           ]
         }
-      }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "b6b78027-4551-4b3e-a458-3a859cf01852"
     },
     {
-      "id": "59bd10f3-d890-4815-9bc2-d11bd903f401",
-      "name": "Pobierz dane finansowe",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5ccc0fad-e374-4026-a23b-9a72c27223a3",
+              "name": "podsumowanieUrl",
+              "value": "https://YOUR-ACCOUNTING.example.com/api/summary",
+              "type": "string"
+            },
+            {
+              "id": "82fffc45-02a3-4d36-ad08-c4a37c77b5ff",
+              "name": "odbiorcaRaportu",
+              "value": "ceo@twojafirma.pl",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
       "position": [
         340,
         300
       ],
-      "parameters": {
-        "method": "GET",
-        "url": "https://YOUR-ACCOUNTING.example.com/api/summary",
-        "sendBody": false,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Podmień na realny system księgowy."
+      "id": "edf01a3e-9beb-4970-aacd-7313a32f6a89"
     },
     {
-      "id": "0d88d168-d0e8-4702-b6fd-0448c9b181b6",
-      "name": "AI: napisz podsumowanie",
+      "name": "Pobierz dane finansowe",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.podsumowanieUrl + '?from=' + $now.minus({ months: 1 }).startOf('month').toISODate() + '&to=' + $now.minus({ months: 1 }).endOf('month').toISODate() }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
       "position": [
         600,
         300
       ],
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
-      },
-      "notes": "Model tworzy czytelne podsumowanie miesiąca z kluczowymi liczbami."
+      "id": "cc8afad5-a462-48b8-ad41-d44ebf22804d"
     },
     {
-      "id": "9fdb08ea-8ba1-4e66-9b21-b246c9b1cd29",
-      "name": "Wyślij raport",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "name": "AI: prompt (podsumowanie miesiąca)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Jesteś analitykiem finansowym małej firmy. Na podstawie danych (JSON) napisz zwięzłe podsumowanie miesiąca po polsku. Używaj tylko liczb z danych.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"podsumowanie\\\": 3-5 zdań, \\\"najwazniejsze\\\": tablica maks. 5 punktów z liczbami, \\\"ryzyka\\\": tablica maks. 3 punktów}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Dane za poprzedni miesiąc:\\n${JSON.stringify($json).slice(0, 8000)}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 900,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
       "position": [
         860,
         300
       ],
+      "id": "7aad162b-d858-42c9-a790-f894a9ad0345"
+    },
+    {
+      "name": "AI: podsumowanie miesiąca",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "parameters": {
-        "fromEmail": "hello@stfs.studio",
-        "toEmail": "ceo@twojafirma.pl",
-        "subject": "Raport finansowy — miesiąc",
-        "text": "={{ $json.aiResponse }}",
-        "options": {}
-      }
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1120,
+        300
+      ],
+      "id": "4d56a070-ed56-4b52-a92c-3899af1c8975"
+    },
+    {
+      "name": "AI: wynik (podsumowanie miesiąca)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...{} };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"podsumowanie\":\"\",\"najwazniejsze\":\"\",\"ryzyka\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "4afef731-6040-484c-ae60-952556846905"
+    },
+    {
+      "name": "Wyślij raport",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Konfiguracja').first().json.odbiorcaRaportu }}",
+        "subject": "=Raport finansowy – {{ $now.minus({ months: 1 }).setLocale('pl').toFormat('LLLL yyyy') }}",
+        "emailFormat": "text",
+        "text": "={{ $json.podsumowanie }}\n\nNajważniejsze:\n{{ ($json.najwazniejsze || []).map(x => '• ' + x).join('\\n') }}\n\nRyzyka:\n{{ ($json.ryzyka || []).map(x => '• ' + x).join('\\n') }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "9de2531f-9091-44c4-a398-0cb5af5ad3f5"
     }
   ],
   "connections": {
     "1. dzień miesiąca 7:00": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
       "main": [
         [
           {
@@ -109,14 +196,36 @@
       "main": [
         [
           {
-            "node": "AI: napisz podsumowanie",
+            "node": "AI: prompt (podsumowanie miesiąca)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: napisz podsumowanie": {
+    "AI: prompt (podsumowanie miesiąca)": {
+      "main": [
+        [
+          {
+            "node": "AI: podsumowanie miesiąca",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: podsumowanie miesiąca": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (podsumowanie miesiąca)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (podsumowanie miesiąca)": {
       "main": [
         [
           {
@@ -130,6 +239,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
   }
 }

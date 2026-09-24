@@ -1,0 +1,329 @@
+{
+  "name": "STFS — Tygodniowy raport ruchu na stronie (GA4 + Search Console)",
+  "nodes": [
+    {
+      "id": "9ed36fd2-864c-425b-a55b-f6cdd0ed5c40",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 38 – Raport ruchu na stronie\n\nW poniedziałek 7:00 pobiera z Google Analytics 4 sesje, użytkowników, kluczowe zdarzenia i zaangażowanie (7 dni vs poprzednie 7), a z Search Console 10 najważniejszych fraz. AI pisze krótki komentarz i 3 rekomendacje → e-mail do klienta.\n\nDobry dodatek do usługi „Strony internetowe” – klient co tydzień widzi, że strona pracuje.\n\nCredential: Google OAuth2 z zakresami `analytics.readonly` i `webmasters.readonly`.\n\n## Credentials do utworzenia\n- googleOAuth2Api\n- Header Auth (API)\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Poniedziałek 7:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 1"
+            }
+          ]
+        }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "3ef2d447-df2e-4de3-aa47-ba17fd779c42"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e62935fe-87a0-4ac2-a9a2-6f70ae35869b",
+              "name": "ga4PropertyId",
+              "value": "YOUR_PROPERTY_ID",
+              "type": "string"
+            },
+            {
+              "id": "53696e1c-10f8-4b6d-a178-d8d9a4b970bf",
+              "name": "witrynaSearchConsole",
+              "value": "sc-domain:stfs.pl",
+              "type": "string"
+            },
+            {
+              "id": "f1ac6bd7-fde5-4b9d-a03f-fd30d5a3dafd",
+              "name": "odbiorca",
+              "value": "kontakt@stfs.pl",
+              "type": "string"
+            },
+            {
+              "id": "6fb403c8-0c33-4a60-a289-ff5c8850ee87",
+              "name": "nazwaStrony",
+              "value": "stfs.pl",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "c24297eb-e569-4cbc-a1f6-d121701d136b"
+    },
+    {
+      "name": "Pobierz dane GA4",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://analyticsdata.googleapis.com/v1beta/properties/' + $('Konfiguracja').first().json.ga4PropertyId + ':runReport' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ dateRanges: [{ startDate: \"7daysAgo\", endDate: \"yesterday\", name: \"teraz\" }, { startDate: \"14daysAgo\", endDate: \"8daysAgo\", name: \"wczesniej\" }], metrics: [{ name: \"sessions\" }, { name: \"totalUsers\" }, { name: \"keyEvents\" }, { name: \"engagementRate\" }] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        600,
+        300
+      ],
+      "id": "3ff7f62b-129e-46a6-adf9-59a897f17b0c"
+    },
+    {
+      "name": "Pobierz frazy z Search Console",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://www.googleapis.com/webmasters/v3/sites/' + encodeURIComponent($('Konfiguracja').first().json.witrynaSearchConsole) + '/searchAnalytics/query' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ startDate: $now.minus({ days: 9 }).toISODate(), endDate: $now.minus({ days: 2 }).toISODate(), dimensions: [\"query\"], rowLimit: 10 }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Search Console ma ok. 2 dni opóźnienia – dlatego okres jest przesunięty.",
+      "notesInFlow": true,
+      "position": [
+        860,
+        300
+      ],
+      "id": "a2b93e28-edf5-4120-a9a9-37645597d248"
+    },
+    {
+      "name": "Połącz dane",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const ga = $('Pobierz dane GA4').first().json;\nconst nazwy = (ga.metricHeaders || []).map((m) => m.name);\nconst zakresy = {};\nfor (const r of ga.rows || []) {\n  const z = r.dimensionValues?.[0]?.value || 'teraz';\n  zakresy[z] = Object.fromEntries(nazwy.map((n, i) => [n, Number(r.metricValues?.[i]?.value || 0)]));\n}\nconst t = zakresy.teraz || {};\nconst w = zakresy.wczesniej || {};\nconst zm = (k) => (w[k] ? (((t[k] || 0) - w[k]) / w[k]) * 100 : null);\nconst f = (n) => Number(n || 0).toLocaleString('pl-PL', { maximumFractionDigits: 1 });\nconst linia = (etykieta, k, proc) => etykieta + ': ' + (proc ? f((t[k] || 0) * 100) + '%' : f(t[k])) + (zm(k) === null ? '' : ' (' + (zm(k) >= 0 ? '+' : '') + f(zm(k)) + '% r/r tydzień)');\nconst frazy = ($('Pobierz frazy z Search Console').first().json.rows || [])\n  .map((r) => '• ' + r.keys?.[0] + ' – ' + r.clicks + ' klik., ' + r.impressions + ' wyśw., poz. ' + f(r.position));\nconst tabela = [linia('Sesje', 'sessions'), linia('Użytkownicy', 'totalUsers'), linia('Kluczowe zdarzenia', 'keyEvents'), linia('Zaangażowanie', 'engagementRate', true)].join('\\n');\nreturn [{ json: { tabela, frazy: frazy.join('\\n') || '(brak danych)' } }];"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "b77eb1e0-8e72-45a4-a4f2-a9e129d8c030"
+    },
+    {
+      "name": "AI: prompt (komentarz do ruchu)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const SYSTEM = \"Jesteś analitykiem stron internetowych małych firm. Na podstawie liczb napisz 2-3 zdania prostym językiem (bez żargonu) i maks. 3 konkretne rekomendacje. Używaj tylko podanych liczb.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"komentarz\\\": tekst, \\\"rekomendacje\\\": tablica krótkich zdań}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Ruch (ostatnie 7 dni vs poprzednie 7):\\n${$json.tabela}\\n\\nNajważniejsze frazy z Google:\\n${$json.frazy}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "70e93aac-83eb-43a9-af53-2139545a6ed1"
+    },
+    {
+      "name": "AI: komentarz do ruchu",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notesInFlow": true,
+      "position": [
+        1640,
+        300
+      ],
+      "id": "5464631b-8873-4163-a80a-7f9282649d16"
+    },
+    {
+      "name": "AI: wynik (komentarz do ruchu)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (komentarz do ruchu)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"komentarz\":\"\",\"rekomendacje\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+      },
+      "position": [
+        1900,
+        300
+      ],
+      "id": "dc60c08e-4dcc-4fc4-a5b0-e163f12cda4d"
+    },
+    {
+      "name": "Wyślij raport",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "parameters": {
+        "fromEmail": "={{ ($('Konfiguracja').first().json.nadawcaEmail || \"kontakt@stfs.pl\") }}",
+        "toEmail": "={{ $('Konfiguracja').first().json.odbiorca }}",
+        "subject": "=Twoja strona {{ $('Konfiguracja').first().json.nazwaStrony }} w tym tygodniu",
+        "emailFormat": "text",
+        "text": "={{ $json.komentarz }}\n\n{{ $json.tabela }}\n\nFrazy, po których Cię znaleziono:\n{{ $json.frazy }}\n\nCo warto zrobić:\n{{ ($json.rekomendacje || []).map(r => '• ' + r).join('\\n') }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        2160,
+        300
+      ],
+      "id": "ae637860-d361-41a7-a41d-cefa094dd0ad"
+    }
+  ],
+  "connections": {
+    "Poniedziałek 7:00": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Pobierz dane GA4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pobierz dane GA4": {
+      "main": [
+        [
+          {
+            "node": "Pobierz frazy z Search Console",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pobierz frazy z Search Console": {
+      "main": [
+        [
+          {
+            "node": "Połącz dane",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Połącz dane": {
+      "main": [
+        [
+          {
+            "node": "AI: prompt (komentarz do ruchu)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: prompt (komentarz do ruchu)": {
+      "main": [
+        [
+          {
+            "node": "AI: komentarz do ruchu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: komentarz do ruchu": {
+      "main": [
+        [
+          {
+            "node": "AI: wynik (komentarz do ruchu)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: wynik (komentarz do ruchu)": {
+      "main": [
+        [
+          {
+            "node": "Wyślij raport",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}

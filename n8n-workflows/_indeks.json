@@ -1,0 +1,257 @@
+[
+  {
+    "fileName": "00-obsluga-bledow.json",
+    "name": "Obsługa błędów (Error Workflow)",
+    "category": "system"
+  },
+  {
+    "fileName": "01-sprzedaz-kwalifikacja-leadow.json",
+    "name": "Kwalifikacja i scoring leadów",
+    "category": "sprzedaz"
+  },
+  {
+    "fileName": "02-sprzedaz-automatyczne-odpowiedzi.json",
+    "name": "Automatyczne odpowiedzi na zapytania",
+    "category": "sprzedaz"
+  },
+  {
+    "fileName": "03-sprzedaz-follow-up.json",
+    "name": "Follow-up po braku odpowiedzi",
+    "category": "sprzedaz"
+  },
+  {
+    "fileName": "04-sprzedaz-aktualizacja-crm.json",
+    "name": "Aktualizacja CRM bez ręcznego wpisywania",
+    "category": "sprzedaz"
+  },
+  {
+    "fileName": "05-sprzedaz-umawianie-spotkan.json",
+    "name": "Umawianie spotkań i konsultacji",
+    "category": "sprzedaz"
+  },
+  {
+    "fileName": "06-marketing-generowanie-tresci.json",
+    "name": "Generowanie treści i reklam",
+    "category": "marketing"
+  },
+  {
+    "fileName": "07-marketing-raportowanie-kampanii.json",
+    "name": "Automatyczne raportowanie kampanii",
+    "category": "marketing"
+  },
+  {
+    "fileName": "08-marketing-segmentacja-mailingow.json",
+    "name": "Segmentacja i personalizacja mailingów",
+    "category": "marketing"
+  },
+  {
+    "fileName": "09-marketing-monitoring-wzmianek.json",
+    "name": "Monitoring wzmianek o marce",
+    "category": "marketing"
+  },
+  {
+    "fileName": "10-obsluga-bot-faq.json",
+    "name": "Bot FAQ (Telegram)",
+    "category": "obsluga"
+  },
+  {
+    "fileName": "11-obsluga-kategoryzacja-zgloszen.json",
+    "name": "Kategoryzacja i priorytetyzacja zgłoszeń",
+    "category": "obsluga"
+  },
+  {
+    "fileName": "12-obsluga-tlumaczenie-streszczanie.json",
+    "name": "Tłumaczenie i streszczanie zgłoszeń",
+    "category": "obsluga"
+  },
+  {
+    "fileName": "13-operacje-wystawianie-faktur.json",
+    "name": "Wystawianie i wysyłka faktur",
+    "category": "operacje"
+  },
+  {
+    "fileName": "14-operacje-ocr-dokumentow.json",
+    "name": "OCR i ekstrakcja danych z dokumentów",
+    "category": "operacje"
+  },
+  {
+    "fileName": "15-operacje-uzupelnianie-arkuszy.json",
+    "name": "Uzupełnianie arkuszy z formularzy i maili",
+    "category": "operacje"
+  },
+  {
+    "fileName": "16-operacje-alerty-magazynowe.json",
+    "name": "Alerty o stanach magazynowych",
+    "category": "operacje"
+  },
+  {
+    "fileName": "17-finanse-kategoryzacja-transakcji.json",
+    "name": "Kategoryzacja transakcji i wydatków",
+    "category": "finanse"
+  },
+  {
+    "fileName": "18-finanse-przypomnienia-platnosci.json",
+    "name": "Przypomnienia o nieopłaconych fakturach",
+    "category": "finanse"
+  },
+  {
+    "fileName": "19-finanse-raporty-miesieczne.json",
+    "name": "Raporty finansowe na koniec miesiąca",
+    "category": "finanse"
+  },
+  {
+    "fileName": "20-hr-selekcja-cv.json",
+    "name": "Wstępna selekcja CV",
+    "category": "hr"
+  },
+  {
+    "fileName": "21-hr-umawianie-rozmow.json",
+    "name": "Automatyczne umawianie rozmów rekrutacyjnych",
+    "category": "hr"
+  },
+  {
+    "fileName": "22-hr-onboarding.json",
+    "name": "Onboarding nowych pracowników",
+    "category": "hr"
+  },
+  {
+    "fileName": "23-hr-chatbot.json",
+    "name": "Chatbot HR",
+    "category": "hr"
+  },
+  {
+    "fileName": "24-ai-agent-glosowy.json",
+    "name": "Agent głosowy (recepcja AI)",
+    "category": "ai"
+  },
+  {
+    "fileName": "25-ai-rag-chatbot.json",
+    "name": "RAG chatbot na dokumentacji firmy",
+    "category": "ai"
+  },
+  {
+    "fileName": "26-ai-analiza-rozmow.json",
+    "name": "Analiza rozmów sprzedażowych",
+    "category": "ai"
+  },
+  {
+    "fileName": "27-ai-generowanie-ofert.json",
+    "name": "Generowanie ofert i wycen",
+    "category": "ai"
+  },
+  {
+    "fileName": "28-ai-wykrywanie-anomalii.json",
+    "name": "Wykrywanie anomalii w danych",
+    "category": "ai"
+  },
+  {
+    "fileName": "29-ecommerce-odpowiedzi-na-opinie.json",
+    "name": "Odpowiedzi na opinie (z akceptacją)",
+    "category": "ecommerce"
+  },
+  {
+    "fileName": "30-ecommerce-opisy-produktow.json",
+    "name": "Dynamiczne opisy produktów pod SEO",
+    "category": "ecommerce"
+  },
+  {
+    "fileName": "31-ecommerce-porzucone-koszyki.json",
+    "name": "Przypomnienia o porzuconym koszyku",
+    "category": "ecommerce"
+  },
+  {
+    "fileName": "32-ecommerce-monitoring-cen.json",
+    "name": "Monitoring cen konkurencji",
+    "category": "ecommerce"
+  },
+  {
+    "fileName": "33-sprzedaz-zapytanie-o-termin.json",
+    "name": "Zapytanie o termin (sala / usługa)",
+    "category": "sprzedaz"
+  },
+  {
+    "fileName": "34-obsluga-weryfikacja-sms.json",
+    "name": "Weryfikacja numeru kodem SMS",
+    "category": "obsluga"
+  },
+  {
+    "fileName": "35-operacje-przypomnienia-o-wizytach.json",
+    "name": "Przypomnienia o wizytach i rezerwacjach",
+    "category": "operacje"
+  },
+  {
+    "fileName": "36-marketing-prosba-o-opinie.json",
+    "name": "Prośba o opinię po zakupie lub wizycie",
+    "category": "marketing"
+  },
+  {
+    "fileName": "37-obsluga-skrzynka-gmail.json",
+    "name": "Asystent skrzynki Gmail (szkice odpowiedzi)",
+    "category": "obsluga"
+  },
+  {
+    "fileName": "38-marketing-raport-ruchu-strony.json",
+    "name": "Tygodniowy raport ruchu na stronie (GA4 + Search Console)",
+    "category": "marketing"
+  },
+  {
+    "fileName": "39-operacje-monitoring-strony.json",
+    "name": "Monitoring dostępności stron",
+    "category": "operacje"
+  },
+  {
+    "fileName": "40-system-kopia-workflowow.json",
+    "name": "Kopia zapasowa workflowów n8n (GitHub)",
+    "category": "system"
+  },
+  {
+    "fileName": "41-finanse-weryfikacja-kontrahenta.json",
+    "name": "Weryfikacja kontrahenta (biała lista VAT)",
+    "category": "finanse"
+  },
+  {
+    "fileName": "42-finanse-przeliczanie-walut-nbp.json",
+    "name": "Przeliczanie faktur walutowych po kursie NBP",
+    "category": "finanse"
+  },
+  {
+    "fileName": "43-marketing-newsletter-z-bloga.json",
+    "name": "Newsletter z nowych wpisów na blogu",
+    "category": "marketing"
+  },
+  {
+    "fileName": "44-marketing-publikacja-social-media.json",
+    "name": "Publikacja postów z kalendarza treści",
+    "category": "marketing"
+  },
+  {
+    "fileName": "45-obsluga-analiza-ankiet-nps.json",
+    "name": "Analiza ankiet NPS i kontakt z niezadowolonymi",
+    "category": "obsluga"
+  },
+  {
+    "fileName": "46-ecommerce-zwroty-i-reklamacje.json",
+    "name": "Zwroty i reklamacje (numer RMA i instrukcja)",
+    "category": "ecommerce"
+  },
+  {
+    "fileName": "47-hr-wnioski-urlopowe.json",
+    "name": "Wnioski urlopowe z akceptacją przełożonego",
+    "category": "hr"
+  },
+  {
+    "fileName": "48-ai-notatki-ze-spotkan.json",
+    "name": "Notatka i zadania ze spotkania (transkrypcja AI)",
+    "category": "ai"
+  },
+  {
+    "fileName": "49-finanse-kontrola-ksef.json",
+    "name": "Kontrola wysyłki faktur do KSeF",
+    "category": "finanse"
+  },
+  {
+    "fileName": "50-system-raport-zdrowia-automatyzacji.json",
+    "name": "Tygodniowy raport zdrowia automatyzacji",
+    "category": "system"
+  }
+]

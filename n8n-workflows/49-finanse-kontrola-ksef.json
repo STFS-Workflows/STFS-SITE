@@ -1,0 +1,327 @@
+{
+  "name": "STFS — Kontrola wysyłki faktur do KSeF",
+  "nodes": [
+    {
+      "id": "1b44d88b-8144-4958-a0be-48e92d438cdf",
+      "name": "Notatka: konfiguracja",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -260
+      ],
+      "parameters": {
+        "content": "## 49 – Pilnowanie KSeF\n\nW dni robocze co 2 godziny (8–18) pobiera z systemu fakturowego faktury z ostatnich 3 dni ze statusem wysyłki do KSeF. Odrzucone oraz „wiszące” dłużej niż X godzin → alert na Slacku (raz na fakturę i status). Nie wysyła niczego do KSeF sam – pilnuje, żeby żadna faktura nie utknęła niezauważona.\n\nFormat: `{ \"data\": [ { \"id\", \"number\", \"issuedAt\", \"ksefStatus\": \"accepted|pending|rejected\", \"ksefError\" } ] }` – zmapuj pola ze swojego systemu (Fakturownia, iFirma, wFirma…).\n\n## Credentials do utworzenia\n- Header Auth (API)\n- Slack\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
+        "height": 520,
+        "width": 560,
+        "color": 4
+      }
+    },
+    {
+      "name": "Dni robocze co 2 godziny",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8-18/2 * * 1-5"
+            }
+          ]
+        }
+      },
+      "position": [
+        80,
+        300
+      ],
+      "id": "19a873bc-9dc5-41f0-a13d-e8e041315afa"
+    },
+    {
+      "name": "Konfiguracja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8758ca53-05f4-479b-a734-0c65534a50b3",
+              "name": "fakturyUrl",
+              "value": "https://YOUR-BILLING.example.com/api/invoices?ksef=1&days=3",
+              "type": "string"
+            },
+            {
+              "id": "01a99eb2-7b14-4aa0-ae54-9e6d322724a2",
+              "name": "godzinDoAlarmu",
+              "value": 12,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "position": [
+        340,
+        300
+      ],
+      "id": "6dbf27d0-9ca9-4874-a90c-0012a6b753f7"
+    },
+    {
+      "name": "Pobierz faktury ze statusem KSeF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Konfiguracja').first().json.fakturyUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        600,
+        300
+      ],
+      "id": "373d9073-959a-419b-a891-fbf451ec9574"
+    },
+    {
+      "name": "Rozbij listę faktur",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "position": [
+        860,
+        300
+      ],
+      "id": "1196384f-4bfd-4775-aad7-2732adf78dba"
+    },
+    {
+      "name": "Oceń status KSeF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const h = $('Konfiguracja').first().json.godzinDoAlarmu;\nconst godzin = (Date.now() - Date.parse($json.issuedAt)) / 3600000;\nconst status = String($json.ksefStatus || '').toLowerCase();\nconst problem = status === 'rejected' || (status !== 'accepted' && godzin > h);\nreturn { json: { ...$json, status, godzin: Math.round(godzin), problem, klucz: $json.id + '-' + status } };"
+      },
+      "position": [
+        1120,
+        300
+      ],
+      "id": "c90e886f-56cc-41fb-acd2-bd460d1c325e"
+    },
+    {
+      "name": "Problem z KSeF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "60b9b652-3f97-47f5-ac08-254a5a386b68",
+              "leftValue": "={{ $json.problem }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "position": [
+        1380,
+        300
+      ],
+      "id": "67a76546-f39d-4dc9-a2b0-f1e5844bc4e9"
+    },
+    {
+      "name": "Pomiń już zgłoszone",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"ksef\"] = store[\"ksef\"] || {};\nconst seen = store[\"ksef\"];\nconst now = Date.now();\nconst ttl = 30 * 86400000;\nfor (const [k, t] of Object.entries(seen)) if (now - t > ttl) delete seen[k];\nconst out = [];\n$input.all().forEach((item, index) => {\n  const key = String(item.json.klucz ?? '');\n  if (!key || seen[key]) return; // brak klucza albo już obsłużone -> pomiń\n  // pairedItem zachowuje powiązanie z danymi wejściowymi (potrzebne dla odwołań .item w kolejnych węzłach)\n  out.push({ json: item.json, binary: item.binary, pairedItem: { item: index } });\n});\nreturn out;"
+      },
+      "position": [
+        1640,
+        300
+      ],
+      "id": "e9b5995d-b16b-481c-a0fe-e258612d0c3b"
+    },
+    {
+      "name": "Alert KSeF",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ ($('Konfiguracja').first().json.kanalSlack || \"#automatyzacje\") }}"
+        },
+        "text": "=🧾 KSeF: faktura {{ $json.number }} – {{ $json.status === 'rejected' ? 'ODRZUCONA: ' + ($json.ksefError || 'brak opisu') : 'bez potwierdzenia od ' + $json.godzin + ' h' }}. Sprawdź w systemie fakturowym.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "position": [
+        1900,
+        300
+      ],
+      "id": "2013c07d-c51d-49e0-aa09-9e97d5ef9271"
+    },
+    {
+      "name": "Zapamiętaj zgłoszenie",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore[\"ksef\"] = store[\"ksef\"] || {};\nconst src = $('Pomiń już zgłoszone').item.json;\nconst key = String(src.klucz ?? '');\nif (key) store[\"ksef\"][key] = Date.now();\nreturn { json: $json };"
+      },
+      "position": [
+        2160,
+        300
+      ],
+      "id": "95782b7c-339c-415d-a04b-9daeb0d4c34c"
+    },
+    {
+      "name": "Faktura przyjęta lub w toku",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        1640,
+        520
+      ],
+      "id": "039afa42-f199-4a50-aaea-d4a873575ec3"
+    }
+  ],
+  "connections": {
+    "Dni robocze co 2 godziny": {
+      "main": [
+        [
+          {
+            "node": "Konfiguracja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konfiguracja": {
+      "main": [
+        [
+          {
+            "node": "Pobierz faktury ze statusem KSeF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pobierz faktury ze statusem KSeF": {
+      "main": [
+        [
+          {
+            "node": "Rozbij listę faktur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rozbij listę faktur": {
+      "main": [
+        [
+          {
+            "node": "Oceń status KSeF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Oceń status KSeF": {
+      "main": [
+        [
+          {
+            "node": "Problem z KSeF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Problem z KSeF?": {
+      "main": [
+        [
+          {
+            "node": "Pomiń już zgłoszone",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Faktura przyjęta lub w toku",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pomiń już zgłoszone": {
+      "main": [
+        [
+          {
+            "node": "Alert KSeF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert KSeF": {
+      "main": [
+        [
+          {
+            "node": "Zapamiętaj zgłoszenie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Warsaw",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "meta": {
+    "generatedBy": "stfs n8n-workflows generator",
+    "templateCredsSetupCompleted": false
+  }
+}
