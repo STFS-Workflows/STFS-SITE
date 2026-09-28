@@ -5,7 +5,9 @@ const path = require('path');
 const assert = require('assert');
 const crypto = require('crypto');
 
-const get = (f, n) => JSON.parse(fs.readFileSync(path.join(__dirname, f))).nodes.find((x) => x.name === n).parameters.jsCode;
+const workflow = (f) => JSON.parse(fs.readFileSync(path.join(__dirname, f)));
+const getNode = (f, n) => workflow(f).nodes.find((x) => x.name === n);
+const get = (f, n) => getNode(f, n).parameters.jsCode;
 // Minimalna symulacja środowiska węzła Code w n8n
 const run = (js, { json = {}, nodes = {}, items = [], store = {}, env = {} } = {}) => {
   const $ = (n) => ({ item: { json: nodes[n] }, first: () => ({ json: nodes[n] }) });
@@ -32,21 +34,22 @@ const test = async (nazwa, fn) => {
   });
 
   const prep = await run(get(L01, 'AI: prompt (ocena leada)'), { json: { name: 'Jan', email: 'j@x.pl', message: 'budżet 20k' }, nodes: { Konfiguracja: {} } });
-  await test('AI: żądanie ma model, system i treść klienta', async () => {
-    const q = prep.json._aiRequest;
-    assert.strictEqual(q.model, 'gpt-4o-mini');
-    assert.strictEqual(q.messages[0].role, 'system');
-    assert.match(q.messages[1].content, /budżet 20k/);
+  await test('AI: prompt przekazuje treść klienta do natywnego AI Agenta', async () => {
+    assert.match(prep.json._aiPrompt, /budżet 20k/);
+    const agent = getNode(L01, 'AI Agent: ocena leada');
+    const model = getNode(L01, 'Chat Model: ocena leada');
+    assert.strictEqual(agent.type, '@n8n/n8n-nodes-langchain.agent');
+    assert.strictEqual(model.type, '@n8n/n8n-nodes-langchain.lmChatOpenAi');
   });
   await test('AI: wynik łączy dane klienta z odpowiedzią i przycina score', async () => {
-    const r = await run(get(L01, 'AI: wynik (ocena leada)'), { json: { choices: [{ message: { content: '{"score":"185","kategoria":"goracy"}' } }] }, nodes: { 'AI: prompt (ocena leada)': prep.json } });
+    const r = await run(get(L01, 'AI: wynik (ocena leada)'), { json: { output: { score: '185', kategoria: 'goracy' } }, nodes: { 'AI: prompt (ocena leada)': prep.json } });
     assert.strictEqual(r.json.score, 100);
     assert.strictEqual(r.json.email, 'j@x.pl');
     assert.strictEqual(r.json._aiOk, true);
-    assert.ok(!('_aiRequest' in r.json));
+    assert.ok(!('_aiPrompt' in r.json));
   });
   await test('AI: zła odpowiedź modelu → score 0 i _aiOk=false', async () => {
-    const r = await run(get(L01, 'AI: wynik (ocena leada)'), { json: { choices: [{ message: { content: 'to nie JSON' } }] }, nodes: { 'AI: prompt (ocena leada)': prep.json } });
+    const r = await run(get(L01, 'AI: wynik (ocena leada)'), { json: { output: 'to nie JSON' }, nodes: { 'AI: prompt (ocena leada)': prep.json } });
     assert.strictEqual(r.json.score, 0);
     assert.strictEqual(r.json._aiOk, false);
   });
@@ -91,7 +94,7 @@ const test = async (nazwa, fn) => {
   await test('opinie: opinia_oryginalna nie ginie po kroku AI', async () => {
     const w = await run(get(M, 'Walidacja danych'), { json: { body: { autor: 'Jan', ocena: 2, tresc: 'Późno' } } });
     const p = await run(get(M, 'AI: prompt (odpowiedź na opinię)'), { json: w.json, nodes: { Konfiguracja: { daneFirmy: 'X' } } });
-    const r = await run(get(M, 'AI: wynik (odpowiedź na opinię)'), { json: { choices: [{ message: { content: '{"sentyment":"negatywna","odpowiedz":"Przepraszamy"}' } }] }, nodes: { 'AI: prompt (odpowiedź na opinię)': p.json } });
+    const r = await run(get(M, 'AI: wynik (odpowiedź na opinię)'), { json: { output: { sentyment: 'negatywna', odpowiedz: 'Przepraszamy' } }, nodes: { 'AI: prompt (odpowiedź na opinię)': p.json } });
     assert.strictEqual(r.json.opinia_oryginalna.tresc, 'Późno');
     assert.strictEqual(r.json.odpowiedz, 'Przepraszamy');
   });

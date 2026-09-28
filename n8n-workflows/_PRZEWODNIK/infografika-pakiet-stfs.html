@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>STFS — mapa automatyzacji n8n</title>
+  <style>
+    :root { --ink:#0b1730; --muted:#50617a; --cyan:#08bfe7; --coral:#ff716e; --paper:#f5f8fc; --line:#d7e2ef; }
+    * { box-sizing:border-box } body { margin:0; background:var(--paper); color:var(--ink); font-family:Inter,Segoe UI,Arial,sans-serif; }
+    main { max-width:1200px; margin:auto; padding:48px 32px 64px; }
+    header { background:var(--ink); color:#fff; border-radius:24px; padding:38px 42px; position:relative; overflow:hidden; }
+    header:after { content:""; position:absolute; width:440px; height:440px; border:2px solid #155276; border-radius:50%; right:-130px; top:-260px; }
+    h1 { font-size:clamp(30px,5vw,56px); margin:0 0 8px; letter-spacing:-.04em; position:relative; z-index:1; } h2 { font-size:23px; margin:0 0 14px; } h3 { font-size:17px; margin:0 0 6px; }
+    .lead { color:#cae3f0; max-width:790px; margin:0; font-size:18px; line-height:1.5; position:relative; z-index:1; }
+    .stats, .grid { display:grid; gap:16px; } .stats { grid-template-columns:repeat(4,1fr); margin:22px 0 32px; }
+    .stat,.card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px; box-shadow:0 4px 14px rgba(11,23,48,.045); }
+    .n { font-size:34px; font-weight:800; color:var(--cyan); } .label { color:var(--muted); font-size:14px; }
+    .grid { grid-template-columns:repeat(3,1fr); } .tag { display:inline-block; padding:4px 8px; border-radius:99px; font-size:12px; font-weight:700; background:#e5f9fd; color:#00647a; margin-bottom:9px; }
+    .classic { background:#fff0ed; color:#a4403a; } .card p { margin:0; color:var(--muted); line-height:1.45; font-size:14px; }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:28px; } ul { padding-left:18px; color:var(--muted); line-height:1.65; margin:8px 0 0; }
+    .formula { background:linear-gradient(115deg,#e5fbff,#fff3f0); border:1px solid #c9e9ef; border-radius:18px; padding:24px; margin:28px 0; font-size:19px; font-weight:700; text-align:center; }
+    footer { color:var(--muted); font-size:13px; margin-top:24px; }
+    @media(max-width:800px){ main{padding:22px 16px}.stats{grid-template-columns:repeat(2,1fr)}.grid,.two{grid-template-columns:1fr}header{padding:28px 24px} }
+    @media print { body{background:#fff} main{max-width:none;padding:20px}.stat,.card{box-shadow:none} }
+  </style>
+</head>
+<body><main>
+  <header>
+    <h1>STFS — automatyzacje n8n</h1>
+    <p class="lead">Biblioteka 50 gotowych automatyzacji biznesowych, wsparta centralną obsługą błędów. Każdy proces łączy wyzwalacz, walidację, konfigurację, wykonanie oraz powiadomienie lub zapis.</p>
+  </header>
+  <section class="stats">
+    <div class="stat"><div class="n">50</div><div class="label">automatyzacji biznesowych</div></div>
+    <div class="stat"><div class="n">9</div><div class="label">obszarów firmy</div></div>
+    <div class="stat"><div class="n">6</div><div class="label">gotowych workflowów AI</div></div>
+    <div class="stat"><div class="n">+1</div><div class="label">centralny Error Workflow</div></div>
+  </section>
+  <div class="formula">START → WALIDACJA → KONFIGURACJA → DZIAŁANIE / AI → AKCEPTACJA (gdy potrzebna) → ZAPIS LUB POWIADOMIENIE</div>
+  <h2>Gdzie wykorzystać pakiet już teraz</h2>
+  <section class="grid">
+    <article class="card"><span class="tag">Sprzedaż · 6</span><h3>Więcej leadów, mniej ręcznej pracy</h3><p>Scoring, odpowiedzi, follow-up, CRM, spotkania i zapytania o terminy. Dla handlowców, usług lokalnych i B2B.</p></article>
+    <article class="card"><span class="tag">Marketing · 8</span><h3>Stała komunikacja i mierzalność</h3><p>Treści, raporty kampanii, segmentacja, monitoring marki, opinie, GA4, newsletter i social media. Dla marketingu oraz agencji.</p></article>
+    <article class="card"><span class="tag">Obsługa · 6</span><h3>Szybsza, spójna odpowiedź</h3><p>FAQ, triage zgłoszeń, tłumaczenia, SMS, Gmail i NPS. Dla recepcji, supportu i e-commerce.</p></article>
+    <article class="card"><span class="tag">Operacje · 6</span><h3>Porządek w dokumentach i terminach</h3><p>Faktury, OCR, arkusze, stany, przypomnienia, monitoring strony. Dla back-office, usług i logistyki.</p></article>
+    <article class="card"><span class="tag">Finanse · 6</span><h3>Kontrola bez ręcznego śledzenia</h3><p>Kategoryzacja, płatności, raporty, VAT, NBP i KSeF. Dla księgowości oraz właścicieli firm.</p></article>
+    <article class="card"><span class="tag">HR · 5</span><h3>Rekrutacja i procesy pracownicze</h3><p>CV, rozmowy, onboarding, chatbot i urlopy. Dla HR oraz firm bez osobnego działu kadr.</p></article>
+    <article class="card"><span class="tag">E-commerce · 5</span><h3>Sklep, który reaguje na czas</h3><p>Opinie, opisy SEO, koszyki, ceny oraz zwroty i reklamacje. Dla właścicieli sklepów internetowych.</p></article>
+    <article class="card"><span class="tag">System · 3</span><h3>Bezpieczne działanie automatyzacji</h3><p>Alerty błędów, kopie workflowów i raport zdrowia. Dla każdego wdrożenia n8n — to warstwa obowiązkowa.</p></article>
+    <article class="card"><span class="tag">AI · 6</span><h3>AI osadzone w konkretnym procesie</h3><p>Recepcja głosowa, RAG, analiza rozmów, oferty, anomalie i notatki ze spotkań. Dla zespołów, które chcą skalować jakość pracy.</p></article>
+  </section>
+  <div class="two">
+    <section class="card"><h2>6 nowych pomysłów AI</h2><ul>
+      <li><b>AI kwalifikator zapytań ofertowych</b> — ocenia kompletność i pilność; dla B2B i usług.</li>
+      <li><b>Asystent przetargów</b> — streszcza SIWZ i tworzy checklistę ryzyk; dla firm usługowych.</li>
+      <li><b>AI kontrola jakości rozmów</b> — wykrywa zgodność ze skryptem i obiekcje; dla sprzedaży/call center.</li>
+      <li><b>Inteligentny routing serwisu</b> — z opisu awarii wybiera specjalistę i termin; dla serwisu terenowego.</li>
+      <li><b>Generator briefów kreatywnych</b> — zamienia dane kampanii w brief dla zespołu; dla marketingu.</li>
+      <li><b>AI doradca retencji klienta</b> — wykrywa sygnały odejścia i proponuje działanie; dla abonamentów i SaaS.</li>
+    </ul></section>
+    <section class="card"><h2>4 klasyczne automatyzacje</h2><ul>
+      <li><b>Rejestr umów i terminów</b> — alertuje przed końcem umowy; dla administracji i sprzedaży.</li>
+      <li><b>Obieg zatwierdzania kosztów</b> — formularz → akceptacja → księgowość; dla każdej firmy z wydatkami.</li>
+      <li><b>Automatyczne przypisanie ticketów</b> — reguły SLA, zespół i priorytet; dla supportu.</li>
+      <li><b>Codzienny raport operacyjny</b> — zbiera KPI z narzędzi i wysyła na Slack/e-mail; dla właściciela i managerów.</li>
+    </ul></section>
+  </div>
+  <div class="two">
+    <section class="card"><h2>Jak dopasować do klienta</h2><ul><li>Podmieniamy kanały wejścia: formularz, e-mail, CRM, sklep, telefon lub harmonogram.</li><li>Ustalamy pola danych, progi i odbiorców w jednym węźle Konfiguracja.</li><li>Dobieramy system docelowy: CRM, arkusz, Slack, e-mail, kalendarz, ERP.</li></ul></section>
+    <section class="card"><h2>Bezpieczne wdrożenie</h2><ul><li>Najpierw import workflowu 00 i ustawienie go jako Error Workflow.</li><li>Credentiale przechowujemy tylko w n8n, nie w JSON-ie.</li><li>AI daje szkic lub rekomendację; oferta, publikacja lub decyzja kadrowa może wymagać akceptacji człowieka.</li></ul></section>
+  </div>
+  <footer>Źródło: analiza plików <code>n8n-workflows/_indeks.json</code> i dokumentacji pakietu STFS. Wersja robocza: 28.09.2026.</footer>
+</main></body></html>

@@ -11,9 +11,9 @@
         -260
       ],
       "parameters": {
-        "content": "## 23 – Chatbot HR\n\nPytanie pracownika (z wewnętrznego czatu / intranetu) → AI odpowiada WYŁĄCZNIE na podstawie polityk HR z Konfiguracji → odpowiedź wraca w odpowiedzi HTTP `{ \"answer\": \"...\" }`.\n\nWejście: `question`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
-        "height": 520,
-        "width": 560,
+        "content": "## 23 – Chatbot HR\n\nPytanie pracownika (z wewnętrznego czatu / intranetu) → AI odpowiada WYŁĄCZNIE na podstawie polityk HR z Konfiguracji → odpowiedź wraca w odpowiedzi HTTP `{ \"answer\": \"...\" }`.\n\nWejście: `question`.\n\n## Jak działa przepływ\n- **Start:** Webhook HTTP – uruchamia się po odebraniu żądania.\n- **Kolejność:** Pytanie pracownika (Webhook) → Walidacja danych → Konfiguracja → AI: prompt (odpowiedź HR) → AI Agent: odpowiedź HR → Chat Model: odpowiedź HR → Parser wyniku: odpowiedź HR → AI: wynik (odpowiedź HR) → Zwróć odpowiedź.\n- Każdy rekord przechodzi osobno, a błędy i odpowiedzi z usług są zachowywane w historii wykonań.\n\n## AI w tym workflowie\n- Natywny **AI Agent** wykonuje rozumowanie; nie ma bezpośrednich wywołań URL do API modelu.\n- **OpenAI Chat Model** jest podłączony portem `ai_languageModel`.\n- **Structured Output Parser** wymusza przewidywalny JSON; kolejny krok sprawdza wynik przed użyciem.\n\n## Co skonfigurować\n1. Otwórz węzeł **Konfiguracja** i zastąp wartości `YOUR-...`; sprawdź adresy, identyfikatory, progi oraz odbiorców.\n2. Sprawdź mapowanie pól wejściowych w pierwszym kroku po wyzwalaczu.\n3. W razie użycia AI uzupełnij instrukcję firmy i wybierz credential OpenAI w węźle **Chat Model**.\n\n## Credentials i węzły\n- **Header Auth (webhook)** → Pytanie pracownika (Webhook)\n- **OpenAI API** → AI Agent: odpowiedź HR\n\n## Test przed aktywacją\n1. Użyj danych testowych bez prawdziwych odbiorców albo ustaw kanał testowy.\n2. Uruchom **Test workflow** i sprawdź dane po każdym IF/Code/AI Agent.\n3. Przetestuj ścieżkę poprawną, odrzuconą i awarię usługi zewnętrznej.\n4. Ustaw **STFS — Obsługa błędów** jako Error Workflow w Settings.\n5. Dopiero po poprawnym teście włącz **Active**.\n\n## Eksploatacja i bezpieczeństwo\n- Sekretów nie wpisuj do pól ani kodu – przechowuj je wyłącznie w n8n Credentials.\n- Kontroluj Executions po wdrożeniu; retry nie zastępuje sprawdzenia duplikatów.\n- Workflow jest importowany jako **nieaktywny**, więc sam nie wyśle wiadomości ani nie zmieni danych.",
+        "height": 900,
+        "width": 760,
         "color": 4
       }
     },
@@ -86,7 +86,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const SYSTEM = \"Jesteś asystentem HR. Odpowiadasz krótko, po polsku, WYŁĄCZNIE na podstawie podanych polityk. Jeśli odpowiedzi nie ma w politykach – ustaw \\\"znaleziono\\\": false. Nie udzielaj porad prawnych.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"znaleziono\\\": true/false, \\\"odpowiedz\\\": tekst}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Polityki HR:\\n${$('Konfiguracja').first().json.politykiHR}\\n\\nPytanie: ${$json.question}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+        "jsCode": "const SYSTEM = \"Jesteś asystentem HR. Odpowiadasz krótko, po polsku, WYŁĄCZNIE na podstawie podanych polityk. Jeśli odpowiedzi nie ma w politykach – ustaw \\\"znaleziono\\\": false. Nie udzielaj porad prawnych.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"znaleziono\\\": true/false, \\\"odpowiedz\\\": tekst}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Polityki HR:\\n${$('Konfiguracja').first().json.politykiHR}\\n\\nPytanie: ${$json.question}`;\nreturn {\n  json: {\n    ...$json,\n    _aiPrompt: String(user).slice(0, 12000),\n  },\n};"
       },
       "position": [
         860,
@@ -95,31 +95,65 @@
       "id": "cdb2a65b-5d95-478e-ab32-f8199f3f3c37"
     },
     {
-      "name": "AI: odpowiedź HR",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "AI Agent: odpowiedź HR",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
       "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "promptType": "define",
+        "text": "={{ $json._aiPrompt }}",
+        "hasOutputParser": true,
         "options": {
-          "timeout": 60000
+          "systemMessage": "Jesteś asystentem HR. Odpowiadasz krótko, po polsku, WYŁĄCZNIE na podstawie podanych polityk. Jeśli odpowiedzi nie ma w politykach – ustaw \"znaleziono\": false. Nie udzielaj porad prawnych.\n\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\"znaleziono\": true/false, \"odpowiedz\": tekst}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.",
+          "maxIterations": 3,
+          "enableStreaming": false
         }
       },
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
-      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notes": "Natywny AI Agent. Po imporcie wybierz credential OpenAI w połączonym Chat Model.",
       "notesInFlow": true,
       "position": [
         1120,
         300
       ],
-      "id": "5b613432-b776-49f5-a62f-9bf5dcd40428"
+      "id": "4551b329-9fe8-4b2b-a021-50968880b00b"
+    },
+    {
+      "name": "Chat Model: odpowiedź HR",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 600
+        }
+      },
+      "position": [
+        1050,
+        560
+      ],
+      "id": "e829071f-fa32-4420-a19e-dc70597e4929"
+    },
+    {
+      "name": "Parser wyniku: odpowiedź HR",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"znaleziono\",\"odpowiedz\"],\"properties\":{\"znaleziono\":{\"type\":\"string\"},\"odpowiedz\":{\"type\":\"string\"}}}"
+      },
+      "position": [
+        1310,
+        560
+      ],
+      "id": "dc30855c-9b5d-4c17-a921-ee40ddd71fb0"
     },
     {
       "name": "AI: wynik (odpowiedź HR)",
@@ -127,7 +161,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (odpowiedź HR)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"znaleziono\":\"\",\"odpowiedz\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (odpowiedź HR)').item.json };\ndelete ctx._aiPrompt;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.output ?? '';\n  out = typeof raw === 'string' ? JSON.parse(raw) : raw;\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"znaleziono\":\"\",\"odpowiedz\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
       },
       "position": [
         1380,
@@ -191,14 +225,36 @@
       "main": [
         [
           {
-            "node": "AI: odpowiedź HR",
+            "node": "AI Agent: odpowiedź HR",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: odpowiedź HR": {
+    "Chat Model: odpowiedź HR": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent: odpowiedź HR",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser wyniku: odpowiedź HR": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent: odpowiedź HR",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent: odpowiedź HR": {
       "main": [
         [
           {

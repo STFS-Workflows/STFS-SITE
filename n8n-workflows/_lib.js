@@ -5,7 +5,7 @@
 //  - deterministyczne ID węzłów (ten sam plik JSON przy każdym uruchomieniu -> czysty git diff),
 //  - każde wyrażenie n8n zaczyna się od "=" (inaczej n8n wyśle tekst {{ ... }} dosłownie),
 //  - webhook z węzłem "Respond to Webhook" automatycznie dostaje responseMode = responseNode,
-//  - krok AI = 3 węzły: przygotuj prompt -> wywołaj model -> odczytaj wynik i połącz z danymi wejściowymi,
+//  - krok AI = natywny AI Agent + Chat Model + Structured Output Parser (bez HTTP do API modelu),
 //  - dane z webhooka są walidowane i "spłaszczane" (body -> $json),
 //  - wszystkie wartości do podmiany siedzą w jednym węźle "Konfiguracja",
 //  - HTTP ma credential (Header Auth), timeout i ponawianie,
@@ -17,7 +17,6 @@ const crypto = require('crypto');
 const DEFAULTS = {
   fromEmail: 'kontakt@stfs.pl',
   slackChannel: '#automatyzacje',
-  aiUrl: 'https://api.openai.com/v1/chat/completions',
   aiModel: 'gpt-4o-mini',
   timezone: 'Europe/Warsaw',
 };
@@ -253,12 +252,15 @@ function http(name, method, url, opts = {}) {
   });
 }
 
-// Krok AI = 3 węzły. Wynik (pola z `outputs`) jest dołączany do danych wejściowych,
-// więc kolejne węzły mają dostęp i do danych klienta, i do odpowiedzi modelu.
-// label -> nazwy: "AI: prompt (label)", "AI: label", "AI: wynik (label)"
+// Krok AI = natywny AI Agent z modelem OpenAI i Structured Output Parserem.
+// Wynik (pola z `outputs`) jest dołączany do danych wejściowych, więc kolejne
+// węzły mają dostęp i do danych klienta, i do odpowiedzi modelu.
+// label -> nazwy: "AI: prompt (label)", "AI Agent: label", "AI: wynik (label)"
 function ai(label, { system, user, outputs, numeric = {}, maxTokens = 600, context = true }) {
   const prep = `AI: prompt (${label})`;
-  const call = `AI: ${label}`;
+  const call = `AI Agent: ${label}`;
+  const model = `Chat Model: ${label}`;
+  const parser = `Parser wyniku: ${label}`;
   const res = `AI: wynik (${label})`;
   const fieldsDesc = Object.entries(outputs).map(([k, d]) => `"${k}": ${d}`).join(', ');
   const sys = `${system}\n\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {${fieldsDesc}}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.`;
@@ -267,31 +269,25 @@ const user = ${user};
 return {
   json: {
     ...$json,
-    _aiRequest: {
-      model: ${cfgOr('modelAI', DEFAULTS.aiModel)},
-      max_tokens: ${maxTokens},
-      temperature: 0.3,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: SYSTEM },
-        { role: 'user', content: String(user).slice(0, 12000) },
-      ],
-    },
+    _aiPrompt: String(user).slice(0, 12000),
   },
 };`;
   const defaults = {};
   for (const k of Object.keys(outputs)) defaults[k] = numeric[k] ? numeric[k].fallback : '';
+  const properties = {};
+  for (const k of Object.keys(outputs)) properties[k] = { type: numeric[k] ? 'number' : 'string' };
+  const schema = JSON.stringify({ type: 'object', additionalProperties: false, required: Object.keys(outputs), properties });
   const clampLines = Object.entries(numeric)
     .map(([k, r]) => `out.${k} = Math.max(${r.min}, Math.min(${r.max}, Number(out.${k})));\nif (!Number.isFinite(out.${k})) out.${k} = ${r.fallback};`)
     .join('\n');
   const resJs = `// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.
 const ctx = { ...${context ? `$('${prep}').item.json` : '{}'} };
-delete ctx._aiRequest;
+delete ctx._aiPrompt;
 let out = {};
 let aiError = '';
 try {
-  const raw = $json.choices?.[0]?.message?.content ?? '';
-  out = JSON.parse(raw);
+  const raw = $json.output ?? '';
+  out = typeof raw === 'string' ? JSON.parse(raw) : raw;
   if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');
 } catch (e) {
   aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;
@@ -302,15 +298,20 @@ for (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k
 for (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);
 ${clampLines}
 return { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };`;
-  return [
-    code(prep, prepJs),
-    http(call, 'POST', DEFAULTS.aiUrl, {
-      body: '={{ JSON.stringify($json._aiRequest) }}',
-      timeout: 60000,
-      note: 'Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.',
-    }),
-    code(res, resJs),
-  ];
+  const agent = node('@n8n/n8n-nodes-langchain.agent', call, {
+    promptType: 'define',
+    text: '={{ $json._aiPrompt }}',
+    hasOutputParser: true,
+    options: { systemMessage: sys, maxIterations: 3, enableStreaming: false },
+  }, 2.2, { ...RETRY, _cred: 'OpenAI API', notes: 'Natywny AI Agent. Po imporcie wybierz credential OpenAI w połączonym Chat Model.', notesInFlow: true });
+  const chatModel = node('@n8n/n8n-nodes-langchain.lmChatOpenAi', model, {
+    model: { __rl: true, value: DEFAULTS.aiModel, mode: 'list', cachedResultName: DEFAULTS.aiModel },
+    options: { temperature: 0.3, maxTokens },
+  }, 1.2, { _aiSub: 'model' });
+  const outputParser = node('@n8n/n8n-nodes-langchain.outputParserStructured', parser, {
+    schemaType: 'manual', inputSchema: schema,
+  }, 1.2, { _aiSub: 'parser' });
+  return { __ai: true, prep: code(prep, prepJs), agent, chatModel, outputParser, result: code(res, resJs) };
 }
 function cfgOr(key, fallback) {
   return `($('Konfiguracja').first().json.${key} || ${JSON.stringify(fallback)})`;
@@ -474,6 +475,32 @@ function build({ fileName, name, note, trigger, steps, outDir, settings = {} }) 
   const place = (seq, x, y, prev, prevOut) => {
     yUsed = Math.max(yUsed, y);
     for (const el of flat(seq)) {
+      if (el.__ai) {
+        // Model i parser są sub-node'ami AI: nie należą do głównej ścieżki,
+        // tylko do portów AI Agenta. Dzięki temu eksport otwiera się w n8n jako
+        // natywny układ AI Agent, a nie trzy zwykłe węzły HTTP/Code.
+        el.prep.position = [x, y];
+        nodes.push(el.prep);
+        if (prev) connect(prev, prevOut, el.prep);
+
+        el.agent.position = [x + X_STEP, y];
+        nodes.push(el.agent);
+        connect(el.prep, 0, el.agent);
+
+        el.chatModel.position = [x + X_STEP - 70, y + Y_BRANCH + 40];
+        el.outputParser.position = [x + 2 * X_STEP - 70, y + Y_BRANCH + 40];
+        nodes.push(el.chatModel, el.outputParser);
+        connections[el.chatModel.name] = { ai_languageModel: [[{ node: el.agent.name, type: 'ai_languageModel', index: 0 }]] };
+        connections[el.outputParser.name] = { ai_outputParser: [[{ node: el.agent.name, type: 'ai_outputParser', index: 0 }]] };
+
+        el.result.position = [x + 2 * X_STEP, y];
+        nodes.push(el.result);
+        connect(el.agent, 0, el.result);
+        prev = el.result;
+        prevOut = 0;
+        x += 3 * X_STEP;
+        continue;
+      }
       if (el.__branch) {
         el.ifN.position = [x, y];
         nodes.push(el.ifN);
@@ -519,18 +546,40 @@ function build({ fileName, name, note, trigger, steps, outDir, settings = {} }) 
     delete n._cred;
     delete n._auth;
     delete n._trigCred;
+    delete n._aiSub;
     if (n.notes === '') { delete n.notes; delete n.notesInFlow; }
   }
 
-  const credList = [...creds.keys()].map((c) => `- ${c}`).join('\n');
-  const noteText = `${note}\n\n## Credentials do utworzenia\n${credList || '- brak'}\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy \`YOUR-...\`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.`;
+  const credList = [...creds.entries()]
+    .map(([credential, nodeNames]) => `- **${credential}** → ${nodeNames}`)
+    .join('\n');
+  const triggerLabels = {
+    'n8n-nodes-base.webhook': 'Webhook HTTP – uruchamia się po odebraniu żądania',
+    'n8n-nodes-base.scheduleTrigger': 'Harmonogram – uruchamia się automatycznie o ustawionej porze',
+    'n8n-nodes-base.manualTrigger': 'Ręcznie – uruchamiany przyciskiem „Test workflow”',
+    'n8n-nodes-base.errorTrigger': 'Błąd innego workflowu – działa jako centralny Error Workflow',
+    'n8n-nodes-base.gmailTrigger': 'Nowa wiadomość Gmail',
+    'n8n-nodes-base.telegramTrigger': 'Nowa wiadomość Telegram',
+  };
+  const triggerDescription = triggerLabels[trigger.type] || trigger.name;
+  const operationalNodes = nodes
+    .filter((n) => !n.type.endsWith('.stickyNote'))
+    .map((n) => n.name);
+  const flowPreview = operationalNodes.length <= 12
+    ? operationalNodes.join(' → ')
+    : `${operationalNodes.slice(0, 10).join(' → ')} → … → ${operationalNodes.at(-1)}`;
+  const hasAiAgent = nodes.some((n) => n.type === '@n8n/n8n-nodes-langchain.agent');
+  const aiSection = hasAiAgent
+    ? '\n\n## AI w tym workflowie\n- Natywny **AI Agent** wykonuje rozumowanie; nie ma bezpośrednich wywołań URL do API modelu.\n- **OpenAI Chat Model** jest podłączony portem `ai_languageModel`.\n- **Structured Output Parser** wymusza przewidywalny JSON; kolejny krok sprawdza wynik przed użyciem.'
+    : '\n\n## AI w tym workflowie\n- Ten proces nie wymaga modelu AI; decyzje wynikają z jawnych reguł i walidacji.';
+  const noteText = `${note}\n\n## Jak działa przepływ\n- **Start:** ${triggerDescription}.\n- **Kolejność:** ${flowPreview}.\n- Każdy rekord przechodzi osobno, a błędy i odpowiedzi z usług są zachowywane w historii wykonań.${aiSection}\n\n## Co skonfigurować\n1. Otwórz węzeł **Konfiguracja** i zastąp wartości \`YOUR-...\`; sprawdź adresy, identyfikatory, progi oraz odbiorców.\n2. Sprawdź mapowanie pól wejściowych w pierwszym kroku po wyzwalaczu.\n3. W razie użycia AI uzupełnij instrukcję firmy i wybierz credential OpenAI w węźle **Chat Model**.\n\n## Credentials i węzły\n${credList || '- Brak zewnętrznych credentiali.'}\n\n## Test przed aktywacją\n1. Użyj danych testowych bez prawdziwych odbiorców albo ustaw kanał testowy.\n2. Uruchom **Test workflow** i sprawdź dane po każdym IF/Code/AI Agent.\n3. Przetestuj ścieżkę poprawną, odrzuconą i awarię usługi zewnętrznej.\n4. Ustaw **STFS — Obsługa błędów** jako Error Workflow w Settings.\n5. Dopiero po poprawnym teście włącz **Active**.\n\n## Eksploatacja i bezpieczeństwo\n- Sekretów nie wpisuj do pól ani kodu – przechowuj je wyłącznie w n8n Credentials.\n- Kontroluj Executions po wdrożeniu; retry nie zastępuje sprawdzenia duplikatów.\n- Workflow jest importowany jako **nieaktywny**, więc sam nie wyśle wiadomości ani nie zmieni danych.`;
   const sticky = {
     id: detId('sticky'),
     name: 'Notatka: konfiguracja',
     type: 'n8n-nodes-base.stickyNote',
     typeVersion: 1,
     position: [80, Y_BASE - 560],
-    parameters: { content: noteText, height: 520, width: 560, color: 4 },
+    parameters: { content: noteText, height: 900, width: 760, color: 4 },
   };
 
   const workflow = {

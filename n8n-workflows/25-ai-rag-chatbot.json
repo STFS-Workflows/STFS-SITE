@@ -11,9 +11,9 @@
         -260
       ],
       "parameters": {
-        "content": "## 25 – RAG chatbot\n\nPytanie → embedding (OpenAI) → wyszukanie 5 najbliższych fragmentów w Supabase pgvector (funkcja `match_documents`) → złożenie kontekstu → AI odpowiada TYLKO na jego podstawie i podaje źródła → `{ \"answer\", \"sources\" }`.\n\nWymaga osobnego procesu indeksowania dokumentów (tabela `documents` z kolumnami content, metadata, embedding). Dla małej bazy wiedzy (< ~20 stron) prościej wkleić ją do promptu – jak w chatbocie strony STFS.\n\nWejście: `question`.\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
-        "height": 520,
-        "width": 560,
+        "content": "## 25 – RAG chatbot\n\nPytanie → embedding (OpenAI) → wyszukanie 5 najbliższych fragmentów w Supabase pgvector (funkcja `match_documents`) → złożenie kontekstu → AI odpowiada TYLKO na jego podstawie i podaje źródła → `{ \"answer\", \"sources\" }`.\n\nWymaga osobnego procesu indeksowania dokumentów (tabela `documents` z kolumnami content, metadata, embedding). Dla małej bazy wiedzy (< ~20 stron) prościej wkleić ją do promptu – jak w chatbocie strony STFS.\n\nWejście: `question`.\n\n## Jak działa przepływ\n- **Start:** Webhook HTTP – uruchamia się po odebraniu żądania.\n- **Kolejność:** Pytanie użytkownika (Webhook) → Walidacja danych → Konfiguracja → Embedduj pytanie → Szukaj w bazie wektorowej → Złóż kontekst → AI: prompt (odpowiedź RAG) → AI Agent: odpowiedź RAG → Chat Model: odpowiedź RAG → Parser wyniku: odpowiedź RAG → AI: wynik (odpowiedź RAG) → Zwróć odpowiedź.\n- Każdy rekord przechodzi osobno, a błędy i odpowiedzi z usług są zachowywane w historii wykonań.\n\n## AI w tym workflowie\n- Natywny **AI Agent** wykonuje rozumowanie; nie ma bezpośrednich wywołań URL do API modelu.\n- **OpenAI Chat Model** jest podłączony portem `ai_languageModel`.\n- **Structured Output Parser** wymusza przewidywalny JSON; kolejny krok sprawdza wynik przed użyciem.\n\n## Co skonfigurować\n1. Otwórz węzeł **Konfiguracja** i zastąp wartości `YOUR-...`; sprawdź adresy, identyfikatory, progi oraz odbiorców.\n2. Sprawdź mapowanie pól wejściowych w pierwszym kroku po wyzwalaczu.\n3. W razie użycia AI uzupełnij instrukcję firmy i wybierz credential OpenAI w węźle **Chat Model**.\n\n## Credentials i węzły\n- **Header Auth (webhook)** → Pytanie użytkownika (Webhook)\n- **Header Auth (API)** → Szukaj w bazie wektorowej\n- **OpenAI API** → AI Agent: odpowiedź RAG\n\n## Test przed aktywacją\n1. Użyj danych testowych bez prawdziwych odbiorców albo ustaw kanał testowy.\n2. Uruchom **Test workflow** i sprawdź dane po każdym IF/Code/AI Agent.\n3. Przetestuj ścieżkę poprawną, odrzuconą i awarię usługi zewnętrznej.\n4. Ustaw **STFS — Obsługa błędów** jako Error Workflow w Settings.\n5. Dopiero po poprawnym teście włącz **Active**.\n\n## Eksploatacja i bezpieczeństwo\n- Sekretów nie wpisuj do pól ani kodu – przechowuj je wyłącznie w n8n Credentials.\n- Kontroluj Executions po wdrożeniu; retry nie zastępuje sprawdzenia duplikatów.\n- Workflow jest importowany jako **nieaktywny**, więc sam nie wyśle wiadomości ani nie zmieni danych.",
+        "height": 900,
+        "width": 760,
         "color": 4
       }
     },
@@ -153,7 +153,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const SYSTEM = \"Odpowiadasz na pytanie WYŁĄCZNIE na podstawie ponumerowanych fragmentów dokumentacji. Jeśli fragmenty nie zawierają odpowiedzi – powiedz to wprost. Po polsku, zwięźle.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"odpowiedz\\\": tekst, \\\"wykorzystaneFragmenty\\\": tablica numerów fragmentów}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Fragmenty:\\n${$json.kontekst || \"(brak)\"}\\n\\nPytanie: ${$json.question}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 700,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+        "jsCode": "const SYSTEM = \"Odpowiadasz na pytanie WYŁĄCZNIE na podstawie ponumerowanych fragmentów dokumentacji. Jeśli fragmenty nie zawierają odpowiedzi – powiedz to wprost. Po polsku, zwięźle.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"odpowiedz\\\": tekst, \\\"wykorzystaneFragmenty\\\": tablica numerów fragmentów}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Fragmenty:\\n${$json.kontekst || \"(brak)\"}\\n\\nPytanie: ${$json.question}`;\nreturn {\n  json: {\n    ...$json,\n    _aiPrompt: String(user).slice(0, 12000),\n  },\n};"
       },
       "position": [
         1640,
@@ -162,31 +162,65 @@
       "id": "938d6389-e98f-45f8-a621-531d790a1f74"
     },
     {
-      "name": "AI: odpowiedź RAG",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "AI Agent: odpowiedź RAG",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
       "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "promptType": "define",
+        "text": "={{ $json._aiPrompt }}",
+        "hasOutputParser": true,
         "options": {
-          "timeout": 60000
+          "systemMessage": "Odpowiadasz na pytanie WYŁĄCZNIE na podstawie ponumerowanych fragmentów dokumentacji. Jeśli fragmenty nie zawierają odpowiedzi – powiedz to wprost. Po polsku, zwięźle.\n\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\"odpowiedz\": tekst, \"wykorzystaneFragmenty\": tablica numerów fragmentów}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.",
+          "maxIterations": 3,
+          "enableStreaming": false
         }
       },
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
-      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notes": "Natywny AI Agent. Po imporcie wybierz credential OpenAI w połączonym Chat Model.",
       "notesInFlow": true,
       "position": [
         1900,
         300
       ],
-      "id": "b23c539c-4cdb-4ccf-a98c-901f6b5d857b"
+      "id": "5c5d77e7-109a-48dd-a39f-454b26e2d5b7"
+    },
+    {
+      "name": "Chat Model: odpowiedź RAG",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 700
+        }
+      },
+      "position": [
+        1830,
+        560
+      ],
+      "id": "b39c0ea6-d648-4dbb-a16c-2c2c3bc046a0"
+    },
+    {
+      "name": "Parser wyniku: odpowiedź RAG",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"odpowiedz\",\"wykorzystaneFragmenty\"],\"properties\":{\"odpowiedz\":{\"type\":\"string\"},\"wykorzystaneFragmenty\":{\"type\":\"string\"}}}"
+      },
+      "position": [
+        2090,
+        560
+      ],
+      "id": "84ce398c-85f0-4116-a555-d3a08ae16722"
     },
     {
       "name": "AI: wynik (odpowiedź RAG)",
@@ -194,7 +228,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (odpowiedź RAG)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"odpowiedz\":\"\",\"wykorzystaneFragmenty\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (odpowiedź RAG)').item.json };\ndelete ctx._aiPrompt;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.output ?? '';\n  out = typeof raw === 'string' ? JSON.parse(raw) : raw;\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"odpowiedz\":\"\",\"wykorzystaneFragmenty\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
       },
       "position": [
         2160,
@@ -291,14 +325,36 @@
       "main": [
         [
           {
-            "node": "AI: odpowiedź RAG",
+            "node": "AI Agent: odpowiedź RAG",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: odpowiedź RAG": {
+    "Chat Model: odpowiedź RAG": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent: odpowiedź RAG",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser wyniku: odpowiedź RAG": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent: odpowiedź RAG",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent: odpowiedź RAG": {
       "main": [
         [
           {

@@ -65,7 +65,12 @@ for (const f of files) {
       for (const outs of c.main || []) for (const t of outs) if (!reach.has(t.node)) { reach.add(t.node); changed = true; }
     }
   }
-  for (const n of nodes) if (!reach.has(n.name)) E(`węzeł "${n.name}" nie jest podłączony`);
+  for (const n of nodes) {
+    // Sub-węzły AI łączą się przez porty ai_languageModel / ai_outputParser,
+    // a nie przez standardową ścieżkę main.
+    const isAiSubNode = n.type.startsWith('@n8n/n8n-nodes-langchain.');
+    if (!reach.has(n.name) && !isAiSubNode) E(`węzeł "${n.name}" nie jest podłączony`);
+  }
 
   // przodkowie (dla sprawdzania $('X'))
   const ancestors = (name, seen = new Set()) => {
@@ -99,6 +104,16 @@ for (const f of files) {
       if (!n.parameters.authentication) E(`HTTP "${n.name}" bez uwierzytelnienia (credential)`);
       if (/openai\.com\/v1\/chat|anthropic\.com\/v1\/messages/.test(n.parameters.url) && !/_aiRequest/.test(n.parameters.jsonBody || '')) E(`AI "${n.name}" nie wysyła poprawnego żądania`);
       if (!n.retryOnFail && n.onError !== 'continueRegularOutput') W(`HTTP "${n.name}" bez ponawiania`); // świadomie bez ponowień, gdy błąd jest obsługiwany dalej
+    }
+    if (n.type === '@n8n/n8n-nodes-langchain.agent') {
+      const hasModel = Object.values(wf.connections || {}).some((c) =>
+        (c.ai_languageModel || []).some((outs) => outs.some((t) => t.node === n.name))
+      );
+      const hasParser = Object.values(wf.connections || {}).some((c) =>
+        (c.ai_outputParser || []).some((outs) => outs.some((t) => t.node === n.name))
+      );
+      if (!hasModel) E(`AI Agent "${n.name}" nie ma połączonego Chat Model`);
+      if (!hasParser) E(`AI Agent "${n.name}" nie ma połączonego Structured Output Parser`);
     }
   }
 

@@ -11,9 +11,9 @@
         -260
       ],
       "parameters": {
-        "content": "## Monitoring opinii i reputacji\n\n**Co robi:** opinia (webhook) → AI ocenia sentyment i pisze projekt odpowiedzi → projekt wraca OD RAZU w odpowiedzi HTTP → właściciel dostaje e-mail z linkiem do formularza (Zatwierdź / Odrzuć / popraw treść) → dopiero po zatwierdzeniu odpowiedź jest publikowana w Google. Nic nie wychodzi bez zgody klienta.\n\n**Test bez Google:**\n`curl -X POST <URL> -H \"<nagłówek Header Auth>\" -H \"Content-Type: application/json\" -d '{\"autor\":\"Jan K.\",\"ocena\":2,\"tresc\":\"Zamówienie przyszło 5 dni później niż obiecano.\"}'`\nBez pola `reviewName` workflow po akceptacji niczego nie publikuje (tryb testowy).\n\n**Naprawione:** pole `opinia_oryginalna` było gubione po wywołaniu AI (zawsze puste w odpowiedzi).\n\n## Credentials do utworzenia\n- Header Auth (webhook)\n- Header Auth (API)\n- SMTP\n- googleBusinessProfileOAuth2Api\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
-        "height": 520,
-        "width": 560,
+        "content": "## Monitoring opinii i reputacji\n\n**Co robi:** opinia (webhook) → AI ocenia sentyment i pisze projekt odpowiedzi → projekt wraca OD RAZU w odpowiedzi HTTP → właściciel dostaje e-mail z linkiem do formularza (Zatwierdź / Odrzuć / popraw treść) → dopiero po zatwierdzeniu odpowiedź jest publikowana w Google. Nic nie wychodzi bez zgody klienta.\n\n**Test bez Google:**\n`curl -X POST <URL> -H \"<nagłówek Header Auth>\" -H \"Content-Type: application/json\" -d '{\"autor\":\"Jan K.\",\"ocena\":2,\"tresc\":\"Zamówienie przyszło 5 dni później niż obiecano.\"}'`\nBez pola `reviewName` workflow po akceptacji niczego nie publikuje (tryb testowy).\n\n**Naprawione:** pole `opinia_oryginalna` było gubione po wywołaniu AI (zawsze puste w odpowiedzi).\n\n## Jak działa przepływ\n- **Start:** Webhook HTTP – uruchamia się po odebraniu żądania.\n- **Kolejność:** Nowa opinia (Webhook) → Walidacja danych → Konfiguracja → AI: prompt (odpowiedź na opinię) → AI Agent: odpowiedź na opinię → Chat Model: odpowiedź na opinię → Parser wyniku: odpowiedź na opinię → AI: wynik (odpowiedź na opinię) → Zwróć projekt odpowiedzi → Wyślij projekt do akceptacji → … → Odrzucona lub wygasła.\n- Każdy rekord przechodzi osobno, a błędy i odpowiedzi z usług są zachowywane w historii wykonań.\n\n## AI w tym workflowie\n- Natywny **AI Agent** wykonuje rozumowanie; nie ma bezpośrednich wywołań URL do API modelu.\n- **OpenAI Chat Model** jest podłączony portem `ai_languageModel`.\n- **Structured Output Parser** wymusza przewidywalny JSON; kolejny krok sprawdza wynik przed użyciem.\n\n## Co skonfigurować\n1. Otwórz węzeł **Konfiguracja** i zastąp wartości `YOUR-...`; sprawdź adresy, identyfikatory, progi oraz odbiorców.\n2. Sprawdź mapowanie pól wejściowych w pierwszym kroku po wyzwalaczu.\n3. W razie użycia AI uzupełnij instrukcję firmy i wybierz credential OpenAI w węźle **Chat Model**.\n\n## Credentials i węzły\n- **Header Auth (webhook)** → Nowa opinia (Webhook)\n- **OpenAI API** → AI Agent: odpowiedź na opinię\n- **SMTP** → Wyślij projekt do akceptacji\n- **googleBusinessProfileOAuth2Api** → Opublikuj odpowiedź w Google\n\n## Test przed aktywacją\n1. Użyj danych testowych bez prawdziwych odbiorców albo ustaw kanał testowy.\n2. Uruchom **Test workflow** i sprawdź dane po każdym IF/Code/AI Agent.\n3. Przetestuj ścieżkę poprawną, odrzuconą i awarię usługi zewnętrznej.\n4. Ustaw **STFS — Obsługa błędów** jako Error Workflow w Settings.\n5. Dopiero po poprawnym teście włącz **Active**.\n\n## Eksploatacja i bezpieczeństwo\n- Sekretów nie wpisuj do pól ani kodu – przechowuj je wyłącznie w n8n Credentials.\n- Kontroluj Executions po wdrożeniu; retry nie zastępuje sprawdzenia duplikatów.\n- Workflow jest importowany jako **nieaktywny**, więc sam nie wyśle wiadomości ani nie zmieni danych.",
+        "height": 900,
+        "width": 760,
         "color": 4
       }
     },
@@ -86,7 +86,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const SYSTEM = \"Jesteś asystentem odpowiadającym w imieniu firmy klienta na opinie zostawione przez jej klientów (Google, Allegro lub inna platforma z recenzjami). Twoje zadanie:\\n1. Oceń sentyment opinii: pozytywna, neutralna lub negatywna.\\n2. Napisz krótką (2-4 zdania), profesjonalną odpowiedź po polsku, dopasowaną tonem do opinii.\\n3. Jeśli opinia jest pozytywna - podziękuj konkretnie za to, co klient docenił, nie ogólnikowo.\\n4. Jeśli opinia jest negatywna - przeproś, nie usprawiedliwiaj się nadmiernie, zaproponuj kontakt bezpośredni w celu rozwiązania sprawy (adres e-mail z danych firmy). Nie obiecuj konkretnych rekompensat, zniżek ani terminów.\\n5. Nigdy nie wymyślaj faktów, nazwisk pracowników, numerów zamówień ani szczegółów, których nie ma w treści opinii.\\n6. Nie używaj emoji. Nie podpisuj odpowiedzi wymyślonym imieniem.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"sentyment\\\": \\\"pozytywna\\\" | \\\"neutralna\\\" | \\\"negatywna\\\", \\\"odpowiedz\\\": tekst odpowiedzi}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Dane firmy: ${$('Konfiguracja').first().json.daneFirmy}\\n\\nOpinia klienta (ocena: ${$json.ocena != null ? $json.ocena + '/5' : 'brak oceny'}):\\n${$json.tresc}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 300,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+        "jsCode": "const SYSTEM = \"Jesteś asystentem odpowiadającym w imieniu firmy klienta na opinie zostawione przez jej klientów (Google, Allegro lub inna platforma z recenzjami). Twoje zadanie:\\n1. Oceń sentyment opinii: pozytywna, neutralna lub negatywna.\\n2. Napisz krótką (2-4 zdania), profesjonalną odpowiedź po polsku, dopasowaną tonem do opinii.\\n3. Jeśli opinia jest pozytywna - podziękuj konkretnie za to, co klient docenił, nie ogólnikowo.\\n4. Jeśli opinia jest negatywna - przeproś, nie usprawiedliwiaj się nadmiernie, zaproponuj kontakt bezpośredni w celu rozwiązania sprawy (adres e-mail z danych firmy). Nie obiecuj konkretnych rekompensat, zniżek ani terminów.\\n5. Nigdy nie wymyślaj faktów, nazwisk pracowników, numerów zamówień ani szczegółów, których nie ma w treści opinii.\\n6. Nie używaj emoji. Nie podpisuj odpowiedzi wymyślonym imieniem.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"sentyment\\\": \\\"pozytywna\\\" | \\\"neutralna\\\" | \\\"negatywna\\\", \\\"odpowiedz\\\": tekst odpowiedzi}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Dane firmy: ${$('Konfiguracja').first().json.daneFirmy}\\n\\nOpinia klienta (ocena: ${$json.ocena != null ? $json.ocena + '/5' : 'brak oceny'}):\\n${$json.tresc}`;\nreturn {\n  json: {\n    ...$json,\n    _aiPrompt: String(user).slice(0, 12000),\n  },\n};"
       },
       "position": [
         860,
@@ -95,31 +95,65 @@
       "id": "ed0173ad-429a-4207-a4b8-254ae03f0b69"
     },
     {
-      "name": "AI: odpowiedź na opinię",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "AI Agent: odpowiedź na opinię",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
       "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "promptType": "define",
+        "text": "={{ $json._aiPrompt }}",
+        "hasOutputParser": true,
         "options": {
-          "timeout": 60000
+          "systemMessage": "Jesteś asystentem odpowiadającym w imieniu firmy klienta na opinie zostawione przez jej klientów (Google, Allegro lub inna platforma z recenzjami). Twoje zadanie:\n1. Oceń sentyment opinii: pozytywna, neutralna lub negatywna.\n2. Napisz krótką (2-4 zdania), profesjonalną odpowiedź po polsku, dopasowaną tonem do opinii.\n3. Jeśli opinia jest pozytywna - podziękuj konkretnie za to, co klient docenił, nie ogólnikowo.\n4. Jeśli opinia jest negatywna - przeproś, nie usprawiedliwiaj się nadmiernie, zaproponuj kontakt bezpośredni w celu rozwiązania sprawy (adres e-mail z danych firmy). Nie obiecuj konkretnych rekompensat, zniżek ani terminów.\n5. Nigdy nie wymyślaj faktów, nazwisk pracowników, numerów zamówień ani szczegółów, których nie ma w treści opinii.\n6. Nie używaj emoji. Nie podpisuj odpowiedzi wymyślonym imieniem.\n\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\"sentyment\": \"pozytywna\" | \"neutralna\" | \"negatywna\", \"odpowiedz\": tekst odpowiedzi}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.",
+          "maxIterations": 3,
+          "enableStreaming": false
         }
       },
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
-      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notes": "Natywny AI Agent. Po imporcie wybierz credential OpenAI w połączonym Chat Model.",
       "notesInFlow": true,
       "position": [
         1120,
         300
       ],
-      "id": "87b53dd3-4625-478e-a759-4ca262e90c0d"
+      "id": "3620dc5e-be07-40e6-a3f6-87205870a11c"
+    },
+    {
+      "name": "Chat Model: odpowiedź na opinię",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 300
+        }
+      },
+      "position": [
+        1050,
+        560
+      ],
+      "id": "f71ebd4f-901d-4c9c-a452-64ba7509d59f"
+    },
+    {
+      "name": "Parser wyniku: odpowiedź na opinię",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"sentyment\",\"odpowiedz\"],\"properties\":{\"sentyment\":{\"type\":\"string\"},\"odpowiedz\":{\"type\":\"string\"}}}"
+      },
+      "position": [
+        1310,
+        560
+      ],
+      "id": "f06a8af4-0a94-42f2-a4d1-f2e11e5aacbf"
     },
     {
       "name": "AI: wynik (odpowiedź na opinię)",
@@ -127,7 +161,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (odpowiedź na opinię)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"sentyment\":\"\",\"odpowiedz\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (odpowiedź na opinię)').item.json };\ndelete ctx._aiPrompt;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.output ?? '';\n  out = typeof raw === 'string' ? JSON.parse(raw) : raw;\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"sentyment\":\"\",\"odpowiedz\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
       },
       "position": [
         1380,
@@ -372,14 +406,36 @@
       "main": [
         [
           {
-            "node": "AI: odpowiedź na opinię",
+            "node": "AI Agent: odpowiedź na opinię",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: odpowiedź na opinię": {
+    "Chat Model: odpowiedź na opinię": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent: odpowiedź na opinię",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser wyniku: odpowiedź na opinię": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent: odpowiedź na opinię",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent: odpowiedź na opinię": {
       "main": [
         [
           {

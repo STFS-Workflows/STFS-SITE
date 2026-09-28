@@ -3,7 +3,7 @@
 // Kontrakt z widgetem NIE zmienia się: POST { question } + nagłówek X-Stfs-Client, odpowiedź { answer }.
 // Uruchom: node generate-site-chatbot.js
 const L = require('./_lib');
-const { code, config, ifNode, http, respond, branch, webhook } = L;
+const { code, config, ifNode, ai, respond, branch, webhook } = L;
 
 const knowledgeBase = `
 O STFS: Pracujemy bezpośrednio z klientem, bez warstwy pośredników. Łączymy sprzedaż, strategię i wdrożenia AI w jednym procesie. Zamiast sprzedawać modne słowa, budujemy konkretne rozwiązania: automatyzacje, które przejmują powtarzalną pracę, strony, które realnie konwertują, i wsparcie marketingu oparte na danych, nie na domysłach. Pracujemy zarówno ze startupami budującymi pierwszy produkt, jak i z firmami, które chcą przenieść swoje procesy na AI bez ryzyka i chaosu wdrożeniowego, z pełną odpowiedzialnością za efekt na każdym etapie.
@@ -73,42 +73,23 @@ if (!powod) {
 }
 return { json: { dozwolone: !powod, powod, question } };`;
 
-const buildPromptCode = `const KNOWLEDGE_BASE = ${JSON.stringify(knowledgeBase)};
-const SYSTEM = ${JSON.stringify(systemPrompt)} + KNOWLEDGE_BASE;
-return {
-  json: {
-    question: $json.question,
-    _aiRequest: {
-      model: $('Konfiguracja').first().json.modelAI,
-      max_tokens: 400,
-      system: SYSTEM,
-      messages: [{ role: 'user', content: $json.question }],
-    },
-  },
-};`;
-
-const extractCode = `const text = $json.content?.[0]?.text;
-const answer = text ? String(text).slice(0, 2000) : 'Przepraszam, nie udało się wygenerować odpowiedzi. Napisz do nas na kontakt@stfs.pl.';
-return { json: { answer } };`;
-
 L.build({
   fileName: 'site-chatbot-odpowiedzi-na-zywo.json',
   name: 'Chatbot strony — odpowiedzi na żywo (webhook)',
   outDir: __dirname,
   note:
     '## Chatbot strony STFS (działa 24/7)\n\n' +
-    '**Co robi:** przyjmuje pytanie z widgetu na stfs.pl, sprawdza klucz widgetu, Origin i limity, dokleja całą wiedzę o STFS do promptu i pyta Claude Haiku. Odpowiedź wraca jako `{ "answer": "..." }`.\n\n' +
+    '**Co robi:** przyjmuje pytanie z widgetu na stfs.pl, sprawdza klucz widgetu, Origin i limity, dokleja całą wiedzę o STFS do promptu i przekazuje je do natywnego węzła AI Agent. Odpowiedź wraca jako `{ "answer": "..." }`.\n\n' +
     '**Zmiany względem poprzedniej wersji:**\n' +
     '- żądanie ze złym kluczem/originem NIE wywołuje już modelu (wcześniej i tak płaciliśmy za odpowiedź),\n' +
     '- limit: 15 pytań / 10 min na IP i 600 dziennie (Konfiguracja),\n' +
-    '- klucz Anthropic w credentialu (Header Auth `x-api-key`), a nie w pliku,\n' +
+    '- model jest podłączony do AI Agent przez Chat Model; klucz jest w credentialu OpenAI, a nie w pliku,\n' +
     '- CORS tylko dla stfs.pl.\n\n' +
     '**Test curl:** dodaj nagłówki `Origin: https://stfs.pl` i `X-Stfs-Client: stfs-site-widget-2026`.\n\n' +
-    '**Dodatkowo zalecane:** limit wydatków w konsoli Anthropic, rate-limit w Caddy dla /webhook/stfs-chat.',
+    '**Dodatkowo zalecane:** limit wydatków u dostawcy modelu, rate-limit w Caddy dla /webhook/stfs-chat.',
   trigger: webhook('Webhook: pytanie od widgetu', 'stfs-chat', { auth: false, allowedOrigins: 'https://stfs.pl,https://www.stfs.pl' }),
   steps: [
     config({
-      modelAI: 'claude-haiku-4-5-20251001',
       kluczWidgetu: 'stfs-site-widget-2026',
       dozwoloneOriginy: 'https://stfs.pl,https://www.stfs.pl',
       maksDlugoscPytania: 500,
@@ -120,13 +101,12 @@ L.build({
     branch(
       ifNode('Dozwolone?', '={{ $json.dozwolone }}', 'true', null, 'boolean'),
       [
-        code('Zbuduj prompt', buildPromptCode),
-        http('AI: wygeneruj odpowiedź', 'POST', 'https://api.anthropic.com/v1/messages', {
-          headers: { 'anthropic-version': '2023-06-01' },
-          body: '={{ JSON.stringify($json._aiRequest) }}',
-          note: 'Credential Header Auth: nazwa x-api-key, wartość = klucz Anthropic.',
+        ai('odpowiedź dla widgetu', {
+          system: systemPrompt + knowledgeBase,
+          user: '$json.question',
+          outputs: { answer: 'krótka odpowiedź dla użytkownika' },
+          maxTokens: 400,
         }),
-        code('Wyodrębnij odpowiedź', extractCode),
         respond('Zwróć odpowiedź do widgetu', '={{ { "answer": $json.answer } }}'),
       ],
       [

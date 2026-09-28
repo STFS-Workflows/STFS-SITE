@@ -11,9 +11,9 @@
         -260
       ],
       "parameters": {
-        "content": "## 19 – Raport miesięczny\n\n1. dnia miesiąca o 7:00 pobiera podsumowanie POPRZEDNIEGO miesiąca (daty liczone automatycznie), AI pisze czytelny komentarz → e-mail do odbiorcy z Konfiguracji.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
-        "height": 520,
-        "width": 560,
+        "content": "## 19 – Raport miesięczny\n\n1. dnia miesiąca o 7:00 pobiera podsumowanie POPRZEDNIEGO miesiąca (daty liczone automatycznie), AI pisze czytelny komentarz → e-mail do odbiorcy z Konfiguracji.\n\n## Jak działa przepływ\n- **Start:** Harmonogram – uruchamia się automatycznie o ustawionej porze.\n- **Kolejność:** 1. dzień miesiąca 7:00 → Konfiguracja → Pobierz dane finansowe → AI: prompt (podsumowanie miesiąca) → AI Agent: podsumowanie miesiąca → Chat Model: podsumowanie miesiąca → Parser wyniku: podsumowanie miesiąca → AI: wynik (podsumowanie miesiąca) → Wyślij raport.\n- Każdy rekord przechodzi osobno, a błędy i odpowiedzi z usług są zachowywane w historii wykonań.\n\n## AI w tym workflowie\n- Natywny **AI Agent** wykonuje rozumowanie; nie ma bezpośrednich wywołań URL do API modelu.\n- **OpenAI Chat Model** jest podłączony portem `ai_languageModel`.\n- **Structured Output Parser** wymusza przewidywalny JSON; kolejny krok sprawdza wynik przed użyciem.\n\n## Co skonfigurować\n1. Otwórz węzeł **Konfiguracja** i zastąp wartości `YOUR-...`; sprawdź adresy, identyfikatory, progi oraz odbiorców.\n2. Sprawdź mapowanie pól wejściowych w pierwszym kroku po wyzwalaczu.\n3. W razie użycia AI uzupełnij instrukcję firmy i wybierz credential OpenAI w węźle **Chat Model**.\n\n## Credentials i węzły\n- **Header Auth (API)** → Pobierz dane finansowe\n- **OpenAI API** → AI Agent: podsumowanie miesiąca\n- **SMTP** → Wyślij raport\n\n## Test przed aktywacją\n1. Użyj danych testowych bez prawdziwych odbiorców albo ustaw kanał testowy.\n2. Uruchom **Test workflow** i sprawdź dane po każdym IF/Code/AI Agent.\n3. Przetestuj ścieżkę poprawną, odrzuconą i awarię usługi zewnętrznej.\n4. Ustaw **STFS — Obsługa błędów** jako Error Workflow w Settings.\n5. Dopiero po poprawnym teście włącz **Active**.\n\n## Eksploatacja i bezpieczeństwo\n- Sekretów nie wpisuj do pól ani kodu – przechowuj je wyłącznie w n8n Credentials.\n- Kontroluj Executions po wdrożeniu; retry nie zastępuje sprawdzenia duplikatów.\n- Workflow jest importowany jako **nieaktywny**, więc sam nie wyśle wiadomości ani nie zmieni danych.",
+        "height": 900,
+        "width": 760,
         "color": 4
       }
     },
@@ -96,7 +96,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const SYSTEM = \"Jesteś analitykiem finansowym małej firmy. Na podstawie danych (JSON) napisz zwięzłe podsumowanie miesiąca po polsku. Używaj tylko liczb z danych.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"podsumowanie\\\": 3-5 zdań, \\\"najwazniejsze\\\": tablica maks. 5 punktów z liczbami, \\\"ryzyka\\\": tablica maks. 3 punktów}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Dane za poprzedni miesiąc:\\n${JSON.stringify($json).slice(0, 8000)}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 900,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+        "jsCode": "const SYSTEM = \"Jesteś analitykiem finansowym małej firmy. Na podstawie danych (JSON) napisz zwięzłe podsumowanie miesiąca po polsku. Używaj tylko liczb z danych.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"podsumowanie\\\": 3-5 zdań, \\\"najwazniejsze\\\": tablica maks. 5 punktów z liczbami, \\\"ryzyka\\\": tablica maks. 3 punktów}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Dane za poprzedni miesiąc:\\n${JSON.stringify($json).slice(0, 8000)}`;\nreturn {\n  json: {\n    ...$json,\n    _aiPrompt: String(user).slice(0, 12000),\n  },\n};"
       },
       "position": [
         860,
@@ -105,31 +105,65 @@
       "id": "7aad162b-d858-42c9-a790-f894a9ad0345"
     },
     {
-      "name": "AI: podsumowanie miesiąca",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "AI Agent: podsumowanie miesiąca",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
       "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "promptType": "define",
+        "text": "={{ $json._aiPrompt }}",
+        "hasOutputParser": true,
         "options": {
-          "timeout": 60000
+          "systemMessage": "Jesteś analitykiem finansowym małej firmy. Na podstawie danych (JSON) napisz zwięzłe podsumowanie miesiąca po polsku. Używaj tylko liczb z danych.\n\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\"podsumowanie\": 3-5 zdań, \"najwazniejsze\": tablica maks. 5 punktów z liczbami, \"ryzyka\": tablica maks. 3 punktów}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.",
+          "maxIterations": 3,
+          "enableStreaming": false
         }
       },
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
-      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notes": "Natywny AI Agent. Po imporcie wybierz credential OpenAI w połączonym Chat Model.",
       "notesInFlow": true,
       "position": [
         1120,
         300
       ],
-      "id": "4d56a070-ed56-4b52-a92c-3899af1c8975"
+      "id": "62253574-a645-46fe-a4d6-3b7ebe9f9836"
+    },
+    {
+      "name": "Chat Model: podsumowanie miesiąca",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 900
+        }
+      },
+      "position": [
+        1050,
+        560
+      ],
+      "id": "e5f30f83-4df0-4259-aba1-0932eec9bcca"
+    },
+    {
+      "name": "Parser wyniku: podsumowanie miesiąca",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"podsumowanie\",\"najwazniejsze\",\"ryzyka\"],\"properties\":{\"podsumowanie\":{\"type\":\"string\"},\"najwazniejsze\":{\"type\":\"string\"},\"ryzyka\":{\"type\":\"string\"}}}"
+      },
+      "position": [
+        1310,
+        560
+      ],
+      "id": "47012be6-ce92-4745-a124-2b4d4ce6a5ab"
     },
     {
       "name": "AI: wynik (podsumowanie miesiąca)",
@@ -137,7 +171,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...{} };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"podsumowanie\":\"\",\"najwazniejsze\":\"\",\"ryzyka\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...{} };\ndelete ctx._aiPrompt;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.output ?? '';\n  out = typeof raw === 'string' ? JSON.parse(raw) : raw;\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"podsumowanie\":\"\",\"najwazniejsze\":\"\",\"ryzyka\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
       },
       "position": [
         1380,
@@ -207,14 +241,36 @@
       "main": [
         [
           {
-            "node": "AI: podsumowanie miesiąca",
+            "node": "AI Agent: podsumowanie miesiąca",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: podsumowanie miesiąca": {
+    "Chat Model: podsumowanie miesiąca": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent: podsumowanie miesiąca",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser wyniku: podsumowanie miesiąca": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent: podsumowanie miesiąca",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent: podsumowanie miesiąca": {
       "main": [
         [
           {

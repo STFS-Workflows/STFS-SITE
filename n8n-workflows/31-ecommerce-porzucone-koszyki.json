@@ -11,9 +11,9 @@
         -260
       ],
       "parameters": {
-        "content": "## 31 – Porzucone koszyki\n\nCo godzinę pobiera koszyki porzucone 1–24 h temu. Wysyła JEDNO spersonalizowane przypomnienie na koszyk i **tylko osobom ze zgodą marketingową** (RODO/UŚUDE).\n\nFormat: `{ \"data\": [ { \"cartId\", \"email\", \"firstName\", \"items\": [..], \"cartUrl\", \"marketingConsent\" } ] }`.\n\n## Credentials do utworzenia\n- Header Auth (API)\n- SMTP\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
-        "height": 520,
-        "width": 560,
+        "content": "## 31 – Porzucone koszyki\n\nCo godzinę pobiera koszyki porzucone 1–24 h temu. Wysyła JEDNO spersonalizowane przypomnienie na koszyk i **tylko osobom ze zgodą marketingową** (RODO/UŚUDE).\n\nFormat: `{ \"data\": [ { \"cartId\", \"email\", \"firstName\", \"items\": [..], \"cartUrl\", \"marketingConsent\" } ] }`.\n\n## Jak działa przepływ\n- **Start:** Harmonogram – uruchamia się automatycznie o ustawionej porze.\n- **Kolejność:** Co godzinę → Konfiguracja → Pobierz porzucone koszyki → Rozbij listę koszyków → Ma zgodę marketingową? → Pomiń już przypomniane → AI: prompt (przypomnienie) → AI Agent: przypomnienie → Chat Model: przypomnienie → Parser wyniku: przypomnienie → … → Brak zgody – nie wysyłaj.\n- Każdy rekord przechodzi osobno, a błędy i odpowiedzi z usług są zachowywane w historii wykonań.\n\n## AI w tym workflowie\n- Natywny **AI Agent** wykonuje rozumowanie; nie ma bezpośrednich wywołań URL do API modelu.\n- **OpenAI Chat Model** jest podłączony portem `ai_languageModel`.\n- **Structured Output Parser** wymusza przewidywalny JSON; kolejny krok sprawdza wynik przed użyciem.\n\n## Co skonfigurować\n1. Otwórz węzeł **Konfiguracja** i zastąp wartości `YOUR-...`; sprawdź adresy, identyfikatory, progi oraz odbiorców.\n2. Sprawdź mapowanie pól wejściowych w pierwszym kroku po wyzwalaczu.\n3. W razie użycia AI uzupełnij instrukcję firmy i wybierz credential OpenAI w węźle **Chat Model**.\n\n## Credentials i węzły\n- **Header Auth (API)** → Pobierz porzucone koszyki\n- **OpenAI API** → AI Agent: przypomnienie\n- **SMTP** → Wyślij przypomnienie\n\n## Test przed aktywacją\n1. Użyj danych testowych bez prawdziwych odbiorców albo ustaw kanał testowy.\n2. Uruchom **Test workflow** i sprawdź dane po każdym IF/Code/AI Agent.\n3. Przetestuj ścieżkę poprawną, odrzuconą i awarię usługi zewnętrznej.\n4. Ustaw **STFS — Obsługa błędów** jako Error Workflow w Settings.\n5. Dopiero po poprawnym teście włącz **Active**.\n\n## Eksploatacja i bezpieczeństwo\n- Sekretów nie wpisuj do pól ani kodu – przechowuj je wyłącznie w n8n Credentials.\n- Kontroluj Executions po wdrożeniu; retry nie zastępuje sprawdzenia duplikatów.\n- Workflow jest importowany jako **nieaktywny**, więc sam nie wyśle wiadomości ani nie zmieni danych.",
+        "height": 900,
+        "width": 760,
         "color": 4
       }
     },
@@ -156,7 +156,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const SYSTEM = \"Piszesz krótkie (2-3 zdania), przyjazne przypomnienie o pozostawionym koszyku. Po polsku, bez presji, bez wymyślania rabatów.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"temat\\\": krótki temat, \\\"tresc\\\": treść bez linku}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Sklep: ${$('Konfiguracja').first().json.nazwaSklepu}\\nImię: ${$json.firstName || ''}\\nProdukty: ${(($json.items || []).map((i) => i.name || i.title)).join(', ')}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 600,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+        "jsCode": "const SYSTEM = \"Piszesz krótkie (2-3 zdania), przyjazne przypomnienie o pozostawionym koszyku. Po polsku, bez presji, bez wymyślania rabatów.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"temat\\\": krótki temat, \\\"tresc\\\": treść bez linku}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Sklep: ${$('Konfiguracja').first().json.nazwaSklepu}\\nImię: ${$json.firstName || ''}\\nProdukty: ${(($json.items || []).map((i) => i.name || i.title)).join(', ')}`;\nreturn {\n  json: {\n    ...$json,\n    _aiPrompt: String(user).slice(0, 12000),\n  },\n};"
       },
       "position": [
         1640,
@@ -165,31 +165,65 @@
       "id": "9dae55e2-4135-4132-aff7-ca5578bfba8d"
     },
     {
-      "name": "AI: przypomnienie",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "AI Agent: przypomnienie",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
       "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "promptType": "define",
+        "text": "={{ $json._aiPrompt }}",
+        "hasOutputParser": true,
         "options": {
-          "timeout": 60000
+          "systemMessage": "Piszesz krótkie (2-3 zdania), przyjazne przypomnienie o pozostawionym koszyku. Po polsku, bez presji, bez wymyślania rabatów.\n\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\"temat\": krótki temat, \"tresc\": treść bez linku}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.",
+          "maxIterations": 3,
+          "enableStreaming": false
         }
       },
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
-      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notes": "Natywny AI Agent. Po imporcie wybierz credential OpenAI w połączonym Chat Model.",
       "notesInFlow": true,
       "position": [
         1900,
         300
       ],
-      "id": "257e1710-8dd5-4505-a91c-9734d4737cc8"
+      "id": "b79cd6ac-9542-4c83-afac-bbabdcfeb5f6"
+    },
+    {
+      "name": "Chat Model: przypomnienie",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 600
+        }
+      },
+      "position": [
+        1830,
+        560
+      ],
+      "id": "1edd507a-5d8e-4b05-a684-89e42972b46e"
+    },
+    {
+      "name": "Parser wyniku: przypomnienie",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"temat\",\"tresc\"],\"properties\":{\"temat\":{\"type\":\"string\"},\"tresc\":{\"type\":\"string\"}}}"
+      },
+      "position": [
+        2090,
+        560
+      ],
+      "id": "b1f62e44-c514-4cc0-ab88-44db27b5b130"
     },
     {
       "name": "AI: wynik (przypomnienie)",
@@ -197,7 +231,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (przypomnienie)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"temat\":\"\",\"tresc\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (przypomnienie)').item.json };\ndelete ctx._aiPrompt;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.output ?? '';\n  out = typeof raw === 'string' ? JSON.parse(raw) : raw;\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"temat\":\"\",\"tresc\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
       },
       "position": [
         2160,
@@ -376,14 +410,36 @@
       "main": [
         [
           {
-            "node": "AI: przypomnienie",
+            "node": "AI Agent: przypomnienie",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: przypomnienie": {
+    "Chat Model: przypomnienie": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent: przypomnienie",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser wyniku: przypomnienie": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent: przypomnienie",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent: przypomnienie": {
       "main": [
         [
           {

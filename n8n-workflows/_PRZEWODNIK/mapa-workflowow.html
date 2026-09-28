@@ -161,7 +161,7 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
     <p class="eyebrow">stfs / n8n-workflows · komplet 50 workflowów katalogu, 23.09.2026</p>
     <h1>Mapa automatyzacji STFS</h1>
     <p class="lead">Wszystkie workflowy n8n po naprawie: co robią, jak przepływają dane, co zostało poprawione i czego potrzebują do uruchomienia. Diagramy są generowane z plików JSON, więc zawsze zgadzają się z tym, co importujesz do n8n.</p>
-    <div class="stats"><div class="stat"><b>53</b><span>workflowów</span></div><div class="stat"><b>27</b><span>z krokiem AI</span></div><div class="stat"><b>30</b><span>webhooków</span></div><div class="stat"><b>19</b><span>harmonogramów</span></div><div class="stat"><b>4</b><span>z akceptacją człowieka</span></div><div class="stat"><b>18</b><span>nowych (33–50)</span></div></div>
+    <div class="stats"><div class="stat"><b>53</b><span>workflowów</span></div><div class="stat"><b>28</b><span>z krokiem AI</span></div><div class="stat"><b>30</b><span>webhooków</span></div><div class="stat"><b>19</b><span>harmonogramów</span></div><div class="stat"><b>4</b><span>z akceptacją człowieka</span></div><div class="stat"><b>18</b><span>nowych (33–50)</span></div></div>
     <nav class="toc" aria-label="Spis treści"><a href="#szkielet">Szkielet workflowu</a><a href="#przed-po">Przed i po naprawie</a><a href="#indeks">Indeks</a><a href="#workflowy">Wszystkie workflowy</a></nav>
   </header>
 
@@ -187,7 +187,7 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
   <section class="section" id="indeks">
     <h2>Indeks</h2>
     <p class="intro"><i class="m-new" style="display:inline-block">NOWY</i> dodany 23.09 &nbsp; <i class="m-ai" style="display:inline-block;width:8px;height:8px;border-radius:2px"></i> krok AI &nbsp; <i class="m-human" style="display:inline-block;width:8px;height:8px;border-radius:50%"></i> akceptacja człowieka. Kliknij nazwę, aby przejść do diagramu.</p>
-    <div class="index"><div class="idx-col"><h3>Działające u nas (STFS)</h3><ol><li><a href="#wf-monitoring-opinii-odpowiedzi"><span class="inr">★</span><span class="iname">Monitoring opinii i reputacji (z akceptacją)</span><span class="imarks"><i class="m-ai" title="krok AI"></i><i class="m-human" title="akceptacja człowieka"></i></span></a></li><li><a href="#wf-site-chatbot-odpowiedzi-na-zywo"><span class="inr">★</span><span class="iname">Chatbot strony — odpowiedzi na żywo (webhook)</span><span class="imarks"></span></a></li></ol></div><div class="idx-col"><h3>System</h3><ol><li><a href="#wf-00-obsluga-bledow"><span class="inr">00</span><span class="iname">Obsługa błędów (Error Workflow)</span><span class="imarks"></span></a></li><li><a href="#wf-40-system-kopia-workflowow"><span class="inr">40</span><span class="iname">Kopia zapasowa workflowów n8n (GitHub)</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li><li><a href="#wf-50-system-raport-zdrowia-automatyzacji"><span class="inr">50</span><span class="iname">Tygodniowy raport zdrowia automatyzacji</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li></ol></div><div class="idx-col"><h3>Sprzedaż i leady</h3><ol><li><a href="#wf-01-sprzedaz-kwalifikacja-leadow"><span class="inr">01</span><span class="iname">Kwalifikacja i scoring leadów</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-02-sprzedaz-automatyczne-odpowiedzi"><span class="inr">02</span><span class="iname">Automatyczne odpowiedzi na zapytania</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-03-sprzedaz-follow-up"><span class="inr">03</span><span class="iname">Follow-up po braku odpowiedzi</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-04-sprzedaz-aktualizacja-crm"><span class="inr">04</span><span class="iname">Aktualizacja CRM bez ręcznego wpisywania</span><span class="imarks"></span></a></li><li><a href="#wf-05-sprzedaz-umawianie-spotkan"><span class="inr">05</span><span class="iname">Umawianie spotkań i konsultacji</span><span class="imarks"></span></a></li><li><a href="#wf-33-sprzedaz-zapytanie-o-termin"><span class="inr">33</span><span class="iname">Zapytanie o termin (sala / usługa)</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li></ol></div><div class="idx-col"><h3>Marketing</h3><ol><li><a href="#wf-06-marketing-generowanie-tresci"><span class="inr">06</span><span class="iname">Generowanie treści i reklam</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-07-marketing-raportowanie-kampanii"><span class="inr">07</span><span class="iname">Automatyczne raportowanie kampanii</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-08-marketing-segmentacja-mailingow"><span class="inr">08</span><span class="iname">Segmentacja i personalizacja mailingów</span><span class="imarks"></span></a></li><li><a href="#wf-09-marketing-monitoring-wzmianek"><span class="inr">09</span><span class="iname">Monitoring wzmianek o marce</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-36-marketing-prosba-o-opinie"><span class="inr">36</span><span class="iname">Prośba o opinię po zakupie lub wizycie</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li><li><a href="#wf-38-marketing-raport-ruchu-strony"><span class="inr">38</span><span class="iname">Tygodniowy raport ruchu na stronie (GA4 + Search Console)</span><span class="imarks"><i class="m-new">NOWY</i><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-43-marketing-newsletter-z-bloga"><span class="inr">43</span><span class="iname">Newsletter z nowych wpisów na blogu</span><span class="imarks"><i class="m-new">NOWY</i><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-44-marketing-publikacja-social-media"><span class="inr">44</span><span class="iname">Publikacja postów z kalendarza treści</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li></ol></div><div class="idx-col"><h3>Obsługa klienta</h3><ol><li><a href="#wf-10-obsluga-bot-faq"><span class="inr">10</span><span class="iname">Bot FAQ (Telegram)</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-11-obsluga-kategoryzacja-zgloszen"><span class="inr">11</span><span class="iname">Kategoryzacja i priorytetyzacja zgłoszeń</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-12-obsluga-tlumaczenie-streszczanie"><span class="inr">12</span><span class="iname">Tłumaczenie i streszczanie zgłoszeń</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-34-obsluga-weryfikacja-sms"><span class="inr">34</span><span class="iname">Weryfikacja numeru kodem SMS</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li><li><a href="#wf-37-obsluga-skrzynka-gmail"><span class="inr">37</span><span class="iname">Asystent skrzynki Gmail (szkice odpowiedzi)</span><span class="imarks"><i class="m-new">NOWY</i><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-45-obsluga-analiza-ankiet-nps"><span class="inr">45</span><span class="iname">Analiza ankiet NPS i kontakt z niezadowolonymi</span><span class="imarks"><i class="m-new">NOWY</i><i class="m-ai" title="krok AI"></i></span></a></li></ol></div><div class="idx-col"><h3>Operacje i dokumenty</h3><ol><li><a href="#wf-13-operacje-wystawianie-faktur"><span class="inr">13</span><span class="iname">Wystawianie i wysyłka faktur</span><span class="imarks"></span></a></li><li><a href="#wf-14-operacje-ocr-dokumentow"><span class="inr">14</span><span class="iname">OCR i ekstrakcja danych z dokumentów</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-15-operacje-uzupelnianie-arkuszy"><span class="inr">15</span><span class="iname">Uzupełnianie arkuszy z formularzy i maili</span><span class="imarks"></span></a></li><li><a href="#wf-16-operacje-alerty-magazynowe"><span class="inr">16</span><span class="iname">Alerty o stanach magazynowych</span><span class="imarks"></span></a></li><li><a href="#wf-35-operacje-przypomnienia-o-wizytach"><span class="inr">35</span><span class="iname">Przypomnienia o wizytach i rezerwacjach</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li><li><a href="#wf-39-operacje-monitoring-strony"><span class="inr">39</span><span class="iname">Monitoring dostępności stron</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li></ol></div><div class="idx-col"><h3>Finanse</h3><ol><li><a href="#wf-17-finanse-kategoryzacja-transakcji"><span class="inr">17</span><span class="iname">Kategoryzacja transakcji i wydatków</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-18-finanse-przypomnienia-platnosci"><span class="inr">18</span><span class="iname">Przypomnienia o nieopłaconych fakturach</span><span class="imarks"></span></a></li><li><a href="#wf-19-finanse-raporty-miesieczne"><span class="inr">19</span><span class="iname">Raporty finansowe na koniec miesiąca</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-41-finanse-weryfikacja-kontrahenta"><span class="inr">41</span><span class="iname">Weryfikacja kontrahenta (biała lista VAT)</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li><li><a href="#wf-42-finanse-przeliczanie-walut-nbp"><span class="inr">42</span><span class="iname">Przeliczanie faktur walutowych po kursie NBP</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li><li><a href="#wf-49-finanse-kontrola-ksef"><span class="inr">49</span><span class="iname">Kontrola wysyłki faktur do KSeF</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li></ol></div><div class="idx-col"><h3>HR i rekrutacja</h3><ol><li><a href="#wf-20-hr-selekcja-cv"><span class="inr">20</span><span class="iname">Wstępna selekcja CV</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-21-hr-umawianie-rozmow"><span class="inr">21</span><span class="iname">Automatyczne umawianie rozmów rekrutacyjnych</span><span class="imarks"></span></a></li><li><a href="#wf-22-hr-onboarding"><span class="inr">22</span><span class="iname">Onboarding nowych pracowników</span><span class="imarks"></span></a></li><li><a href="#wf-23-hr-chatbot"><span class="inr">23</span><span class="iname">Chatbot HR</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-47-hr-wnioski-urlopowe"><span class="inr">47</span><span class="iname">Wnioski urlopowe z akceptacją przełożonego</span><span class="imarks"><i class="m-new">NOWY</i><i class="m-human" title="akceptacja człowieka"></i></span></a></li></ol></div><div class="idx-col"><h3>Zaawansowane AI</h3><ol><li><a href="#wf-24-ai-agent-glosowy"><span class="inr">24</span><span class="iname">Agent głosowy (recepcja AI)</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-25-ai-rag-chatbot"><span class="inr">25</span><span class="iname">RAG chatbot na dokumentacji firmy</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-26-ai-analiza-rozmow"><span class="inr">26</span><span class="iname">Analiza rozmów sprzedażowych</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-27-ai-generowanie-ofert"><span class="inr">27</span><span class="iname">Generowanie ofert i wycen</span><span class="imarks"><i class="m-ai" title="krok AI"></i><i class="m-human" title="akceptacja człowieka"></i></span></a></li><li><a href="#wf-28-ai-wykrywanie-anomalii"><span class="inr">28</span><span class="iname">Wykrywanie anomalii w danych</span><span class="imarks"></span></a></li><li><a href="#wf-48-ai-notatki-ze-spotkan"><span class="inr">48</span><span class="iname">Notatka i zadania ze spotkania (transkrypcja AI)</span><span class="imarks"><i class="m-new">NOWY</i><i class="m-ai" title="krok AI"></i></span></a></li></ol></div><div class="idx-col"><h3>E-commerce</h3><ol><li><a href="#wf-29-ecommerce-odpowiedzi-na-opinie"><span class="inr">29</span><span class="iname">Odpowiedzi na opinie (z akceptacją)</span><span class="imarks"><i class="m-ai" title="krok AI"></i><i class="m-human" title="akceptacja człowieka"></i></span></a></li><li><a href="#wf-30-ecommerce-opisy-produktow"><span class="inr">30</span><span class="iname">Dynamiczne opisy produktów pod SEO</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-31-ecommerce-porzucone-koszyki"><span class="inr">31</span><span class="iname">Przypomnienia o porzuconym koszyku</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-32-ecommerce-monitoring-cen"><span class="inr">32</span><span class="iname">Monitoring cen konkurencji</span><span class="imarks"></span></a></li><li><a href="#wf-46-ecommerce-zwroty-i-reklamacje"><span class="inr">46</span><span class="iname">Zwroty i reklamacje (numer RMA i instrukcja)</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li></ol></div></div>
+    <div class="index"><div class="idx-col"><h3>Działające u nas (STFS)</h3><ol><li><a href="#wf-monitoring-opinii-odpowiedzi"><span class="inr">★</span><span class="iname">Monitoring opinii i reputacji (z akceptacją)</span><span class="imarks"><i class="m-ai" title="krok AI"></i><i class="m-human" title="akceptacja człowieka"></i></span></a></li><li><a href="#wf-site-chatbot-odpowiedzi-na-zywo"><span class="inr">★</span><span class="iname">Chatbot strony — odpowiedzi na żywo (webhook)</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li></ol></div><div class="idx-col"><h3>System</h3><ol><li><a href="#wf-00-obsluga-bledow"><span class="inr">00</span><span class="iname">Obsługa błędów (Error Workflow)</span><span class="imarks"></span></a></li><li><a href="#wf-40-system-kopia-workflowow"><span class="inr">40</span><span class="iname">Kopia zapasowa workflowów n8n (GitHub)</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li><li><a href="#wf-50-system-raport-zdrowia-automatyzacji"><span class="inr">50</span><span class="iname">Tygodniowy raport zdrowia automatyzacji</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li></ol></div><div class="idx-col"><h3>Sprzedaż i leady</h3><ol><li><a href="#wf-01-sprzedaz-kwalifikacja-leadow"><span class="inr">01</span><span class="iname">Kwalifikacja i scoring leadów</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-02-sprzedaz-automatyczne-odpowiedzi"><span class="inr">02</span><span class="iname">Automatyczne odpowiedzi na zapytania</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-03-sprzedaz-follow-up"><span class="inr">03</span><span class="iname">Follow-up po braku odpowiedzi</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-04-sprzedaz-aktualizacja-crm"><span class="inr">04</span><span class="iname">Aktualizacja CRM bez ręcznego wpisywania</span><span class="imarks"></span></a></li><li><a href="#wf-05-sprzedaz-umawianie-spotkan"><span class="inr">05</span><span class="iname">Umawianie spotkań i konsultacji</span><span class="imarks"></span></a></li><li><a href="#wf-33-sprzedaz-zapytanie-o-termin"><span class="inr">33</span><span class="iname">Zapytanie o termin (sala / usługa)</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li></ol></div><div class="idx-col"><h3>Marketing</h3><ol><li><a href="#wf-06-marketing-generowanie-tresci"><span class="inr">06</span><span class="iname">Generowanie treści i reklam</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-07-marketing-raportowanie-kampanii"><span class="inr">07</span><span class="iname">Automatyczne raportowanie kampanii</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-08-marketing-segmentacja-mailingow"><span class="inr">08</span><span class="iname">Segmentacja i personalizacja mailingów</span><span class="imarks"></span></a></li><li><a href="#wf-09-marketing-monitoring-wzmianek"><span class="inr">09</span><span class="iname">Monitoring wzmianek o marce</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-36-marketing-prosba-o-opinie"><span class="inr">36</span><span class="iname">Prośba o opinię po zakupie lub wizycie</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li><li><a href="#wf-38-marketing-raport-ruchu-strony"><span class="inr">38</span><span class="iname">Tygodniowy raport ruchu na stronie (GA4 + Search Console)</span><span class="imarks"><i class="m-new">NOWY</i><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-43-marketing-newsletter-z-bloga"><span class="inr">43</span><span class="iname">Newsletter z nowych wpisów na blogu</span><span class="imarks"><i class="m-new">NOWY</i><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-44-marketing-publikacja-social-media"><span class="inr">44</span><span class="iname">Publikacja postów z kalendarza treści</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li></ol></div><div class="idx-col"><h3>Obsługa klienta</h3><ol><li><a href="#wf-10-obsluga-bot-faq"><span class="inr">10</span><span class="iname">Bot FAQ (Telegram)</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-11-obsluga-kategoryzacja-zgloszen"><span class="inr">11</span><span class="iname">Kategoryzacja i priorytetyzacja zgłoszeń</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-12-obsluga-tlumaczenie-streszczanie"><span class="inr">12</span><span class="iname">Tłumaczenie i streszczanie zgłoszeń</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-34-obsluga-weryfikacja-sms"><span class="inr">34</span><span class="iname">Weryfikacja numeru kodem SMS</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li><li><a href="#wf-37-obsluga-skrzynka-gmail"><span class="inr">37</span><span class="iname">Asystent skrzynki Gmail (szkice odpowiedzi)</span><span class="imarks"><i class="m-new">NOWY</i><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-45-obsluga-analiza-ankiet-nps"><span class="inr">45</span><span class="iname">Analiza ankiet NPS i kontakt z niezadowolonymi</span><span class="imarks"><i class="m-new">NOWY</i><i class="m-ai" title="krok AI"></i></span></a></li></ol></div><div class="idx-col"><h3>Operacje i dokumenty</h3><ol><li><a href="#wf-13-operacje-wystawianie-faktur"><span class="inr">13</span><span class="iname">Wystawianie i wysyłka faktur</span><span class="imarks"></span></a></li><li><a href="#wf-14-operacje-ocr-dokumentow"><span class="inr">14</span><span class="iname">OCR i ekstrakcja danych z dokumentów</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-15-operacje-uzupelnianie-arkuszy"><span class="inr">15</span><span class="iname">Uzupełnianie arkuszy z formularzy i maili</span><span class="imarks"></span></a></li><li><a href="#wf-16-operacje-alerty-magazynowe"><span class="inr">16</span><span class="iname">Alerty o stanach magazynowych</span><span class="imarks"></span></a></li><li><a href="#wf-35-operacje-przypomnienia-o-wizytach"><span class="inr">35</span><span class="iname">Przypomnienia o wizytach i rezerwacjach</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li><li><a href="#wf-39-operacje-monitoring-strony"><span class="inr">39</span><span class="iname">Monitoring dostępności stron</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li></ol></div><div class="idx-col"><h3>Finanse</h3><ol><li><a href="#wf-17-finanse-kategoryzacja-transakcji"><span class="inr">17</span><span class="iname">Kategoryzacja transakcji i wydatków</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-18-finanse-przypomnienia-platnosci"><span class="inr">18</span><span class="iname">Przypomnienia o nieopłaconych fakturach</span><span class="imarks"></span></a></li><li><a href="#wf-19-finanse-raporty-miesieczne"><span class="inr">19</span><span class="iname">Raporty finansowe na koniec miesiąca</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-41-finanse-weryfikacja-kontrahenta"><span class="inr">41</span><span class="iname">Weryfikacja kontrahenta (biała lista VAT)</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li><li><a href="#wf-42-finanse-przeliczanie-walut-nbp"><span class="inr">42</span><span class="iname">Przeliczanie faktur walutowych po kursie NBP</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li><li><a href="#wf-49-finanse-kontrola-ksef"><span class="inr">49</span><span class="iname">Kontrola wysyłki faktur do KSeF</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li></ol></div><div class="idx-col"><h3>HR i rekrutacja</h3><ol><li><a href="#wf-20-hr-selekcja-cv"><span class="inr">20</span><span class="iname">Wstępna selekcja CV</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-21-hr-umawianie-rozmow"><span class="inr">21</span><span class="iname">Automatyczne umawianie rozmów rekrutacyjnych</span><span class="imarks"></span></a></li><li><a href="#wf-22-hr-onboarding"><span class="inr">22</span><span class="iname">Onboarding nowych pracowników</span><span class="imarks"></span></a></li><li><a href="#wf-23-hr-chatbot"><span class="inr">23</span><span class="iname">Chatbot HR</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-47-hr-wnioski-urlopowe"><span class="inr">47</span><span class="iname">Wnioski urlopowe z akceptacją przełożonego</span><span class="imarks"><i class="m-new">NOWY</i><i class="m-human" title="akceptacja człowieka"></i></span></a></li></ol></div><div class="idx-col"><h3>Zaawansowane AI</h3><ol><li><a href="#wf-24-ai-agent-glosowy"><span class="inr">24</span><span class="iname">Agent głosowy (recepcja AI)</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-25-ai-rag-chatbot"><span class="inr">25</span><span class="iname">RAG chatbot na dokumentacji firmy</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-26-ai-analiza-rozmow"><span class="inr">26</span><span class="iname">Analiza rozmów sprzedażowych</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-27-ai-generowanie-ofert"><span class="inr">27</span><span class="iname">Generowanie ofert i wycen</span><span class="imarks"><i class="m-ai" title="krok AI"></i><i class="m-human" title="akceptacja człowieka"></i></span></a></li><li><a href="#wf-28-ai-wykrywanie-anomalii"><span class="inr">28</span><span class="iname">Wykrywanie anomalii w danych</span><span class="imarks"></span></a></li><li><a href="#wf-48-ai-notatki-ze-spotkan"><span class="inr">48</span><span class="iname">Notatka i zadania ze spotkania (transkrypcja AI)</span><span class="imarks"><i class="m-new">NOWY</i><i class="m-ai" title="krok AI"></i></span></a></li></ol></div><div class="idx-col"><h3>E-commerce</h3><ol><li><a href="#wf-29-ecommerce-odpowiedzi-na-opinie"><span class="inr">29</span><span class="iname">Odpowiedzi na opinie (z akceptacją)</span><span class="imarks"><i class="m-ai" title="krok AI"></i><i class="m-human" title="akceptacja człowieka"></i></span></a></li><li><a href="#wf-30-ecommerce-opisy-produktow"><span class="inr">30</span><span class="iname">Dynamiczne opisy produktów pod SEO</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-31-ecommerce-porzucone-koszyki"><span class="inr">31</span><span class="iname">Przypomnienia o porzuconym koszyku</span><span class="imarks"><i class="m-ai" title="krok AI"></i></span></a></li><li><a href="#wf-32-ecommerce-monitoring-cen"><span class="inr">32</span><span class="iname">Monitoring cen konkurencji</span><span class="imarks"></span></a></li><li><a href="#wf-46-ecommerce-zwroty-i-reklamacje"><span class="inr">46</span><span class="iname">Zwroty i reklamacje (numer RMA i instrukcja)</span><span class="imarks"><i class="m-new">NOWY</i></span></a></li></ol></div></div>
   </section>
 
   <section class="section" id="workflowy">
@@ -223,22 +223,22 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
   &quot;tresc&quot;: &quot;Zamówienie przyszło 5 dni później niż obiecano.&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 4 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>daneFirmy</code></dt><dd>[PODMIEŃ: nazwa firmy klienta i adres e-mail do kontaktu]</dd><dt><code>emailWlasciciela</code></dt><dd>wlasciciel@firma-klienta.pl</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>SMTP</li><li>googleBusinessProfileOAuth2Api</li></ul></div>
+      
     </div>
   </details>
 </article>
 
-<article class="wf" data-cat="stfs" data-ai="false" data-human="false" data-new="false" data-q="★ chatbot strony — odpowiedzi na żywo (webhook) site-chatbot-odpowiedzi-na-zywo.json chatbot na stfs.pl: odpowiada odwiedzającym na pytania o usługi stfs na podstawie wklejonej bazy wiedzy (claude haiku). żądanie ze złym kluczem nadal wywoływało model (płaciliśmy za spam) – teraz odmowa bez wywołania ai. dodane limity: 15 pytań / 10 min na ip i 600 dziennie. sprawdzany nagłówek origin + cors tylko dla stfs.pl. klucz anthropic przeniesiony do credentiala (wcześniej wpisywany w nagłówek w workflow – ryzyko wycieku przy eksporcie). kontrakt z widgetem bez zmian – script.js nie wymaga modyfikacji." id="wf-site-chatbot-odpowiedzi-na-zywo">
+<article class="wf" data-cat="stfs" data-ai="true" data-human="false" data-new="false" data-q="★ chatbot strony — odpowiedzi na żywo (webhook) site-chatbot-odpowiedzi-na-zywo.json chatbot na stfs.pl: odpowiada odwiedzającym na pytania o usługi stfs na podstawie wklejonej bazy wiedzy (claude haiku). żądanie ze złym kluczem nadal wywoływało model (płaciliśmy za spam) – teraz odmowa bez wywołania ai. dodane limity: 15 pytań / 10 min na ip i 600 dziennie. sprawdzany nagłówek origin + cors tylko dla stfs.pl. klucz anthropic przeniesiony do credentiala (wcześniej wpisywany w nagłówek w workflow – ryzyko wycieku przy eksporcie). kontrakt z widgetem bez zmian – script.js nie wymaga modyfikacji." id="wf-site-chatbot-odpowiedzi-na-zywo">
   <header class="wf-h">
     <span class="nr">★</span>
     <div class="wf-title"><h3>Chatbot strony — odpowiedzi na żywo (webhook)</h3><code class="file">site-chatbot-odpowiedzi-na-zywo.json</code></div>
-    <div class="tags"><span class="tag">Działające u nas (STFS)</span><span class="tag trig">Webhook · POST /webhook/stfs-chat</span></div>
+    <div class="tags"><span class="tag">Działające u nas (STFS)</span><span class="tag trig">Webhook · POST /webhook/stfs-chat</span><span class="tag ai">AI</span></div>
   </header>
   <div class="canvas" role="img" aria-label="Przebieg: Chatbot strony — odpowiedzi na żywo (webhook)"><div class="flow"><div class="step"><div class="node k-trigger" title="Start"><div class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div><div class="lbl">Webhook: pytanie od widgetu</div><div class="sub">POST /webhook/stfs-chat</div></div></div><div class="step"><div class="node k-setup" title="Przygotowanie"><div class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></div><div class="lbl">Konfiguracja</div><div class="sub">adresy, progi, odbiorcy</div></div></div><div class="step"><div class="node k-guard" title="Ochrona i limity"><div class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></div><div class="lbl">Kontrola dostępu i limity</div></div></div><div class="step branch"><div class="node k-if" title="Warunek (tak / nie)"><div class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 9-9 9-9-9z"/></svg></div><div class="lbl">Dozwolone?</div></div><div class="lanes">
-<div class="lane"><span class="pill yes">tak</span><div class="flow"><div class="step"><div class="node k-code" title="Przetwarzanie"><div class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4c-2 0-3 1-3 3v2c0 1-1 2-2 2 1 0 2 1 2 2v2c0 2 1 3 3 3M16 4c2 0 3 1 3 3v2c0 1 1 2 2 2-1 0-2 1-2 2v2c0 2-1 3-3 3"/></svg></div><div class="lbl">Zbuduj prompt</div></div></div><div class="step"><div class="node k-http" title="Integracja / API"><div class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div><div class="lbl">AI: wygeneruj odpowiedź</div><div class="sub">POST · anthropic</div></div></div><div class="step"><div class="node k-code" title="Przetwarzanie"><div class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4c-2 0-3 1-3 3v2c0 1-1 2-2 2 1 0 2 1 2 2v2c0 2 1 3 3 3M16 4c2 0 3 1 3 3v2c0 1 1 2 2 2-1 0-2 1-2 2v2c0 2-1 3-3 3"/></svg></div><div class="lbl">Wyodrębnij odpowiedź</div></div></div><div class="step"><div class="node k-respond" title="Odpowiedź"><div class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v5"/></svg></div><div class="lbl">Zwróć odpowiedź do widgetu</div><div class="sub">odpowiedź HTTP</div></div></div></div></div>
+<div class="lane"><span class="pill yes">tak</span><div class="flow"><div class="step"><div class="node k-ai" title="Model AI"><div class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg></div><div class="lbl">AI: odpowiedź dla widgetu</div><div class="sub">prompt → model → wynik</div></div></div><div class="step"><div class="node k-respond" title="Odpowiedź"><div class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v5"/></svg></div><div class="lbl">Zwróć odpowiedź do widgetu</div><div class="sub">odpowiedź HTTP</div></div></div></div></div>
 <div class="lane"><span class="pill no">nie</span><div class="flow"><div class="step"><div class="node k-respond" title="Odpowiedź"><div class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v5"/></svg></div><div class="lbl">Odmowa / limit</div><div class="sub">odpowiedź HTTP</div></div></div></div></div></div></div></div></div>
   <div class="wf-body">
     <section><h4>Co robi</h4><p>Chatbot na stfs.pl: odpowiada odwiedzającym na pytania o usługi STFS na podstawie wklejonej bazy wiedzy (Claude Haiku).</p></section>
@@ -247,10 +247,10 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
   &quot;question&quot;: &quot;Jakie usługi oferujecie?&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(7 pól, 1 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(6 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
-      <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>modelAI</code></dt><dd>claude-haiku-4-5-20251001</dd><dt><code>kluczWidgetu</code></dt><dd>stfs-site-widget-2026</dd><dt><code>dozwoloneOriginy</code></dt><dd>https://stfs.pl,https://www.stfs.pl</dd><dt><code>maksDlugoscPytania</code></dt><dd>500</dd><dt><code>limitNaIp</code></dt><dd>15</dd><dt><code>oknoLimituMin</code></dt><dd>10</dd><dt><code>limitDzienny</code></dt><dd>600</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li></ul></div>
+      <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>kluczWidgetu</code></dt><dd>stfs-site-widget-2026</dd><dt><code>dozwoloneOriginy</code></dt><dd>https://stfs.pl,https://www.stfs.pl</dd><dt><code>maksDlugoscPytania</code></dt><dd>500</dd><dt><code>limitNaIp</code></dt><dd>15</dd><dt><code>oknoLimituMin</code></dt><dd>10</dd><dt><code>limitDzienny</code></dt><dd>600</dd></dl></div>
+      
     </div>
   </details>
 </article>
@@ -267,10 +267,10 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
     <section><h4>Co naprawiono</h4><ul class="fixes"><li>Nowy – wcześniej błędy były niewidoczne, dopóki klient się nie poskarżył.</li></ul></section>
     <section><h4>Wejście</h4><p class="muted">Start: błąd w innym workflow. Dane pobiera sam workflow.</p></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>odbiorcaAlertow</code></dt><dd>kontakt@stfs.pl</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Slack</li><li>SMTP</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -293,10 +293,10 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
   &quot;message&quot;: &quot;Szukamy chatbota na stronę, budżet ok. 15 tys. zł, start w listopadzie.&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>progGoracegoLeada</code></dt><dd>70</dd><dt><code>crmUrl</code></dt><dd>https://YOUR-CRM.example.com/api/leads</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>Slack</li></ul><h5>Pola wymagane</h5><p><code>name</code> <code>email</code> <code>message</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -319,10 +319,10 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
   &quot;message&quot;: &quot;Szukamy chatbota na stronę, budżet ok. 15 tys. zł, start w listopadzie.&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 4 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>nazwaFirmy</code></dt><dd>STFS</dd><dt><code>podpis</code></dt><dd>Zespół STFS</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>SMTP</li><li>Slack</li></ul><h5>Pola wymagane</h5><p><code>name</code> <code>email</code> <code>message</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -343,10 +343,10 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
     <section><h4>Co naprawiono</h4><ul class="fixes"><li>Wysyłał follow-up codziennie w kółko – teraz raz na lead (oznaczenie w CRM + pamięć workflow).</li><li>Lista z CRM jest rozbijana na pojedyncze leady; dni liczone z daty kontaktu.</li></ul></section>
     <section><h4>Format danych ze źródła</h4><pre class="json">{ &quot;data&quot;: [ { &quot;id&quot;, &quot;name&quot;, &quot;email&quot;, &quot;lastContactAt&quot; } ] }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>dniBezOdpowiedzi</code></dt><dd>3</dd><dt><code>crmListaUrl</code></dt><dd>https://YOUR-CRM.example.com/api/leads?status=no_reply</dd><dt><code>crmAktualizacjaUrl</code></dt><dd>https://YOUR-CRM.example.com/api/leads</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li><li>SMTP</li><li>Slack</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -365,10 +365,10 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
   &quot;email&quot;: &quot;jan@firma.pl&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>crmUpsertUrl</code></dt><dd>https://YOUR-CRM.example.com/api/contacts/upsert</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li></ul><h5>Pola wymagane</h5><p><code>email</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -389,10 +389,10 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
   &quot;start&quot;: &quot;2026-10-01T14:00:00+02:00&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 4 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>kalendarzUrl</code></dt><dd>https://YOUR-CALENDAR.example.com/api/events</dd><dt><code>czasTrwaniaMin</code></dt><dd>30</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>SMTP</li><li>Slack</li></ul><h5>Pola wymagane</h5><p><code>name</code> <code>email</code> <code>start</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -409,10 +409,10 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
     <section><h4>Co naprawiono</h4><ul class="fixes"><li>Model nie dostawał briefu.</li><li>Brief, kanał i ton w Konfiguracji.</li></ul></section>
     <section><h4>Wejście</h4><p class="muted">Uruchamiasz ręcznie – brief wpisujesz w Konfiguracji.</p></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 1 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>brief</code></dt><dd>Opisz produkt/kampanię tutaj</dd><dt><code>kanal</code></dt><dd>Facebook / Instagram</dd><dt><code>ton</code></dt><dd>konkretny, przyjazny, bez przesady</dd><dt><code>szkiceUrl</code></dt><dd>https://YOUR-CMS.example.com/api/drafts</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -429,10 +429,10 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
     <section><h4>Co naprawiono</h4><ul class="fixes"><li>Krok „połącz dane” był pustą zaślepką – teraz sumuje wydatki, kliknięcia, konwersje.</li><li>Google Ads: poprawna metoda POST, zapytanie GAQL, OAuth + developer-token.</li></ul></section>
     <section><h4>Wejście</h4><p class="muted">Start: poniedziałki 8:00. Dane pobiera sam workflow.</p></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>metaKontoReklamowe</code></dt><dd>act_YOUR_ID</dd><dt><code>googleIdKlienta</code></dt><dd>YOUR_CUSTOMER_ID</dd><dt><code>googleDeveloperToken</code></dt><dd>YOUR_DEV_TOKEN</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li><li>googleAdsOAuth2Api</li><li>Slack</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -451,10 +451,10 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
     <section><h4>Co naprawiono</h4><ul class="fixes"><li>Poprzednio wysyłał KAMPANIĘ do każdego kontaktu codziennie – teraz tylko aktualizuje tagi.</li><li>Pomija kontakty bez zgody marketingowej.</li></ul></section>
     <section><h4>Wejście</h4><p class="muted">Start: codziennie 7:00. Dane pobiera sam workflow.</p></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 1 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>kontaktyUrl</code></dt><dd>https://YOUR-CRM.example.com/api/contacts</dd><dt><code>espAktualizacjaUrl</code></dt><dd>https://YOUR-ESP.example.com/api/contacts/upsert</dd><dt><code>dniDoUspienia</code></dt><dd>90</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -473,10 +473,10 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
     <section><h4>Co naprawiono</h4><ul class="fixes"><li>Te same wzmianki alarmowały przy każdym przebiegu – teraz pamięć już widzianych.</li><li>Alert zawierał dosłowny tekst {{ }}.</li></ul></section>
     <section><h4>Format danych ze źródła</h4><pre class="json">{ &quot;data&quot;: [ { &quot;id&quot;, &quot;text&quot;, &quot;url&quot;, &quot;source&quot; } ] }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>wzmiankiUrl</code></dt><dd>https://YOUR-MONITORING.example.com/api/mentions?since=4h</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li><li>Slack</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -495,11 +495,11 @@ pre.json{margin:0;font:12px/1.5 var(--mono);background:var(--raised);border:1px 
     <section><h4>Co naprawiono</h4><ul class="fixes"><li>Webhook nigdy nie zwracał odpowiedzi (konflikt trybu odpowiedzi).</li><li>Natywny Telegram Trigger zamiast tokenu w URL.</li></ul></section>
     <section><h4>Wejście</h4><p class="muted">Start: wiadomość Telegram. Dane pobiera sam workflow.</p></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>faq</code></dt><dd>P: Jakie są godziny otwarcia? O: Pn-Pt 9-17.
 P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</code></dt><dd>kontakt@stfs.pl</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Telegram</li><li>Header Auth (API)</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -522,10 +522,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;message&quot;: &quot;Szukamy chatbota na stronę, budżet ok. 15 tys. zł, start w listopadzie.&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>helpdeskUrl</code></dt><dd>https://YOUR-HELPDESK.example.com/api/tickets</dd><dt><code>kategorie</code></dt><dd>techniczne, sprzedaz, faktury, reklamacja, inne</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>Slack</li></ul><h5>Pola wymagane</h5><p><code>email</code> <code>subject</code> <code>message</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -544,10 +544,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;message&quot;: &quot;Szukamy chatbota na stronę, budżet ok. 15 tys. zł, start w listopadzie.&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(0 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(0 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>Slack</li></ul><h5>Pola wymagane</h5><p><code>message</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -568,10 +568,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;orderId&quot;: &quot;ZAM-1042&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 4 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>zamowieniaUrl</code></dt><dd>https://YOUR-SHOP.example.com/api/orders</dd><dt><code>fakturyUrl</code></dt><dd>https://YOUR-BILLING.example.com/api/invoices</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>SMTP</li><li>Slack</li></ul><h5>Pola wymagane</h5><p><code>orderId</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -592,10 +592,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;fileUrl&quot;: &quot;https://pliki.firma.pl/skany/faktura-0931.jpg&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>zapisUrl</code></dt><dd>https://YOUR-DB.example.com/api/documents</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>Slack</li></ul><h5>Pola wymagane</h5><p><code>fileUrl</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -615,10 +615,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;email&quot;: &quot;jan@firma.pl&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>arkuszUrl</code></dt><dd>https://docs.google.com/spreadsheets/d/YOUR-SHEET-ID/edit</dd><dt><code>zakladka</code></dt><dd>Arkusz1</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Google Sheets OAuth2</li></ul><h5>Pola wymagane</h5><p><code>name</code> <code>email</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -637,10 +637,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
     <section><h4>Co naprawiono</h4><ul class="fixes"><li>Sprawdzał tylko pierwszy produkt (lista nie była rozbijana).</li><li>Zbiorczy alert zamiast spamu per produkt.</li></ul></section>
     <section><h4>Format danych ze źródła</h4><pre class="json">{ &quot;data&quot;: [ { &quot;sku&quot;, &quot;productName&quot;, &quot;quantity&quot; } ] }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>stanyUrl</code></dt><dd>https://YOUR-WMS.example.com/api/stock</dd><dt><code>progMinimalny</code></dt><dd>10</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li><li>Slack</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -659,10 +659,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
     <section><h4>Co naprawiono</h4><ul class="fixes"><li>Każda transakcja była kategoryzowana wielokrotnie – teraz raz.</li><li>Próg pewności zamiast ślepego zapisu.</li></ul></section>
     <section><h4>Format danych ze źródła</h4><pre class="json">{ &quot;data&quot;: [ { &quot;id&quot;, &quot;date&quot;, &quot;amount&quot;, &quot;counterparty&quot;, &quot;title&quot; } ] }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>transakcjeUrl</code></dt><dd>https://YOUR-BANK.example.com/api/transactions?since=yesterday</dd><dt><code>zapisUrl</code></dt><dd>https://YOUR-ACCOUNTING.example.com/api/transactions/categorize</dd><dt><code>kategorie</code></dt><dd>paliwo, biuro, marketing, oprogramowanie, podroze, wynagrodzenia, podatki, inne</dd><dt><code>progPewnosci</code></dt><dd>0.75</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li><li>Slack</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -683,10 +683,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
     <section><h4>Co naprawiono</h4><ul class="fixes"><li>Przypomnienie codziennie tej samej osobie – teraz maks. raz na tydzień.</li><li>Treść maila zawierała dosłowny tekst {{ }}.</li></ul></section>
     <section><h4>Format danych ze źródła</h4><pre class="json">{ &quot;data&quot;: [ { &quot;id&quot;, &quot;number&quot;, &quot;email&quot;, &quot;amount&quot;, &quot;dueDate&quot; } ] }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>fakturyUrl</code></dt><dd>https://YOUR-BILLING.example.com/api/invoices?status=unpaid</dd><dt><code>dniPoTerminie</code></dt><dd>1</dd><dt><code>dniDoEskalacji</code></dt><dd>30</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li><li>Slack</li><li>SMTP</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -703,10 +703,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
     <section><h4>Co naprawiono</h4><ul class="fixes"><li>Nie określał okresu – teraz automatycznie poprzedni miesiąc.</li><li>Odbiorca w Konfiguracji zamiast wpisanego na sztywno.</li></ul></section>
     <section><h4>Wejście</h4><p class="muted">Start: 1. dnia miesiąca 7:00. Dane pobiera sam workflow.</p></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>podsumowanieUrl</code></dt><dd>https://YOUR-ACCOUNTING.example.com/api/summary</dd><dt><code>odbiorcaRaportu</code></dt><dd>ceo@twojafirma.pl</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li><li>SMTP</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -729,10 +729,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;cvText&quot;: &quot;Specjalista ds. marketingu, 4 lata doświadczenia, Google Ads, angielski C1…&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>stanowisko</code></dt><dd>Nazwa stanowiska</dd><dt><code>wymagania</code></dt><dd>Wypisz wymagania: doświadczenie, umiejętności, języki</dd><dt><code>progDopasowania</code></dt><dd>70</dd><dt><code>atsUrl</code></dt><dd>https://YOUR-ATS.example.com/api/applications</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>Slack</li></ul><h5>Pola wymagane</h5><p><code>name</code> <code>email</code> <code>cvText</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -753,10 +753,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;start&quot;: &quot;2026-10-01T14:00:00+02:00&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 4 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>kalendarzUrl</code></dt><dd>https://YOUR-CALENDAR.example.com/api/events</dd><dt><code>czasTrwaniaMin</code></dt><dd>45</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>SMTP</li><li>Slack</li></ul><h5>Pola wymagane</h5><p><code>name</code> <code>email</code> <code>start</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -778,13 +778,13 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;role&quot;: &quot;Specjalistka ds. marketingu&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 4 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>kontaUrl</code></dt><dd>https://YOUR-IDENTITY.example.com/api/accounts</dd><dt><code>checklista</code></dt><dd>1. Odbierz sprzęt
 2. Zaloguj się do poczty
 3. Spotkanie z opiekunem
 4. Szkolenie BHP i RODO</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>Slack</li><li>SMTP</li></ul><h5>Pola wymagane</h5><p><code>fullName</code> <code>email</code> <code>startDate</code> <code>role</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -803,10 +803,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;question&quot;: &quot;Ile dni urlopu mi przysługuje?&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>politykiHR</code></dt><dd>Wklej tu regulamin pracy, politykę urlopową, benefity…</dd><dt><code>kontaktHR</code></dt><dd>hr@twojafirma.pl</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li></ul><h5>Pola wymagane</h5><p><code>question</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -828,10 +828,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;SpeechResult&quot;: &quot;Do której jesteście otwarci w sobotę?&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 1 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>publicznyUrlWebhooka</code></dt><dd>https://n8n.YOUR-DOMAIN.pl/webhook/agent-glosowy</dd><dt><code>powitanie</code></dt><dd>Dzień dobry, tu wirtualna recepcja. W czym mogę pomóc?</dd><dt><code>informacjeOFirmie</code></dt><dd>Godziny otwarcia, adres, usługi, cennik orientacyjny…</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -850,10 +850,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;question&quot;: &quot;Ile dni urlopu mi przysługuje?&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>supabaseRpcUrl</code></dt><dd>https://YOUR-PROJECT.supabase.co/rest/v1/rpc/match_documents</dd><dt><code>liczbaFragmentow</code></dt><dd>5</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li></ul><h5>Pola wymagane</h5><p><code>question</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -875,10 +875,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;callId&quot;: &quot;CALL-88&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>crmOcenyUrl</code></dt><dd>https://YOUR-CRM.example.com/api/calls/score</dd><dt><code>progCoachingu</code></dt><dd>5</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>Slack</li></ul><h5>Pola wymagane</h5><p><code>recordingUrl</code> <code>callId</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -901,10 +901,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;brief&quot;: &quot;Strona + chatbot dla gabinetu fizjoterapii&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>cennik</code></dt><dd>Wklej cennik usług (pozycja – cena netto)</dd><dt><code>pdfUrl</code></dt><dd>https://YOUR-PDF-SERVICE.example.com/api/generate</dd><dt><code>emailHandlowca</code></dt><dd>handlowiec@twojafirma.pl</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>SMTP</li></ul><h5>Pola wymagane</h5><p><code>name</code> <code>email</code> <code>brief</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -923,10 +923,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
     <section><h4>Co naprawiono</h4><ul class="fixes"><li>Brak średniej dawał fałszywe alarmy – teraz brak danych = brak alertu.</li><li>Alert co godzinę dla tej samej anomalii – teraz raz na dobę.</li></ul></section>
     <section><h4>Format danych ze źródła</h4><pre class="json">{ &quot;data&quot;: [ { &quot;metricName&quot;, &quot;current&quot;, &quot;average&quot; } ] }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>metrykiUrl</code></dt><dd>https://YOUR-ANALYTICS.example.com/api/metrics</dd><dt><code>progOdchylenia</code></dt><dd>30</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li><li>Slack</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -949,10 +949,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;rating&quot;: 5
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>nazwaFirmy</code></dt><dd>Nazwa sklepu</dd><dt><code>emailWlasciciela</code></dt><dd>wlasciciel@twojafirma.pl</dd><dt><code>publikacjaUrl</code></dt><dd>https://YOUR-PLATFORM.example.com/api/reviews</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>SMTP</li></ul><h5>Pola wymagane</h5><p><code>reviewId</code> <code>text</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -977,10 +977,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   }
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>produktyUrl</code></dt><dd>https://YOUR-SHOP.example.com/api/products</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>Slack</li></ul><h5>Pola wymagane</h5><p><code>productId</code> <code>name</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -1001,10 +1001,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
     <section><h4>Co naprawiono</h4><ul class="fixes"><li>Wysyłał co godzinę do tych samych osób – teraz raz na koszyk.</li><li>Sprawdza zgodę marketingową (RODO).</li></ul></section>
     <section><h4>Format danych ze źródła</h4><pre class="json">{ &quot;data&quot;: [ { &quot;cartId&quot;, &quot;email&quot;, &quot;firstName&quot;, &quot;items&quot;: [..], &quot;cartUrl&quot;, &quot;marketingConsent&quot; } ] }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>koszykiUrl</code></dt><dd>https://YOUR-SHOP.example.com/api/carts/abandoned?minAge=1h&amp;maxAge=24h</dd><dt><code>nazwaSklepu</code></dt><dd>Nazwa sklepu</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li><li>SMTP</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -1023,10 +1023,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
     <section><h4>Co naprawiono</h4><ul class="fixes"><li>Sprawdzał tylko pierwszy produkt i tylko „drożej” – teraz wszystkie, w obie strony.</li><li>Brak ceny nie daje fałszywego alertu.</li></ul></section>
     <section><h4>Format danych ze źródła</h4><pre class="json">{ &quot;data&quot;: [ { &quot;productName&quot;, &quot;ownPrice&quot;, &quot;competitorPrice&quot;, &quot;competitor&quot; } ] }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>cenyUrl</code></dt><dd>https://YOUR-PRICE-SOURCE.example.com/api/prices</dd><dt><code>progRoznicy</code></dt><dd>10</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li><li>Slack</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -1051,10 +1051,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;message&quot;: &quot;Czy jest możliwość przyjęcia w ogrodzie?&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(5 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(5 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>nazwaObiektu</code></dt><dd>Nazwa obiektu</dd><dt><code>crmUrl</code></dt><dd>https://YOUR-CRM.example.com/api/leads</dd><dt><code>emailBiura</code></dt><dd>biuro@twojafirma.pl</dd><dt><code>smsUrl</code></dt><dd>https://YOUR-SMS-GATEWAY.example.com/api/sms</dd><dt><code>telefonWlasciciela</code></dt><dd>+48600000000</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>SMTP</li></ul><h5>Pola wymagane</h5><p><code>name</code> <code>phone</code> <code>date</code> <code>guests</code> <code>type</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -1076,10 +1076,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;phone&quot;: &quot;+48600100200&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(5 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(5 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>smsUrl</code></dt><dd>https://YOUR-SMS-GATEWAY.example.com/api/sms</dd><dt><code>nazwaNadawcy</code></dt><dd>Twoja firma</dd><dt><code>waznoscMin</code></dt><dd>10</dd><dt><code>maksProb</code></dt><dd>3</dd><dt><code>maksWysylekNaGodzine</code></dt><dd>3</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li></ul><h5>Pola wymagane</h5><p><code>action</code> <code>phone</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -1100,10 +1100,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
     <section><h4>Jak jest zbudowany</h4><ul class="fixes"><li>SMS, gdy jest numer; e-mail jako zapas; brak kontaktu → Slack.</li><li>Każda rezerwacja dostaje jedno przypomnienie (pamięć workflow).</li><li>Godzina w strefie Europe/Warsaw.</li></ul></section>
     <section><h4>Format danych ze źródła</h4><pre class="json">{ &quot;data&quot;: [ { &quot;id&quot;, &quot;name&quot;, &quot;phone&quot;, &quot;email&quot;, &quot;start&quot;, &quot;service&quot;, &quot;cancelUrl&quot; } ] }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>rezerwacjeUrl</code></dt><dd>https://YOUR-BOOKING.example.com/api/bookings</dd><dt><code>smsUrl</code></dt><dd>https://YOUR-SMS-GATEWAY.example.com/api/sms</dd><dt><code>nazwaFirmy</code></dt><dd>Nazwa firmy</dd><dt><code>adres</code></dt><dd>ul. Przykładowa 1, Rybnik</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li><li>SMTP</li><li>Slack</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -1126,10 +1126,10 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
   &quot;name&quot;: &quot;Jan Kowalski&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>nazwaFirmy</code></dt><dd>Nazwa firmy</dd><dt><code>linkDoOpinii</code></dt><dd>https://g.page/r/YOUR-PLACE-ID/review</dd><dt><code>dniOczekiwania</code></dt><dd>3</dd><dt><code>zamowieniaUrl</code></dt><dd>https://YOUR-SHOP.example.com/api/orders</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>SMTP</li></ul><h5>Pola wymagane</h5><p><code>orderId</code> <code>email</code> <code>name</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -1152,11 +1152,11 @@ P: Jak się skontaktować? O: kontakt@stfs.pl</dd><dt><code>kontaktAwaryjny</cod
     <section><h4>Jak jest zbudowany</h4><ul class="fixes"><li>Tylko szkice – nic nie jest wysyłane bez człowieka.</li><li>Newslettery i noreply pomijane (nie marnuje tokenów).</li><li>Ochrona przed poleceniami ukrytymi w treści maila (prompt injection).</li></ul></section>
     <section><h4>Wejście</h4><p class="muted">Start: nowy e-mail (co minutę). Dane pobiera sam workflow.</p></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>kategorie</code></dt><dd>oferta, wsparcie, faktury, rekrutacja, wspolpraca, inne</dd><dt><code>kontekstFirmy</code></dt><dd>Opisz krótko firmę, usługi, godziny pracy i kontakt – AI użyje tego w szkicach.</dd><dt><code>podpis</code></dt><dd>Pozdrawiam,
 Zespół STFS</dd><dt><code>pomijaj</code></dt><dd>noreply,no-reply,newsletter,mailer-daemon,notifications</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Gmail OAuth2</li><li>Header Auth (API)</li><li>Slack</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -1173,10 +1173,10 @@ Zespół STFS</dd><dt><code>pomijaj</code></dt><dd>noreply,no-reply,newsletter,m
     <section><h4>Jak jest zbudowany</h4><ul class="fixes"><li>Porównanie z poprzednim tygodniem w procentach.</li><li>Okres Search Console przesunięty o 2 dni (opóźnienie danych Google).</li><li>AI używa tylko podanych liczb.</li></ul></section>
     <section><h4>Wejście</h4><p class="muted">Start: poniedziałki 7:00. Dane pobiera sam workflow.</p></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>ga4PropertyId</code></dt><dd>YOUR_PROPERTY_ID</dd><dt><code>witrynaSearchConsole</code></dt><dd>sc-domain:stfs.pl</dd><dt><code>odbiorca</code></dt><dd>kontakt@stfs.pl</dd><dt><code>nazwaStrony</code></dt><dd>stfs.pl</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>googleOAuth2Api</li><li>Header Auth (API)</li><li>SMTP</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -1195,10 +1195,10 @@ Zespół STFS</dd><dt><code>pomijaj</code></dt><dd>noreply,no-reply,newsletter,m
     <section><h4>Jak jest zbudowany</h4><ul class="fixes"><li>Alarm dopiero po 2 błędach z rzędu – bez fałszywych alarmów.</li><li>Jeden alert na awarię, nie co 5 minut.</li><li>Udane przebiegi nie są zapisywane (288 dziennie).</li></ul></section>
     <section><h4>Wejście</h4><p class="muted">Start: co 5 minut. Dane pobiera sam workflow.</p></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>adresy</code></dt><dd>https://stfs.pl,https://www.stfs.pl</dd><dt><code>progAwarii</code></dt><dd>2</dd><dt><code>odbiorcaAlertow</code></dt><dd>kontakt@stfs.pl</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Slack</li><li>SMTP</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -1217,10 +1217,10 @@ Zespół STFS</dd><dt><code>pomijaj</code></dt><dd>noreply,no-reply,newsletter,m
     <section><h4>Jak jest zbudowany</h4><ul class="fixes"><li>Commit tylko, gdy workflow się zmienił.</li><li>Z kopii usuwane staticData (m.in. adresy IP z limitów chatbota) i pinData.</li><li>Zapisy do GitHuba po kolei, żeby nie było konfliktów.</li></ul></section>
     <section><h4>Wejście</h4><p class="muted">Start: codziennie 3:00. Dane pobiera sam workflow.</p></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 1 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(4 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>n8nApiUrl</code></dt><dd>https://n8n.stfs.pl/api/v1</dd><dt><code>repo</code></dt><dd>STFS-Workflows/n8n-backup</dd><dt><code>galaz</code></dt><dd>main</dd><dt><code>katalog</code></dt><dd>workflows</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -1243,10 +1243,10 @@ Zespół STFS</dd><dt><code>pomijaj</code></dt><dd>noreply,no-reply,newsletter,m
   &quot;invoiceNumber&quot;: &quot;FV/2026/09/118&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>archiwumUrl</code></dt><dd>https://YOUR-ACCOUNTING.example.com/api/whitelist-checks</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>Slack</li></ul><h5>Pola wymagane</h5><p><code>nip</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -1267,10 +1267,10 @@ Zespół STFS</dd><dt><code>pomijaj</code></dt><dd>noreply,no-reply,newsletter,m
   &quot;invoiceDate&quot;: &quot;2026-09-21&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(0 pól, 1 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(0 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li></ul><h5>Pola wymagane</h5><p><code>amount</code> <code>currency</code> <code>invoiceDate</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -1287,10 +1287,10 @@ Zespół STFS</dd><dt><code>pomijaj</code></dt><dd>noreply,no-reply,newsletter,m
     <section><h4>Jak jest zbudowany</h4><ul class="fixes"><li>Tylko szkic kampanii – wysyłkę klika człowiek.</li><li>Brak nowych wpisów = brak newslettera.</li><li>Treść HTML escapowana (bez wstrzykiwania kodu z RSS).</li></ul></section>
     <section><h4>Wejście</h4><p class="muted">Start: czwartki 10:00. Dane pobiera sam workflow.</p></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(5 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(5 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>rssUrl</code></dt><dd>https://stfs.pl/blog/rss.xml</dd><dt><code>dni</code></dt><dd>7</dd><dt><code>nazwaFirmy</code></dt><dd>STFS</dd><dt><code>espUrl</code></dt><dd>https://YOUR-ESP.example.com/api/campaigns</dd><dt><code>listaId</code></dt><dd>YOUR_LIST_ID</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li><li>Slack</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -1307,10 +1307,10 @@ Zespół STFS</dd><dt><code>pomijaj</code></dt><dd>noreply,no-reply,newsletter,m
     <section><h4>Jak jest zbudowany</h4><ul class="fixes"><li>Publikuje tylko zatwierdzone posty z datą, która już minęła.</li><li>Pamięć workflow chroni przed podwójną publikacją.</li><li>Udane przebiegi co 15 minut nie są zapisywane.</li></ul></section>
     <section><h4>Wejście</h4><p class="muted">Start: co 15 minut. Dane pobiera sam workflow.</p></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>arkuszUrl</code></dt><dd>https://docs.google.com/spreadsheets/d/YOUR-SHEET-ID/edit</dd><dt><code>zakladka</code></dt><dd>Kalendarz</dd><dt><code>fbPageId</code></dt><dd>YOUR_PAGE_ID</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Google Sheets OAuth2</li><li>Header Auth (API)</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -1336,10 +1336,10 @@ Zespół STFS</dd><dt><code>pomijaj</code></dt><dd>noreply,no-reply,newsletter,m
   &quot;comment&quot;: &quot;Długo czekałem na odpowiedź z serwisu.&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 4 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>zapisUrl</code></dt><dd>https://YOUR-CRM.example.com/api/nps</dd><dt><code>helpdeskUrl</code></dt><dd>https://YOUR-HELPDESK.example.com/api/tickets</dd><dt><code>nazwaFirmy</code></dt><dd>Nazwa firmy</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>Slack</li><li>SMTP</li></ul><h5>Pola wymagane</h5><p><code>score</code> <code>email</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -1363,10 +1363,10 @@ Zespół STFS</dd><dt><code>pomijaj</code></dt><dd>noreply,no-reply,newsletter,m
   &quot;reason&quot;: &quot;Zły rozmiar&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(5 pól, 4 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(5 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>zamowieniaUrl</code></dt><dd>https://YOUR-SHOP.example.com/api/orders</dd><dt><code>rmaUrl</code></dt><dd>https://YOUR-SHOP.example.com/api/returns</dd><dt><code>dniNaZwrot</code></dt><dd>14</dd><dt><code>dniNaReklamacje</code></dt><dd>730</dd><dt><code>adresZwrotow</code></dt><dd>Magazyn zwrotów, ul. Przykładowa 1, 44-200 Rybnik</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>SMTP</li><li>Slack</li></ul><h5>Pola wymagane</h5><p><code>orderId</code> <code>email</code> <code>typ</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -1392,10 +1392,10 @@ Zespół STFS</dd><dt><code>pomijaj</code></dt><dd>noreply,no-reply,newsletter,m
   &quot;type&quot;: &quot;wypoczynkowy&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>kalendarzUrl</code></dt><dd>https://YOUR-CALENDAR.example.com/api/events</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>SMTP</li><li>Header Auth (API)</li></ul><h5>Pola wymagane</h5><p><code>employeeName</code> <code>email</code> <code>managerEmail</code> <code>from</code> <code>to</code> <code>type</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -1416,10 +1416,10 @@ Zespół STFS</dd><dt><code>pomijaj</code></dt><dd>noreply,no-reply,newsletter,m
   &quot;participants&quot;: &quot;anna@firma.pl,jan@firma.pl&quot;
 }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(1 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>zadaniaUrl</code></dt><dd>https://YOUR-TASKS.example.com/api/tasks</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (webhook)</li><li>Header Auth (API)</li><li>SMTP</li></ul><h5>Pola wymagane</h5><p><code>recordingUrl</code> <code>title</code> <code>participants</code></p></div>
+      
     </div>
   </details>
 </article>
@@ -1438,10 +1438,10 @@ Zespół STFS</dd><dt><code>pomijaj</code></dt><dd>noreply,no-reply,newsletter,m
     <section><h4>Jak jest zbudowany</h4><ul class="fixes"><li>Alert raz na fakturę i status (bez spamu co 2 godziny).</li><li>Działa na danych z systemu fakturowego – bez własnej integracji z API KSeF.</li><li>Próg godzin w Konfiguracji.</li></ul></section>
     <section><h4>Format danych ze źródła</h4><pre class="json">{ &quot;data&quot;: [ { &quot;id&quot;, &quot;number&quot;, &quot;issuedAt&quot;, &quot;ksefStatus&quot;: &quot;accepted|pending|rejected&quot;, &quot;ksefError&quot; } ] }</pre></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 2 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(2 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>fakturyUrl</code></dt><dd>https://YOUR-BILLING.example.com/api/invoices?ksef=1&amp;days=3</dd><dt><code>godzinDoAlarmu</code></dt><dd>12</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li><li>Slack</li></ul></div>
+      
     </div>
   </details>
 </article>
@@ -1458,10 +1458,10 @@ Zespół STFS</dd><dt><code>pomijaj</code></dt><dd>noreply,no-reply,newsletter,m
     <section><h4>Jak jest zbudowany</h4><ul class="fixes"><li>Wskazuje workflowy, których awarii nikt by nie zauważył.</li><li>Razem z 00 i 40 tworzy pakiet „opieka nad automatyzacjami”.</li><li>Czyta tylko metadane wykonań, bez danych klientów.</li></ul></section>
     <section><h4>Wejście</h4><p class="muted">Start: poniedziałki 8:30. Dane pobiera sam workflow.</p></section>
   </div>
-  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 3 credentiale)</span></summary>
+  <details class="more"><summary>Konfiguracja i credentiale <span class="muted">(3 pól, 0 credentiale)</span></summary>
     <div class="more-grid">
       <div><h5>Węzeł „Konfiguracja”</h5><dl><dt><code>n8nApiUrl</code></dt><dd>https://n8n.stfs.pl/api/v1</dd><dt><code>odbiorca</code></dt><dd>kontakt@stfs.pl</dd><dt><code>dni</code></dt><dd>7</dd></dl></div>
-      <div><h5>Credentiale w n8n</h5><ul><li>Header Auth (API)</li><li>Slack</li><li>SMTP</li></ul></div>
+      
     </div>
   </details>
 </article>

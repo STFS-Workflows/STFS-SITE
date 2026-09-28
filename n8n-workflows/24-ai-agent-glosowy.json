@@ -11,9 +11,9 @@
         -260
       ],
       "parameters": {
-        "content": "## 24 – Recepcja AI przez telefon (Twilio)\n\nPrzebudowane na prostą, działającą architekturę: **Twilio samo zamienia mowę na tekst** (`<Gather input=\"speech\">`) i czyta odpowiedź (`<Say>`). n8n dostaje tekst, AI odpowiada na podstawie informacji o firmie, n8n zwraca TwiML. Pętla trwa do końca rozmowy.\n\nKonfiguracja Twilio: numer → Voice → „A call comes in” → Webhook POST na Production URL tego workflow (ten sam adres wpisz w Konfiguracji).\n\nBezpieczeństwo: Twilio nie wysyła Header Auth, dlatego sprawdzany jest podpis `X-Twilio-Signature`.\n\n## Credentials do utworzenia\n- Header Auth (API)\n\n## Przed aktywacją\n1. Uzupełnij węzeł **Konfiguracja** (adresy `YOUR-...`, progi, odbiorcy).\n2. Przypisz credentiale do węzłów (lista wyżej).\n3. Ustaw workflow **00 – Obsługa błędów** jako Error Workflow (Settings).\n4. Przetestuj na danych testowych (Test workflow), dopiero potem aktywuj.",
-        "height": 520,
-        "width": 560,
+        "content": "## 24 – Recepcja AI przez telefon (Twilio)\n\nPrzebudowane na prostą, działającą architekturę: **Twilio samo zamienia mowę na tekst** (`<Gather input=\"speech\">`) i czyta odpowiedź (`<Say>`). n8n dostaje tekst, AI odpowiada na podstawie informacji o firmie, n8n zwraca TwiML. Pętla trwa do końca rozmowy.\n\nKonfiguracja Twilio: numer → Voice → „A call comes in” → Webhook POST na Production URL tego workflow (ten sam adres wpisz w Konfiguracji).\n\nBezpieczeństwo: Twilio nie wysyła Header Auth, dlatego sprawdzany jest podpis `X-Twilio-Signature`.\n\n## Jak działa przepływ\n- **Start:** Webhook HTTP – uruchamia się po odebraniu żądania.\n- **Kolejność:** Połączenie Twilio (Webhook) → Walidacja danych → Konfiguracja → Weryfikuj podpis Twilio → Klient coś powiedział? → AI: prompt (odpowiedź głosowa) → AI Agent: odpowiedź głosowa → Chat Model: odpowiedź głosowa → Parser wyniku: odpowiedź głosowa → AI: wynik (odpowiedź głosowa) → … → Zwróć TwiML (powitanie).\n- Każdy rekord przechodzi osobno, a błędy i odpowiedzi z usług są zachowywane w historii wykonań.\n\n## AI w tym workflowie\n- Natywny **AI Agent** wykonuje rozumowanie; nie ma bezpośrednich wywołań URL do API modelu.\n- **OpenAI Chat Model** jest podłączony portem `ai_languageModel`.\n- **Structured Output Parser** wymusza przewidywalny JSON; kolejny krok sprawdza wynik przed użyciem.\n\n## Co skonfigurować\n1. Otwórz węzeł **Konfiguracja** i zastąp wartości `YOUR-...`; sprawdź adresy, identyfikatory, progi oraz odbiorców.\n2. Sprawdź mapowanie pól wejściowych w pierwszym kroku po wyzwalaczu.\n3. W razie użycia AI uzupełnij instrukcję firmy i wybierz credential OpenAI w węźle **Chat Model**.\n\n## Credentials i węzły\n- **OpenAI API** → AI Agent: odpowiedź głosowa\n\n## Test przed aktywacją\n1. Użyj danych testowych bez prawdziwych odbiorców albo ustaw kanał testowy.\n2. Uruchom **Test workflow** i sprawdź dane po każdym IF/Code/AI Agent.\n3. Przetestuj ścieżkę poprawną, odrzuconą i awarię usługi zewnętrznej.\n4. Ustaw **STFS — Obsługa błędów** jako Error Workflow w Settings.\n5. Dopiero po poprawnym teście włącz **Active**.\n\n## Eksploatacja i bezpieczeństwo\n- Sekretów nie wpisuj do pól ani kodu – przechowuj je wyłącznie w n8n Credentials.\n- Kontroluj Executions po wdrożeniu; retry nie zastępuje sprawdzenia duplikatów.\n- Workflow jest importowany jako **nieaktywny**, więc sam nie wyśle wiadomości ani nie zmieni danych.",
+        "height": 900,
+        "width": 760,
         "color": 4
       }
     },
@@ -139,7 +139,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const SYSTEM = \"Jesteś uprzejmą recepcjonistką firmy rozmawiającą przez telefon. Odpowiadasz maks. 2 krótkimi zdaniami, po polsku, tylko na podstawie informacji o firmie. Jeśli nie wiesz – zaproponuj kontakt mailowy lub oddzwonienie.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"odpowiedz\\\": tekst do przeczytania}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Informacje o firmie:\\n${$('Konfiguracja').first().json.informacjeOFirmie}\\n\\nKlient powiedział: ${$('Weryfikuj podpis Twilio').item.json.speech}`;\nreturn {\n  json: {\n    ...$json,\n    _aiRequest: {\n      model: ($('Konfiguracja').first().json.modelAI || \"gpt-4o-mini\"),\n      max_tokens: 200,\n      temperature: 0.3,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: String(user).slice(0, 12000) },\n      ],\n    },\n  },\n};"
+        "jsCode": "const SYSTEM = \"Jesteś uprzejmą recepcjonistką firmy rozmawiającą przez telefon. Odpowiadasz maks. 2 krótkimi zdaniami, po polsku, tylko na podstawie informacji o firmie. Jeśli nie wiesz – zaproponuj kontakt mailowy lub oddzwonienie.\\n\\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\\\"odpowiedz\\\": tekst do przeczytania}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.\";\nconst user = `Informacje o firmie:\\n${$('Konfiguracja').first().json.informacjeOFirmie}\\n\\nKlient powiedział: ${$('Weryfikuj podpis Twilio').item.json.speech}`;\nreturn {\n  json: {\n    ...$json,\n    _aiPrompt: String(user).slice(0, 12000),\n  },\n};"
       },
       "position": [
         1380,
@@ -148,31 +148,65 @@
       "id": "1435e964-6353-4bfd-ac12-c6a0d091fa79"
     },
     {
-      "name": "AI: odpowiedź głosowa",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "AI Agent: odpowiedź głosowa",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
       "parameters": {
-        "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json._aiRequest) }}",
+        "promptType": "define",
+        "text": "={{ $json._aiPrompt }}",
+        "hasOutputParser": true,
         "options": {
-          "timeout": 60000
+          "systemMessage": "Jesteś uprzejmą recepcjonistką firmy rozmawiającą przez telefon. Odpowiadasz maks. 2 krótkimi zdaniami, po polsku, tylko na podstawie informacji o firmie. Jeśli nie wiesz – zaproponuj kontakt mailowy lub oddzwonienie.\n\nOdpowiedz WYŁĄCZNIE poprawnym obiektem JSON z polami: {\"odpowiedz\": tekst do przeczytania}. Nie wymyślaj faktów, cen ani danych, których nie ma w treści.",
+          "maxIterations": 3,
+          "enableStreaming": false
         }
       },
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
-      "notes": "Credential Header Auth: Authorization = Bearer <klucz OpenAI>. Można podmienić na Claude/inny model.",
+      "notes": "Natywny AI Agent. Po imporcie wybierz credential OpenAI w połączonym Chat Model.",
       "notesInFlow": true,
       "position": [
         1640,
         300
       ],
-      "id": "9d1cf7e5-9e56-415b-a0b0-1c5aa4d61462"
+      "id": "11695343-206f-44e6-a13a-cb9d5213b49b"
+    },
+    {
+      "name": "Chat Model: odpowiedź głosowa",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 200
+        }
+      },
+      "position": [
+        1570,
+        560
+      ],
+      "id": "8c340fd2-5842-48c4-a554-0fbc430dafa0"
+    },
+    {
+      "name": "Parser wyniku: odpowiedź głosowa",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"odpowiedz\"],\"properties\":{\"odpowiedz\":{\"type\":\"string\"}}}"
+      },
+      "position": [
+        1830,
+        560
+      ],
+      "id": "1a546be1-349b-4e60-a38f-6b96813802a5"
     },
     {
       "name": "AI: wynik (odpowiedź głosowa)",
@@ -180,7 +214,7 @@
       "typeVersion": 2,
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (odpowiedź głosowa)').item.json };\ndelete ctx._aiRequest;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.choices?.[0]?.message?.content ?? '';\n  out = JSON.parse(raw);\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"odpowiedz\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
+        "jsCode": "// Łączymy dane wejściowe (sprzed wywołania AI) z odpowiedzią modelu.\nconst ctx = { ...$('AI: prompt (odpowiedź głosowa)').item.json };\ndelete ctx._aiPrompt;\nlet out = {};\nlet aiError = '';\ntry {\n  const raw = $json.output ?? '';\n  out = typeof raw === 'string' ? JSON.parse(raw) : raw;\n  if (!out || typeof out !== 'object' || Array.isArray(out)) throw new Error('to nie obiekt');\n} catch (e) {\n  aiError = 'Nie udało się odczytać odpowiedzi AI: ' + e.message;\n  out = {};\n}\nconst defaults = {\"odpowiedz\":\"\"};\nfor (const [k, v] of Object.entries(defaults)) if (out[k] === undefined || out[k] === null) out[k] = v;\nfor (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.slice(0, 4000);\n\nreturn { json: { ...ctx, ...out, _aiOk: !aiError, _aiError: aiError } };"
       },
       "position": [
         1900,
@@ -334,14 +368,36 @@
       "main": [
         [
           {
-            "node": "AI: odpowiedź głosowa",
+            "node": "AI Agent: odpowiedź głosowa",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI: odpowiedź głosowa": {
+    "Chat Model: odpowiedź głosowa": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent: odpowiedź głosowa",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser wyniku: odpowiedź głosowa": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent: odpowiedź głosowa",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent: odpowiedź głosowa": {
       "main": [
         [
           {

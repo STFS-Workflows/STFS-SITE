@@ -50,8 +50,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `daneFirmy` | [PODMIEŃ: nazwa firmy klienta i adres e-mail do kontaktu] |
 | `emailWlasciciela` | wlasciciel@firma-klienta.pl |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); SMTP; googleBusinessProfileOAuth2Api
-
 **Co naprawiono:**
 
 - Pole opinia_oryginalna było zawsze puste (gubione po kroku AI).
@@ -81,9 +79,7 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 - Kontrola dostępu i limity
 - **Dozwolone?**
   - tak →
-    - Zbuduj prompt
-    - AI: wygeneruj odpowiedź _(POST · anthropic)_
-    - Wyodrębnij odpowiedź
+    - AI: odpowiedź dla widgetu _(prompt → model → wynik)_
     - Zwróć odpowiedź do widgetu _(odpowiedź HTTP)_
   - nie →
     - Odmowa / limit _(odpowiedź HTTP)_
@@ -92,15 +88,12 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 
 | Pole | Wartość domyślna |
 |---|---|
-| `modelAI` | claude-haiku-4-5-20251001 |
 | `kluczWidgetu` | stfs-site-widget-2026 |
 | `dozwoloneOriginy` | https://stfs.pl,https://www.stfs.pl |
 | `maksDlugoscPytania` | 500 |
 | `limitNaIp` | 15 |
 | `oknoLimituMin` | 10 |
 | `limitDzienny` | 600 |
-
-**Credentiale:** Header Auth (API)
 
 **Co naprawiono:**
 
@@ -134,8 +127,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | Pole | Wartość domyślna |
 |---|---|
 | `odbiorcaAlertow` | kontakt@stfs.pl |
-
-**Credentiale:** Slack; SMTP
 
 **Co naprawiono:**
 
@@ -184,8 +175,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `progGoracegoLeada` | 70 |
 | `crmUrl` | https://YOUR-CRM.example.com/api/leads |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); Slack
-
 **Co naprawiono:**
 
 - Score zawsze wynosił 50, więc żaden lead nie był „gorący” – teraz liczony z odpowiedzi AI.
@@ -231,8 +220,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `nazwaFirmy` | STFS |
 | `podpis` | Zespół STFS |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); SMTP; Slack
-
 **Co naprawiono:**
 
 - E-mail szedł na pusty adres z pustą treścią.
@@ -277,8 +264,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `crmListaUrl` | https://YOUR-CRM.example.com/api/leads?status=no_reply |
 | `crmAktualizacjaUrl` | https://YOUR-CRM.example.com/api/leads |
 
-**Credentiale:** Header Auth (API); SMTP; Slack
-
 **Co naprawiono:**
 
 - Wysyłał follow-up codziennie w kółko – teraz raz na lead (oznaczenie w CRM + pamięć workflow).
@@ -315,8 +300,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | Pole | Wartość domyślna |
 |---|---|
 | `crmUpsertUrl` | https://YOUR-CRM.example.com/api/contacts/upsert |
-
-**Credentiale:** Header Auth (webhook); Header Auth (API)
 
 **Co naprawiono:**
 
@@ -359,8 +342,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `kalendarzUrl` | https://YOUR-CALENDAR.example.com/api/events |
 | `czasTrwaniaMin` | 30 |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); SMTP; Slack
-
 **Co naprawiono:**
 
 - Potwierdzenie zawierało dosłownie „{{$json.date}}”.
@@ -392,8 +373,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `kanal` | Facebook / Instagram |
 | `ton` | konkretny, przyjazny, bez przesady |
 | `szkiceUrl` | https://YOUR-CMS.example.com/api/drafts |
-
-**Credentiale:** Header Auth (API)
 
 **Co naprawiono:**
 
@@ -428,8 +407,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `googleIdKlienta` | YOUR_CUSTOMER_ID |
 | `googleDeveloperToken` | YOUR_DEV_TOKEN |
 
-**Credentiale:** Header Auth (API); googleAdsOAuth2Api; Slack
-
 **Co naprawiono:**
 
 - Krok „połącz dane” był pustą zaślepką – teraz sumuje wydatki, kliknięcia, konwersje.
@@ -463,8 +440,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `kontaktyUrl` | https://YOUR-CRM.example.com/api/contacts |
 | `espAktualizacjaUrl` | https://YOUR-ESP.example.com/api/contacts/upsert |
 | `dniDoUspienia` | 90 |
-
-**Credentiale:** Header Auth (API)
 
 **Co naprawiono:**
 
@@ -502,8 +477,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `wzmiankiUrl` | https://YOUR-MONITORING.example.com/api/mentions?since=4h |
 
-**Credentiale:** Header Auth (API); Slack
-
 **Co naprawiono:**
 
 - Te same wzmianki alarmowały przy każdym przebiegu – teraz pamięć już widzianych.
@@ -539,8 +512,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `faq` | P: Jakie są godziny otwarcia? O: Pn-Pt 9-17. P: Jak się skontaktować? O: kontakt@stfs.pl |
 | `kontaktAwaryjny` | kontakt@stfs.pl |
-
-**Credentiale:** Telegram; Header Auth (API)
 
 **Co naprawiono:**
 
@@ -587,8 +558,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `helpdeskUrl` | https://YOUR-HELPDESK.example.com/api/tickets |
 | `kategorie` | techniczne, sprzedaz, faktury, reklamacja, inne |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); Slack
-
 **Co naprawiono:**
 
 - Slack dostawał puste pola.
@@ -619,8 +588,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 - Konfiguracja _(adresy, progi, odbiorcy)_
 - AI: tłumaczenie _(prompt → model → wynik)_
 - Wyślij streszczenie do zespołu _(Slack)_
-
-**Credentiale:** Header Auth (webhook); Header Auth (API); Slack
 
 **Co naprawiono:**
 
@@ -669,8 +636,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `zamowieniaUrl` | https://YOUR-SHOP.example.com/api/orders |
 | `fakturyUrl` | https://YOUR-BILLING.example.com/api/invoices |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); SMTP; Slack
-
 **Co naprawiono:**
 
 - Kwota była brana z webhooka (każdy mógł podać dowolną) – teraz zamówienie pobierane ze źródła.
@@ -716,8 +681,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `zapisUrl` | https://YOUR-DB.example.com/api/documents |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); Slack
-
 **Co naprawiono:**
 
 - Krok „wyciągnij pola” nic nie wyciągał – dodana ekstrakcja AI.
@@ -757,8 +720,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `arkuszUrl` | https://docs.google.com/spreadsheets/d/YOUR-SHEET-ID/edit |
 | `zakladka` | Arkusz1 |
 
-**Credentiale:** Header Auth (webhook); Google Sheets OAuth2
-
 **Co naprawiono:**
 
 - Węzeł Google Sheets nie miał wskazanego arkusza ani mapowania kolumn.
@@ -793,8 +754,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `stanyUrl` | https://YOUR-WMS.example.com/api/stock |
 | `progMinimalny` | 10 |
-
-**Credentiale:** Header Auth (API); Slack
 
 **Co naprawiono:**
 
@@ -838,8 +797,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `kategorie` | paliwo, biuro, marketing, oprogramowanie, podroze, wynagrodzenia, podatki, inne |
 | `progPewnosci` | 0.75 |
 
-**Credentiale:** Header Auth (API); Slack
-
 **Co naprawiono:**
 
 - Każda transakcja była kategoryzowana wielokrotnie – teraz raz.
@@ -882,8 +839,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `dniPoTerminie` | 1 |
 | `dniDoEskalacji` | 30 |
 
-**Credentiale:** Header Auth (API); Slack; SMTP
-
 **Co naprawiono:**
 
 - Przypomnienie codziennie tej samej osobie – teraz maks. raz na tydzień.
@@ -911,8 +866,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `podsumowanieUrl` | https://YOUR-ACCOUNTING.example.com/api/summary |
 | `odbiorcaRaportu` | ceo@twojafirma.pl |
-
-**Credentiale:** Header Auth (API); SMTP
 
 **Co naprawiono:**
 
@@ -964,8 +917,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `progDopasowania` | 70 |
 | `atsUrl` | https://YOUR-ATS.example.com/api/applications |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); Slack
-
 **Co naprawiono:**
 
 - Decyzja zostaje przy człowieku (RODO/AI Act) – brak automatycznych odmów.
@@ -1007,8 +958,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `kalendarzUrl` | https://YOUR-CALENDAR.example.com/api/events |
 | `czasTrwaniaMin` | 45 |
-
-**Credentiale:** Header Auth (webhook); Header Auth (API); SMTP; Slack
 
 **Co naprawiono:**
 
@@ -1052,8 +1001,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `kontaUrl` | https://YOUR-IDENTITY.example.com/api/accounts |
 | `checklista` | 1. Odbierz sprzęt 2. Zaloguj się do poczty 3. Spotkanie z opiekunem 4. Szkolenie BHP i ROD |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); Slack; SMTP
-
 **Co naprawiono:**
 
 - Po kroku HTTP ginęły imię i e-mail pracownika.
@@ -1091,8 +1038,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `politykiHR` | Wklej tu regulamin pracy, politykę urlopową, benefity… |
 | `kontaktHR` | hr@twojafirma.pl |
-
-**Credentiale:** Header Auth (webhook); Header Auth (API)
 
 **Co naprawiono:**
 
@@ -1143,8 +1088,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `powitanie` | Dzień dobry, tu wirtualna recepcja. W czym mogę pomóc? |
 | `informacjeOFirmie` | Godziny otwarcia, adres, usługi, cennik orientacyjny… |
 
-**Credentiale:** Header Auth (API)
-
 **Co naprawiono:**
 
 - Przebudowa: łańcuch STT→AI→TTS nie mógł działać w czasie rozmowy – teraz Twilio Gather/Say (TwiML).
@@ -1187,8 +1130,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `supabaseRpcUrl` | https://YOUR-PROJECT.supabase.co/rest/v1/rpc/match_documents |
 | `liczbaFragmentow` | 5 |
-
-**Credentiale:** Header Auth (webhook); Header Auth (API)
 
 **Co naprawiono:**
 
@@ -1237,8 +1178,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `crmOcenyUrl` | https://YOUR-CRM.example.com/api/calls/score |
 | `progCoachingu` | 5 |
-
-**Credentiale:** Header Auth (webhook); Header Auth (API); Slack
 
 **Co naprawiono:**
 
@@ -1289,8 +1228,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `pdfUrl` | https://YOUR-PDF-SERVICE.example.com/api/generate |
 | `emailHandlowca` | handlowiec@twojafirma.pl |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); SMTP
-
 **Co naprawiono:**
 
 - Oferta z cenami szła do klienta bez kontroli – teraz formularz akceptacji.
@@ -1327,8 +1264,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `metrykiUrl` | https://YOUR-ANALYTICS.example.com/api/metrics |
 | `progOdchylenia` | 30 |
-
-**Credentiale:** Header Auth (API); Slack
 
 **Co naprawiono:**
 
@@ -1384,8 +1319,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `emailWlasciciela` | wlasciciel@twojafirma.pl |
 | `publikacjaUrl` | https://YOUR-PLATFORM.example.com/api/reviews |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); SMTP
-
 **Co naprawiono:**
 
 - Publikował automatycznie – wbrew obietnicy „nic bez Twojej zgody”.
@@ -1431,8 +1364,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `produktyUrl` | https://YOUR-SHOP.example.com/api/products |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); Slack
-
 **Co naprawiono:**
 
 - Nadpisywał opis na żywo – teraz szkic.
@@ -1474,8 +1405,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `koszykiUrl` | https://YOUR-SHOP.example.com/api/carts/abandoned?minAge=1h&maxAge=24h |
 | `nazwaSklepu` | Nazwa sklepu |
 
-**Credentiale:** Header Auth (API); SMTP
-
 **Co naprawiono:**
 
 - Wysyłał co godzinę do tych samych osób – teraz raz na koszyk.
@@ -1511,8 +1440,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `cenyUrl` | https://YOUR-PRICE-SOURCE.example.com/api/prices |
 | `progRoznicy` | 10 |
-
-**Credentiale:** Header Auth (API); Slack
 
 **Co naprawiono:**
 
@@ -1569,8 +1496,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `smsUrl` | https://YOUR-SMS-GATEWAY.example.com/api/sms |
 | `telefonWlasciciela` | +48600000000 |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); SMTP
-
 **Co naprawiono:**
 
 - Wypełnia lukę ze stron Dom Przyjęć (inquiryEndpoint nie miał backendu).
@@ -1625,8 +1550,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `maksProb` | 3 |
 | `maksWysylekNaGodzine` | 3 |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API)
-
 **Co naprawiono:**
 
 - Kod przechowywany tylko jako HMAC, porównanie w stałym czasie.
@@ -1677,8 +1600,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `smsUrl` | https://YOUR-SMS-GATEWAY.example.com/api/sms |
 | `nazwaFirmy` | Nazwa firmy |
 | `adres` | ul. Przykładowa 1, Rybnik |
-
-**Credentiale:** Header Auth (API); SMTP; Slack
 
 **Co naprawiono:**
 
@@ -1735,8 +1656,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `dniOczekiwania` | 3 |
 | `zamowieniaUrl` | https://YOUR-SHOP.example.com/api/orders |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); SMTP
-
 **Co naprawiono:**
 
 - Workflow sam odczekuje X dni (węzeł Wait), potem sprawdza, czy zamówienie nie zostało anulowane.
@@ -1786,8 +1705,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `podpis` | Pozdrawiam, Zespół STFS |
 | `pomijaj` | noreply,no-reply,newsletter,mailer-daemon,notifications |
 
-**Credentiale:** Gmail OAuth2; Header Auth (API); Slack
-
 **Co naprawiono:**
 
 - Tylko szkice – nic nie jest wysyłane bez człowieka.
@@ -1825,8 +1742,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `witrynaSearchConsole` | sc-domain:stfs.pl |
 | `odbiorca` | kontakt@stfs.pl |
 | `nazwaStrony` | stfs.pl |
-
-**Credentiale:** googleOAuth2Api; Header Auth (API); SMTP
 
 **Co naprawiono:**
 
@@ -1867,8 +1782,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `adresy` | https://stfs.pl,https://www.stfs.pl |
 | `progAwarii` | 2 |
 | `odbiorcaAlertow` | kontakt@stfs.pl |
-
-**Credentiale:** Slack; SMTP
 
 **Co naprawiono:**
 
@@ -1912,8 +1825,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `repo` | STFS-Workflows/n8n-backup |
 | `galaz` | main |
 | `katalog` | workflows |
-
-**Credentiale:** Header Auth (API)
 
 **Co naprawiono:**
 
@@ -1968,8 +1879,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `archiwumUrl` | https://YOUR-ACCOUNTING.example.com/api/whitelist-checks |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); Slack
-
 **Co naprawiono:**
 
 - Suma kontrolna NIP i długość rachunku sprawdzane przed zapytaniem do MF.
@@ -2007,8 +1916,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 - Pobierz kursy NBP _(GET)_
 - Przelicz na PLN
 - Zwróć przeliczenie _(odpowiedź HTTP)_
-
-**Credentiale:** Header Auth (webhook)
 
 **Co naprawiono:**
 
@@ -2050,8 +1957,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `espUrl` | https://YOUR-ESP.example.com/api/campaigns |
 | `listaId` | YOUR_LIST_ID |
 
-**Credentiale:** Header Auth (API); Slack
-
 **Co naprawiono:**
 
 - Tylko szkic kampanii – wysyłkę klika człowiek.
@@ -2086,8 +1991,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `arkuszUrl` | https://docs.google.com/spreadsheets/d/YOUR-SHEET-ID/edit |
 | `zakladka` | Kalendarz |
 | `fbPageId` | YOUR_PAGE_ID |
-
-**Credentiale:** Google Sheets OAuth2; Header Auth (API)
 
 **Co naprawiono:**
 
@@ -2149,8 +2052,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `helpdeskUrl` | https://YOUR-HELPDESK.example.com/api/tickets |
 | `nazwaFirmy` | Nazwa firmy |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); Slack; SMTP
-
 **Co naprawiono:**
 
 - Podział detraktor / pasywny / promotor liczony w kodzie, nie przez AI.
@@ -2210,8 +2111,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `dniNaReklamacje` | 730 |
 | `adresZwrotow` | Magazyn zwrotów, ul. Przykładowa 1, 44-200 Rybnik |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); SMTP; Slack
-
 **Co naprawiono:**
 
 - Data dostawy i e-mail brane z zamówienia w sklepie, nie od klienta.
@@ -2267,8 +2166,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `kalendarzUrl` | https://YOUR-CALENDAR.example.com/api/events |
 
-**Credentiale:** Header Auth (webhook); SMTP; Header Auth (API)
-
 **Co naprawiono:**
 
 - Polskie święta liczone automatycznie, także ruchome (Wielkanoc, Boże Ciało) i Wigilia.
@@ -2318,8 +2215,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 |---|---|
 | `zadaniaUrl` | https://YOUR-TASKS.example.com/api/tasks |
 
-**Credentiale:** Header Auth (webhook); Header Auth (API); SMTP
-
 **Co naprawiono:**
 
 - AI wpisuje osobę i termin tylko, gdy padły w rozmowie (bez zgadywania).
@@ -2363,8 +2258,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `fakturyUrl` | https://YOUR-BILLING.example.com/api/invoices?ksef=1&days=3 |
 | `godzinDoAlarmu` | 12 |
 
-**Credentiale:** Header Auth (API); Slack
-
 **Co naprawiono:**
 
 - Alert raz na fakturę i status (bez spamu co 2 godziny).
@@ -2401,8 +2294,6 @@ _Plik generowany automatycznie (`node zbuduj-przewodnik.js`) – nie edytuj ręc
 | `n8nApiUrl` | https://n8n.stfs.pl/api/v1 |
 | `odbiorca` | kontakt@stfs.pl |
 | `dni` | 7 |
-
-**Credentiale:** Header Auth (API); Slack; SMTP
 
 **Co naprawiono:**
 
