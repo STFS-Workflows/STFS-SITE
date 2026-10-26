@@ -27,7 +27,7 @@ Pełne podglądy Gonsior i PREMIUM czytają pliki z oddzielnego repozytorium STF
 
 Podglądy działają w izolowanej ramce. Formularze i połączenia do backendów są zablokowane nagłówkiem CSP, aby oglądanie portfolio nie wysyłało zapytań klientów.
 
-Prezentacja projektu przewija się jako jedna strona. Podgląd zachowuje szerokość desktopową 1440 px i jest skalowany do dostępnego miejsca. Lokalny `showcase-bridge.js` przekazuje wysokość dokumentu i pozycje sekcji do portfolio. Animowane komentarze z liniami są przypięte do rzeczywistych sekcji realizacji. Bridge usuwa początkowe zera z numeracji podglądu; oryginalne pliki klientów pozostają bez zmian. Na telefonie nadal widoczny jest pomniejszony układ desktopowy. Animacje respektują ustawienia ograniczenia ruchu.
+Prezentacja projektu przewija się jako jedna strona. Podgląd zachowuje szerokość desktopową 1440 px i jest skalowany do dostępnego miejsca. Lokalny `showcase-bridge.js` przekazuje wysokość dokumentu i pozycje sekcji do portfolio. Fragmenty strony delikatnie pojawiają się podczas przewijania, a chmurka z komentarzem i linią pokazuje się dopiero po wyświetleniu odpowiedniej sekcji. Bridge usuwa początkowe zera z numeracji podglądu; oryginalne pliki klientów pozostają bez zmian. Na telefonie nadal widoczny jest pomniejszony układ desktopowy. Animacje respektują ustawienia ograniczenia ruchu.
 
 ## Automatyczne pobieranie opinii
 
