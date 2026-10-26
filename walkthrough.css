@@ -2,18 +2,33 @@
 .walkthrough-lead h2{font:500 clamp(28px,4vw,42px)/1.15 var(--display);letter-spacing:-1.2px;margin:18px 0}
 .walkthrough-lead>p:last-child{color:var(--muted)}
 .walkthrough{position:relative;margin:0 0 85px;min-height:600px}
-.walkthrough-browser{width:calc(100% - 320px);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 30px 80px #0004}
+.walkthrough-browser{width:calc(100% - 460px);margin-inline:auto;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 30px 80px #0004}
 .project-canvas{position:relative;overflow:hidden;height:600px;background:#eee9df}
 .project-canvas iframe{display:block;border:0;width:1440px;height:900px;max-width:none;transform-origin:top left;pointer-events:none}
-.project-annotation{position:absolute;right:0;width:270px;padding:22px 0 22px 22px;z-index:2}
+.project-annotation{position:absolute;width:210px;z-index:2}
+.annotation--left{left:0;text-align:right}.annotation--right{right:0;text-align:left}
+.annotation-body{padding:18px 0;transition:opacity .65s ease,transform .8s cubic-bezier(.2,.75,.2,1);transition-delay:.12s}
 .project-annotation .eyebrow{font-size:9px;letter-spacing:1.5px}
-.project-annotation h3{font:500 25px/1.2 var(--display);letter-spacing:-.6px;margin:15px 0}
-.project-annotation p{font-size:13px;line-height:1.8;color:var(--muted);margin:0}
-.annotation-line{position:absolute;right:100%;top:30px;width:72px;height:1px;background:var(--mint);transform-origin:right;transform:scaleX(0);transition:transform .8s ease}
-.annotation-line::before{content:'';position:absolute;left:0;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 5px #8cebc81a}
-.project-annotation.visible .annotation-line{transform:scaleX(1)}
-.motion-ready .project-annotation{transform:translateY(16px)}
-.motion-ready .project-annotation.visible{transform:none}
-@media(min-width:1500px){.walkthrough-browser{width:calc(100% - 340px)}.project-annotation{width:280px}}
-@media(max-width:800px){.walkthrough-browser{width:100%}.walkthrough .browser-bar{font-size:8px;padding:10px}.project-annotation{width:min(260px,78%);right:10px;background:#0d1815f5;border:1px solid #354d43;border-radius:10px;padding:18px;box-shadow:0 10px 35px #0005}.project-annotation h3{font-size:21px;margin:10px 0}.project-annotation p{font-size:12px;line-height:1.65}.annotation-line{width:24px;top:28px}.walkthrough{margin-bottom:50px}}
-@media(prefers-reduced-motion:reduce){.annotation-line{transform:scaleX(1);transition:none}}
+.project-annotation h3{font:500 22px/1.22 var(--display);letter-spacing:-.55px;margin:12px 0}
+.project-annotation p{font-size:12px;line-height:1.75;color:var(--muted);margin:0}
+.annotation-line{position:absolute;top:27px;width:48px;height:1px;background:var(--mint);transition:transform .8s cubic-bezier(.2,.75,.2,1);transition-delay:.05s}
+.annotation--left .annotation-line{left:calc(100% + 10px);transform-origin:left}
+.annotation--right .annotation-line{right:calc(100% + 10px);transform-origin:right}
+.annotation-line::after{content:'';position:absolute;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 5px #8cebc81a}
+.annotation--left .annotation-line::after{right:0}.annotation--right .annotation-line::after{left:0}
+.annotations-animated .annotation-body{opacity:0;transform:translateY(24px) scale(.97)}
+.annotations-animated .annotation--left .annotation-body{transform:translate(-18px,24px) scale(.97)}
+.annotations-animated .annotation--right .annotation-body{transform:translate(18px,24px) scale(.97)}
+.annotations-animated .annotation-line{transform:scaleX(0)}
+.annotations-animated .project-annotation.visible .annotation-body{opacity:1;transform:none}
+.annotations-animated .project-annotation.visible .annotation-line{transform:scaleX(1)}
+@supports (animation-timeline:view()){
+  .annotations-animated .project-annotation{view-timeline-name:--annotation;view-timeline-axis:block}
+  .annotations-animated .annotation-body{animation:annotation-enter linear both;animation-timeline:--annotation;animation-range:entry 0% entry 90%}
+  .annotations-animated .annotation-line{animation:line-enter linear both;animation-timeline:--annotation;animation-range:entry 5% entry 75%}
+  @keyframes annotation-enter{from{opacity:0;transform:translateY(26px) scale(.96)}to{opacity:1;transform:none}}
+  @keyframes line-enter{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+}
+@media(max-width:1050px){.walkthrough-browser{width:calc(100% - 350px)}.project-annotation{width:155px}.project-annotation h3{font-size:19px}.project-annotation p{font-size:11px}.annotation-line{width:28px}}
+@media(max-width:800px){.walkthrough-browser{width:100%}.walkthrough .browser-bar{font-size:8px;padding:10px}.project-annotation{width:min(250px,67%);background:#0d1815f5;border:1px solid #354d43;border-radius:10px;box-shadow:0 10px 35px #0008;text-align:left}.annotation--left{left:10px;right:auto}.annotation--right{right:10px;left:auto}.annotation-body{padding:16px}.project-annotation h3{font-size:19px;margin:10px 0}.project-annotation p{font-size:11px;line-height:1.6}.annotation-line{top:25px;width:20px}.walkthrough{margin-bottom:50px}}
+@media(prefers-reduced-motion:reduce){.annotation-body,.annotation-line{animation:none!important;transition:none!important;opacity:1!important;transform:none!important}}

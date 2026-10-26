@@ -34,6 +34,7 @@ try {
   assert.equal(await embedded.evaluate(() => innerWidth), 1440, 'Preview should retain desktop layout');
   assert.equal(await page.locator('iframe').getAttribute('scrolling'), 'no');
   assert.equal(await page.locator('.project-annotation').count(), 5);
+  assert.deepEqual(await page.locator('.project-annotation').evaluateAll(nodes => nodes.map(node => node.classList.contains('annotation--left') ? 'left' : 'right')), ['left', 'right', 'left', 'right', 'left']);
   for (const chapter of await page.locator('.project-annotation').all()) {
     await chapter.scrollIntoViewIfNeeded();
     await chapter.evaluate(node => new Promise(resolve => {
@@ -66,6 +67,11 @@ try {
   assert.equal(await page.locator('h1').textContent(), 'Nie znaleziono projektu.');
   const protectedResponse = await page.request.get(base + '/server.mjs');
   assert.ok([403, 404].includes(protectedResponse.status()));
+  const reduced = await browser.newPage({ reducedMotion: 'reduce' });
+  await reduced.goto(base + '/projekt?slug=dom-przyjec-premium');
+  assert.equal(await reduced.locator('.annotations-animated').count(), 0);
+  assert.equal(await reduced.locator('.annotation-body').first().evaluate(node => getComputedStyle(node).opacity), '1');
+  await reduced.close();
   assert.deepEqual(errors, [], 'Unexpected JavaScript errors');
   console.log('PASS: projects, search, embedded preview, animated chapters, reviews, 4 viewport widths, unknown project and server source protection.');
   console.log('Screenshots saved to: ' + tmpdir());

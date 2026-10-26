@@ -46,7 +46,12 @@ if(study){
       ['catering','APETYT NA WIĘCEJ','Kuchnia też zasługuje na własną opowieść.','Zdjęcia, szczegóły oferty i krótkie opisy pokazują, co może trafić na stół. Bez nadmiaru informacji.'],
       ['kontakt','KOLEJNY KROK','Od dobrego wrażenia do pierwszej rozmowy.','Kontakt wieńczy prezentację i pozwala przejść od oglądania miejsca do planowania własnej uroczystości.']
     ];
-    const annotations=notes.map(([anchor,kicker,title,text])=>{const note=el('article','project-annotation reveal');note.dataset.anchor=anchor;const line=el('span','annotation-line');line.setAttribute('aria-hidden','true');note.append(line,el('span','eyebrow',kicker),el('h3','',title),el('p','',text));walkthrough.append(note);return note;});
+    const annotations=notes.map(([anchor,kicker,title,text],index)=>{const note=el('article','project-annotation '+(index%2?'annotation--right':'annotation--left'));note.dataset.anchor=anchor;const line=el('span','annotation-line');line.setAttribute('aria-hidden','true');const body=el('div','annotation-body');body.append(el('span','eyebrow',kicker),el('h3','',title),el('p','',text));note.append(line,body);walkthrough.append(note);return note;});
+    if('IntersectionObserver' in window&&!matchMedia('(prefers-reduced-motion: reduce)').matches){
+      walkthrough.classList.add('annotations-animated');
+      const observer=new IntersectionObserver(entries=>entries.forEach(entry=>entry.target.classList.toggle('visible',entry.isIntersecting)),{rootMargin:'-12% 0px -16% 0px',threshold:0});
+      annotations.forEach(note=>observer.observe(note));
+    }
     study.append(walkthrough);let layout=null;
     const resize=()=>{const scale=stage.clientWidth/1440;if(!layout)return;frame.style.width='1440px';frame.style.height=layout.height+'px';frame.style.transform=`scale(${scale})`;stage.style.height=(layout.height*scale)+'px';annotations.forEach(note=>{const section=layout.sections[note.dataset.anchor];if(section)note.style.top=(bar.offsetHeight+(section.y+Math.min(section.height*.22,210))*scale)+'px';});};
     window.addEventListener('message',event=>{if(event.source!==frame.contentWindow||event.data?.type!=='stfs-showcase-layout')return;const data=event.data;if(!Number.isFinite(data.height)||data.height<100||data.height>60000||!data.sections||typeof data.sections!=='object')return;layout={height:data.height,sections:{}};for(const [key,section] of Object.entries(data.sections)){if(Number.isFinite(section.y)&&Number.isFinite(section.height)&&section.y>=0&&section.y<60000&&section.height>=0)layout.sections[key]=section;}resize();});new ResizeObserver(resize).observe(stage);
