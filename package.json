@@ -1,0 +1,12 @@
+{
+  "name": "stfs-site-local",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node server.mjs",
+    "test:ui": "node scripts/verify-portfolio.mjs",
+    "test:reviews": "node scripts/verify-reviews.mjs"
+  },
+  "dependencies": { "playwright": "^1.64.1" }
+}

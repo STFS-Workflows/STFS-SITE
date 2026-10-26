@@ -130,7 +130,7 @@ input,textarea{font:inherit;color:inherit}
   font-family:var(--font-display);font-weight:700;font-size:19px;
   letter-spacing:0.02em;
 }
-.nav-links{display:none;gap:32px;align-items:center}
+.nav-links{display:none;gap:20px;align-items:center}
 .nav-links a{
   font-size:14.5px;color:var(--text-secondary);
   transition:color 0.25s var(--ease);

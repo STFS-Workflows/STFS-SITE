@@ -29,3 +29,6 @@ refinement.css
 
 # Konfiguracja lokalnego IDE.
 .idea/
+node_modules/
+playwright-report/
+test-results/
