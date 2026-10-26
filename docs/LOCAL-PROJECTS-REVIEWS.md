@@ -21,6 +21,8 @@ Konfigurację skopiuj z `.env.example` do lokalnego `.env`. Plik `.env` nie jest
 
 Treści kart, zakres, lokalizacja i opisy rozdziałów znajdują się w tablicy `projects` w `portfolio.js`. Czas realizacji obu projektów pozostaje do potwierdzenia. Nie podano fikcyjnych dat, wyników ani referencji.
 
+Katalog wykorzystuje przewijaną galerię w stylu Cover Flow: karty obracają się podczas przewijania i zatrzymują w środku. Strzałki i klawiatura pozwalają zmieniać projekt; kliknięcie karty otwiera realizację. Tam, gdzie jest dostępny, efekt używa `ViewTimeline` w JavaScript, z alternatywnym obliczaniem pozycji w pozostałych przeglądarkach. Ustawienie ograniczonego ruchu wyłącza obrót.
+
 Pełne podglądy Gonsior i PREMIUM czytają pliki z oddzielnego repozytorium STFS-Templates. `STFS_TEMPLATES_ROOT` wskazuje jego katalog główny. Serwer udostępnia wyłącznie pliki stron i assety; nie kopiuje ani nie zmienia projektów klientów. Bez tego katalogu karty tekstowe działają, ale zdjęcia i podglądy nie będą dostępne. Przed wdrożeniem na innym serwerze należy zapewnić tę samą strukturę materiałów lub przygotować osobne artefakty podglądów.
 
 Podglądy działają w izolowanej ramce. Formularze i połączenia do backendów są zablokowane nagłówkiem CSP, aby oglądanie portfolio nie wysyłało zapytań klientów.

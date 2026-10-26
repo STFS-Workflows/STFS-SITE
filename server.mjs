@@ -43,7 +43,7 @@ const MIME = {
 };
 const SITE_FILES = new Set([
   'index.html', 'projekty.html', 'projekt.html', 'opinie.html', 'portfolio.js', 'portfolio.css',
-  'script.js', 'styles.css', 'showcase-bridge.js', 'walkthrough.css', 'logo_stfs.jpg', 'favicon.ico', 'robots.txt', 'sitemap.xml',
+  'script.js', 'styles.css', 'showcase-bridge.js', 'walkthrough.css', 'coverflow.css', 'logo_stfs.jpg', 'favicon.ico', 'robots.txt', 'sitemap.xml',
   'polityka-prywatnosci.html', 'regulamin.html',
 ]);
 const SHOWCASE_FILES = new Set([
