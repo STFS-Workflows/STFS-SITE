@@ -1,0 +1,19 @@
+.walkthrough-lead{margin:30px 0 45px;max-width:630px}
+.walkthrough-lead h2{font:500 clamp(28px,4vw,42px)/1.15 var(--display);letter-spacing:-1.2px;margin:18px 0}
+.walkthrough-lead>p:last-child{color:var(--muted)}
+.walkthrough{position:relative;margin:0 0 85px;min-height:600px}
+.walkthrough-browser{width:calc(100% - 320px);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 30px 80px #0004}
+.project-canvas{position:relative;overflow:hidden;height:600px;background:#eee9df}
+.project-canvas iframe{display:block;border:0;width:1440px;height:900px;max-width:none;transform-origin:top left;pointer-events:none}
+.project-annotation{position:absolute;right:0;width:270px;padding:22px 0 22px 22px;z-index:2}
+.project-annotation .eyebrow{font-size:9px;letter-spacing:1.5px}
+.project-annotation h3{font:500 25px/1.2 var(--display);letter-spacing:-.6px;margin:15px 0}
+.project-annotation p{font-size:13px;line-height:1.8;color:var(--muted);margin:0}
+.annotation-line{position:absolute;right:100%;top:30px;width:72px;height:1px;background:var(--mint);transform-origin:right;transform:scaleX(0);transition:transform .8s ease}
+.annotation-line::before{content:'';position:absolute;left:0;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 5px #8cebc81a}
+.project-annotation.visible .annotation-line{transform:scaleX(1)}
+.motion-ready .project-annotation{transform:translateY(16px)}
+.motion-ready .project-annotation.visible{transform:none}
+@media(min-width:1500px){.walkthrough-browser{width:calc(100% - 340px)}.project-annotation{width:280px}}
+@media(max-width:800px){.walkthrough-browser{width:100%}.walkthrough .browser-bar{font-size:8px;padding:10px}.project-annotation{width:min(260px,78%);right:10px;background:#0d1815f5;border:1px solid #354d43;border-radius:10px;padding:18px;box-shadow:0 10px 35px #0005}.project-annotation h3{font-size:21px;margin:10px 0}.project-annotation p{font-size:12px;line-height:1.65}.annotation-line{width:24px;top:28px}.walkthrough{margin-bottom:50px}}
+@media(prefers-reduced-motion:reduce){.annotation-line{transform:scaleX(1);transition:none}}

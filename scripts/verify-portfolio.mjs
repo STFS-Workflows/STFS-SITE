@@ -30,11 +30,11 @@ try {
   await frame.locator('h1').waitFor();
   assert.ok((await frame.locator('h1').textContent()).length > 5);
   const embedded = page.frames().find(frame => frame.url().includes('/showcases/gonsior/'));
-  assert.ok(await embedded.evaluate(() => document.documentElement.scrollHeight > innerHeight), 'Preview must contain a full scrollable page');
-  await page.locator('.chapter').first().scrollIntoViewIfNeeded();
-  await page.locator('.chapter.visible').first().waitFor();
-  assert.equal(await page.locator('.chapter').count(), 3);
-  for (const chapter of await page.locator('.chapter').all()) {
+  await page.waitForFunction(() => document.querySelector('iframe').offsetHeight > 2000);
+  assert.equal(await embedded.evaluate(() => innerWidth), 1440, 'Preview should retain desktop layout');
+  assert.equal(await page.locator('iframe').getAttribute('scrolling'), 'no');
+  assert.equal(await page.locator('.project-annotation').count(), 5);
+  for (const chapter of await page.locator('.project-annotation').all()) {
     await chapter.scrollIntoViewIfNeeded();
     await chapter.evaluate(node => new Promise(resolve => {
       const check = () => getComputedStyle(node).opacity === '1' ? resolve() : requestAnimationFrame(check);
@@ -46,7 +46,7 @@ try {
   await page.screenshot({ path: join(tmpdir(), 'stfs-projekt-desktop.png'), fullPage: true });
   for (const width of [390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const route of ['/projekty', '/projekt?slug=dom-przyjec-gonsior', '/opinie']) {
+    for (const route of ['/projekty', '/projekt?slug=dom-przyjec-gonsior', '/projekt?slug=dom-przyjec-premium', '/opinie']) {
       await page.goto(base + route);
       await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${route} overflows at ${width}px`);

@@ -2,7 +2,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createReadStream } from 'node:fs';
-import { realpath, stat } from 'node:fs/promises';
+import { realpath, stat, readFile } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -43,7 +43,7 @@ const MIME = {
 };
 const SITE_FILES = new Set([
   'index.html', 'projekty.html', 'projekt.html', 'opinie.html', 'portfolio.js', 'portfolio.css',
-  'script.js', 'styles.css', 'logo_stfs.jpg', 'favicon.ico', 'robots.txt', 'sitemap.xml',
+  'script.js', 'styles.css', 'showcase-bridge.js', 'walkthrough.css', 'logo_stfs.jpg', 'favicon.ico', 'robots.txt', 'sitemap.xml',
   'polityka-prywatnosci.html', 'regulamin.html',
 ]);
 const SHOWCASE_FILES = new Set([
@@ -276,6 +276,10 @@ export function createServer({ root = ROOT, templatesRoot = process.env.STFS_TEM
       if (!contained(realRoot, target)) return send(res, 403, 'Forbidden', req.method);
       const info = await stat(target);
       if (!info.isFile()) return send(res, 404, 'Not found', req.method);
+      if (showcase && path.extname(target) === '.html') {
+        const html = (await readFile(target, 'utf8')).replace('</head>', '<script src="/showcase-bridge.js" defer></script></head>');
+        return send(res, 200, html, req.method, { 'Content-Type': MIME['.html'] });
+      }
       res.writeHead(200, { 'Content-Type': MIME[path.extname(target).toLowerCase()] || 'application/octet-stream',
         'Content-Length': info.size, 'Cache-Control': 'no-store' });
       if (req.method === 'HEAD') res.end();
