@@ -17,6 +17,12 @@ function setupReveal(){
   document.querySelectorAll('.reveal').forEach(node=>observer.observe(node));
 }
 const grid=document.getElementById('projectGrid');
+if(grid||document.getElementById('reviews')){
+  const wrap=el('div','section-switch-wrap'),nav=el('nav','section-switch');nav.setAttribute('aria-label','Wybierz widok');
+  [['/projekty','Projekty',String(projects.length)],['/opinie','Opinie','Google']].forEach(([href,label,detail])=>{const link=el('a','',label);link.href=href;if((grid&&href==='/projekty')||(!grid&&href==='/opinie'))link.setAttribute('aria-current','page');link.append(el('span','',detail));link.addEventListener('click',event=>{if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||link.hasAttribute('aria-current')||matchMedia('(prefers-reduced-motion: reduce)').matches)return;event.preventDefault();link.classList.add('is-target');document.documentElement.classList.add('section-changing');setTimeout(()=>location.assign(link.href),180);});nav.append(link);});
+  wrap.append(nav);document.querySelector('.top').after(wrap);
+  addEventListener('pageshow',()=>{document.documentElement.classList.remove('section-changing');nav.querySelector('.is-target')?.classList.remove('is-target');});
+}
 if(grid){
   document.querySelector('.small-label').textContent=projects.length+' PROJEKTY ↓';
   let filter='all',active=0,animations=[],scrollFrame=0;const input=document.getElementById('projectSearch');

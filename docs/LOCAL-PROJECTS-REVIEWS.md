@@ -15,6 +15,10 @@ npm start
 - http://127.0.0.1:4173/projekt?slug=dom-przyjec-gonsior — podgląd i opis projektu;
 - http://127.0.0.1:4173/opinie — opinie Google.
 
+Na stronach projektów i opinii przełącznik prowadzi pod osobne adresy z krótkim przejściem. Każde wejście do opinii ponownie pobiera aktualny stan endpointu `/api/reviews`; sam scraper odświeża dane zgodnie z ustawionym harmonogramem.
+
+Na stronie głównej etapy współpracy podświetlają się kolejno podczas przewijania. Demo automatyzacji pokazuje pięć kroków na przykładowych danych, bez publikacji odpowiedzi. Można wstrzymać, ponowić lub wybrać etap. Autoodtwarzanie jest wyłączone przy ograniczonym ruchu.
+
 Konfigurację skopiuj z `.env.example` do lokalnego `.env`. Plik `.env` nie jest wersjonowany. Zmiana konfiguracji wymaga ponownego uruchomienia serwera.
 
 ## Projekty
@@ -48,6 +52,7 @@ Przy działającym serwerze:
 ```powershell
 node scripts/verify-portfolio.mjs
 node scripts/verify-reviews.mjs
+node scripts/verify-landing.mjs
 ```
 
 Test interfejsu sprawdza karty, wyszukiwanie, pełny podgląd, animacje, stany opinii i szerokości 390/768/1024/1440 px. Test opinii obejmuje walidację URL, ekstrakcję DOM, blokadę równoczesnego pobierania i zachowanie cache po błędzie. Zrzuty podglądowe trafiają do systemowego katalogu tymczasowego.

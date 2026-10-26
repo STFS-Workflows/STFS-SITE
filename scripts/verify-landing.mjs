@@ -1,0 +1,46 @@
+import assert from 'node:assert/strict';
+import { chromium } from 'playwright';
+
+const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:4173';
+const browser = await chromium.launch({ channel: 'chrome', headless: true });
+try {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(base + '/');
+  const line = page.locator('.process-line');
+  await line.waitFor();
+  const top = await line.evaluate(node => node.getBoundingClientRect().top + scrollY);
+  await page.evaluate(y => scrollTo({ top: y, behavior: 'instant' }), top - 700);
+  await page.waitForFunction(() => document.querySelectorAll('.process-step')[0].classList.contains('is-active'));
+  await page.evaluate(y => scrollTo({ top: y, behavior: 'instant' }), top - 90);
+  await page.waitForFunction(() => document.querySelectorAll('.process-step')[3].classList.contains('is-active'));
+  assert.equal(await page.locator('.process-step.is-complete').count(), 3);
+  const demo = page.locator('[data-workflow-demo]');
+  await demo.scrollIntoViewIfNeeded();
+  assert.match(await demo.textContent(), /SYMULACJA/);
+  await page.waitForFunction(() => document.querySelector('[data-demo-step="1"]').hasAttribute('aria-current'), null, { timeout: 8000 });
+  await page.locator('[data-demo-toggle]').click();
+  await page.locator('[data-demo-step="2"]').click();
+  assert.equal(await page.locator('[data-demo-count]').textContent(), '3 / 5');
+  assert.match(await page.locator('[data-demo-panel]:visible').textContent(), /Dziękujemy za miłe słowa/);
+  await page.locator('[data-demo-step="4"]').click();
+  assert.match(await page.locator('[data-demo-panel]:visible').textContent(), /nic nie zostało opublikowane/);
+  await page.locator('[data-demo-replay]').click();
+  assert.equal(await page.locator('[data-demo-count]').textContent(), '1 / 5');
+  await page.locator('[data-demo-toggle]').click();
+  assert.deepEqual(errors, []);
+  for (const width of [390, 768, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${width}px overflow`);
+  }
+  const reduced = await browser.newPage({ reducedMotion: 'reduce' });
+  await reduced.goto(base + '/');
+  assert.equal(await reduced.locator('.process-animated').count(), 0);
+  assert.equal(await reduced.locator('[data-demo-toggle]').textContent(), 'Odtwórz ▶');
+  await reduced.locator('[data-demo-step="1"]').click();
+  assert.match(await reduced.locator('[data-demo-panel]:visible').textContent(), /AI analizuje/);
+  await reduced.close();
+  console.log('PASS: scroll-linked steps, simulated five-stage workflow, controls, mobile and reduced motion.');
+} finally { await browser.close(); }
