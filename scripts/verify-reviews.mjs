@@ -6,6 +6,7 @@ assert.equal(mapsUrl('https://example.com/maps'), null);
 assert.equal(mapsUrl('http://www.google.com/maps/place/example'), null);
 assert.ok(mapsUrl('https://www.google.com/maps/place/example'));
 assert.equal(createReviewsService().snapshot().status, 'unconfigured');
+assert.equal(createReviewsService({ demo: true }).snapshot().demo, true);
 let rejectNext = false;
 let calls = 0;
 const service = createReviewsService({ profileUrl: 'https://www.google.com/maps/place/example', scrape: async () => {

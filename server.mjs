@@ -197,7 +197,7 @@ export async function scrapeReviews({ profileUrl, limit = 20, timeoutMs = 45000,
   }
 }
 
-export function createReviewsService({ profileUrl = '', refreshMs = 3600000, timeoutMs = 45000, limit = 20, channel, scrape = scrapeReviews } = {}) {
+export function createReviewsService({ profileUrl = '', demo = false, refreshMs = 3600000, timeoutMs = 45000, limit = 20, channel, scrape = scrapeReviews } = {}) {
   const configuredUrl = mapsUrl(profileUrl);
   let cache = { status: profileUrl ? 'stale' : 'unconfigured', profileUrl: configuredUrl,
     rating: null, count: null, updatedAt: null, reviews: [],
@@ -223,7 +223,7 @@ export function createReviewsService({ profileUrl = '', refreshMs = 3600000, tim
     return inFlight;
   };
   return {
-    snapshot: () => structuredClone(cache), refresh,
+    snapshot: () => ({ ...structuredClone(cache), demo }), refresh,
     start() {
       if (stopped || timer || !configuredUrl) return;
       void refresh();
@@ -290,6 +290,7 @@ export function createServer({ root = ROOT, templatesRoot = process.env.STFS_TEM
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const reviews = createReviewsService({
     profileUrl: process.env.GOOGLE_MAPS_URL || '',
+    demo: process.env.REVIEWS_DEMO === 'true',
     refreshMs: integer(process.env.REVIEWS_REFRESH_MS, 3600000, 1000, 2147483647),
     timeoutMs: integer(process.env.REVIEWS_TIMEOUT_MS, 45000, 1000, 120000),
     limit: integer(process.env.REVIEWS_LIMIT, 20, 1, 100),

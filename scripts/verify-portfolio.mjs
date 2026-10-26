@@ -56,6 +56,12 @@ try {
   assert.notEqual(await page.locator('#reviewStatus').textContent(), 'Pobieramy opinie…');
   await page.setViewportSize({ width: 390, height: 900 });
   await page.screenshot({ path: join(tmpdir(), 'stfs-opinie-mobile.png'), fullPage: true });
+  await page.route('**/api/reviews', route => route.fulfill({ json: { status: 'unconfigured', demo: true, reviews: [] } }));
+  await page.goto(base + '/opinie');
+  await page.locator('#reviews[aria-busy="false"]').waitFor();
+  assert.equal(await page.getByRole('note').isVisible(), true);
+  assert.match(await page.getByRole('note').textContent(), /Nie dotyczą STFS/);
+  await page.unroute('**/api/reviews');
   await page.goto(base + '/projekt?slug=unknown');
   assert.equal(await page.locator('h1').textContent(), 'Nie znaleziono projektu.');
   const protectedResponse = await page.request.get(base + '/server.mjs');

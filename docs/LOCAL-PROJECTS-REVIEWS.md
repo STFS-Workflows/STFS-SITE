@@ -27,6 +27,8 @@ Podglądy działają w izolowanej ramce. Formularze i połączenia do backendów
 
 ## Automatyczne pobieranie opinii
 
+Do testu obcej wizytówki ustaw w środowisku procesu `REVIEWS_DEMO=true`. Interfejs pokaże wtedy wyraźną informację, że opinie nie dotyczą STFS. Nie zapisuj testowego URL w repozytorium. Dane pobrane przez scraper pozostają wyłącznie w pamięci procesu i znikają po jego zamknięciu.
+
 Ustaw `GOOGLE_MAPS_URL` na potwierdzony adres wizytówki STFS. Nie wybieraj profilu automatycznie po samej nazwie. Domyślnie opinie są pobierane po uruchomieniu i odświeżane co godzinę. Endpoint `GET /api/reviews` zwraca dane z pamięci; wyświetlenie strony nie uruchamia nowego pobrania.
 
 Scraper Playwright odczytuje publiczne opinie z Google Maps: autora, ocenę, tekst, datę i link źródłowy. Ocena zbiorcza i licznik są prezentowane tylko wtedy, gdy Google je zwróci. Pobieranie ma limit liczby opinii i czasu. Blokada Google, logowanie, CAPTCHA lub ekran zgody przerywają pobranie; scraper nie omija tych ekranów. Zmiana struktury Google może wymagać aktualizacji selektorów.

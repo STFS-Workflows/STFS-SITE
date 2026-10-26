@@ -41,6 +41,7 @@ if(reviewsGrid){
   const empty=(title,text)=>{const box=el('div','review-empty');box.append(el('h3','',title),el('p','',text));reviewsGrid.replaceChildren(box);};
   (async()=>{try{
     const response=await fetch('/api/reviews',{signal:AbortSignal.timeout(12000)});if(!response.ok)throw Error('fetch');const data=await response.json();
+    if(data.demo){const banner=el('div','review-empty');banner.setAttribute('role','note');banner.append(el('h3','','Podgląd testowy'),el('p','','Opinie z przykładowej wizytówki. Nie dotyczą STFS AI STUDIO.'));document.querySelector('.reviews-panel').before(banner);}
     const source=safeGoogleUrl(data.profileUrl);if(source){const link=document.getElementById('reviewSource');link.href=source;link.hidden=false;}
     if(data.status==='unconfigured'){status.textContent='Profil Google nie jest jeszcze podłączony.';empty('Tu pojawią się opinie.','Po podłączeniu profilu firmy zobaczysz tutaj aktualne wypowiedzi klientów z Google.');return;}
     if(!Array.isArray(data.reviews)||!data.reviews.length){status.textContent='Opinie są chwilowo niedostępne.';empty('Jeszcze chwila.','Nie udało się pobrać opinii. Spróbuj później lub sprawdź profil bezpośrednio w Google.');return;}
