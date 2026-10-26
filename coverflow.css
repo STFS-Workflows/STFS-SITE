@@ -6,6 +6,9 @@
 .coverflow-controls button:hover:not(:disabled){border-color:var(--mint);color:var(--mint)}.coverflow-controls button:disabled{opacity:.32;cursor:default}.coverflow-controls span{min-width:45px;text-align:center;font-size:11px;color:var(--muted)}
 .coverflow .project-grid{display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none;padding:45px calc((100% - var(--cover-size))/2) 36px;scroll-behavior:smooth;align-items:flex-start;touch-action:pan-x pan-y}
 .coverflow .project-grid::-webkit-scrollbar{display:none}.coverflow .project-card{display:block;flex:0 0 var(--cover-size);width:var(--cover-size);scroll-snap-align:center;position:relative;perspective:1000px;outline-offset:-3px}
+.coverflow .project-grid{cursor:grab;user-select:none;-webkit-user-select:none}
+.coverflow .project-grid.is-dragging{cursor:grabbing;scroll-snap-type:none;scroll-behavior:auto}
+.coverflow .project-card{cursor:inherit}.coverflow .project-art img{pointer-events:none}
 .cover-surface{transform-style:preserve-3d;transform-origin:center center;will-change:transform}
 .coverflow .project-art{height:auto;aspect-ratio:1;border-radius:3px;background:#202c27;padding:25px;box-shadow:0 24px 50px #0009;-webkit-box-reflect:below 8px linear-gradient(transparent,rgba(0,0,0,.28))}
 .coverflow .project-art img{filter:brightness(.62)}.coverflow .art-caption{font-size:clamp(23px,2.4vw,31px);left:25px;bottom:25px}.coverflow .project-label{font-size:9px}

@@ -1,13 +1,16 @@
 .walkthrough-lead{margin:30px 0 45px;max-width:630px}
 .walkthrough-lead h2{font:500 clamp(28px,4vw,42px)/1.15 var(--display);letter-spacing:-1.2px;margin:18px 0}
-.walkthrough-lead>p:last-child{color:var(--muted)}
+.walkthrough-lead>p:not(.eyebrow){color:var(--muted)}
+.scroll-cue{display:flex;align-items:center;gap:12px;margin-top:25px;color:var(--muted);font-size:11px;letter-spacing:.02em}
+.scroll-cue-arrow{display:grid;place-items:center;width:32px;height:32px;border:1px solid #8cebc844;border-radius:50%;color:var(--mint);animation:scroll-hint 2s ease-in-out infinite}
+@keyframes scroll-hint{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
 .walkthrough{position:relative;margin:0 0 85px;min-height:600px}
-.walkthrough-browser{width:calc(100% - 460px);margin-inline:auto;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 30px 80px #0004}
+.walkthrough-browser{width:calc(100% - 360px);margin-inline:auto;border:1px solid #698b7a42;border-radius:14px;overflow:hidden;box-shadow:0 30px 90px #0008,0 0 75px #8cebc80c}
 .project-canvas{position:relative;overflow:hidden;height:600px;background:#eee9df}
 .project-canvas iframe{display:block;border:0;width:1440px;height:900px;max-width:none;transform-origin:top left;pointer-events:none}
 .project-annotation{position:absolute;width:210px;z-index:2}
 .annotation--left{left:0;text-align:right}.annotation--right{right:0;text-align:left}
-.annotation-body{padding:18px 0;transition:opacity .65s ease,transform .8s cubic-bezier(.2,.75,.2,1);transition-delay:.12s}
+.annotation-body{padding:18px 17px;background:linear-gradient(145deg,#182c25f2,#101a17f5);border:1px solid #8cebc832;border-radius:14px;box-shadow:0 18px 45px #0008,0 0 35px #8cebc80b;transition:opacity .65s ease,transform .8s cubic-bezier(.2,.75,.2,1);transition-delay:.12s}
 .project-annotation .eyebrow{font-size:9px;letter-spacing:1.5px}
 .project-annotation h3{font:500 22px/1.22 var(--display);letter-spacing:-.55px;margin:12px 0}
 .project-annotation p{font-size:12px;line-height:1.75;color:var(--muted);margin:0}
@@ -15,6 +18,8 @@
 .annotation--left .annotation-line{left:calc(100% + 10px);transform-origin:left}
 .annotation--right .annotation-line{right:calc(100% + 10px);transform-origin:right}
 .annotation-line::after{content:'';position:absolute;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 5px #8cebc81a}
+.project-annotation.visible .annotation-line::after{animation:annotation-glow 2.6s ease-in-out infinite}
+@keyframes annotation-glow{0%,100%{box-shadow:0 0 0 5px #8cebc81a}50%{box-shadow:0 0 0 9px #8cebc811,0 0 18px #8cebc877}}
 .annotation--left .annotation-line::after{right:0}.annotation--right .annotation-line::after{left:0}
 .annotations-animated .annotation-body{opacity:0;transform:translateY(24px) scale(.97)}
 .annotations-animated .annotation--left .annotation-body{transform:translate(-18px,24px) scale(.97)}
@@ -29,6 +34,6 @@
   @keyframes annotation-enter{from{opacity:0;transform:translateY(26px) scale(.96)}to{opacity:1;transform:none}}
   @keyframes line-enter{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 }
-@media(max-width:1050px){.walkthrough-browser{width:calc(100% - 350px)}.project-annotation{width:155px}.project-annotation h3{font-size:19px}.project-annotation p{font-size:11px}.annotation-line{width:28px}}
-@media(max-width:800px){.walkthrough-browser{width:100%}.walkthrough .browser-bar{font-size:8px;padding:10px}.project-annotation{width:min(250px,67%);background:#0d1815f5;border:1px solid #354d43;border-radius:10px;box-shadow:0 10px 35px #0008;text-align:left}.annotation--left{left:10px;right:auto}.annotation--right{right:10px;left:auto}.annotation-body{padding:16px}.project-annotation h3{font-size:19px;margin:10px 0}.project-annotation p{font-size:11px;line-height:1.6}.annotation-line{top:25px;width:20px}.walkthrough{margin-bottom:50px}}
-@media(prefers-reduced-motion:reduce){.annotation-body,.annotation-line{animation:none!important;transition:none!important;opacity:1!important;transform:none!important}}
+@media(max-width:1050px){.walkthrough-browser{width:calc(100% - 280px)}.project-annotation{width:155px}.project-annotation h3{font-size:19px}.project-annotation p{font-size:11px}.annotation-line{width:28px}}
+@media(max-width:800px){.walkthrough-browser{width:100%}.walkthrough .browser-bar{font-size:8px;padding:10px}.project-annotation{width:min(250px,67%);text-align:left}.annotation--left{left:10px;right:auto}.annotation--right{right:10px;left:auto}.annotation-body{padding:16px}.project-annotation h3{font-size:19px;margin:10px 0}.project-annotation p{font-size:11px;line-height:1.6}.annotation-line{top:25px;width:20px}.walkthrough{margin-bottom:50px}}
+@media(prefers-reduced-motion:reduce){.annotation-body,.annotation-line{animation:none!important;transition:none!important;opacity:1!important;transform:none!important}.scroll-cue-arrow,.annotation-line::after{animation:none!important}}
