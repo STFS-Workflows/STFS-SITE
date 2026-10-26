@@ -4,7 +4,17 @@
 .process-animated .process-step h3{transition:color .45s ease}
 .process-animated .process-step.is-active .process-node{transform:scale(1.14);background:radial-gradient(circle at 35% 25%,#357a65,#14342e 75%);border-color:#80ffe0;color:#e8fff9;box-shadow:0 0 0 5px var(--bg),0 0 26px #35e0c173,inset 0 1px 0 #ffffff50}
 .process-animated .process-step.is-active h3{color:#b7ffeb}
+.process-animated .process-step p{transition:color .45s ease}
+.process-animated .process-step.is-active p{color:#e4f4ed}
 .process-animated .process-step.is-complete .process-node{border-color:#35e0c1;background:#153e34;color:#baffed}
+.process-current{display:flex;align-items:center;gap:12px;width:fit-content;max-width:100%;min-height:48px;margin-top:32px;padding:11px 17px;border:1px solid #35e0c137;border-radius:14px;background:linear-gradient(120deg,#142a25,#10191a);box-shadow:0 8px 28px #0003}
+.process-current[hidden]{display:none}
+.process-current-dot{width:8px;height:8px;flex:none;border-radius:50%;background:#72f5d6;box-shadow:0 0 14px #35e0c1}
+.process-current-count{flex:none;color:#67e7cc;font:500 10px var(--font-mono);letter-spacing:.06em}
+.process-current-copy{color:#f0fff8;font-size:13px;font-weight:600;line-height:1.4}
+.process-current-copy.is-changing{animation:process-copy-in .4s var(--ease) both}
+@keyframes process-copy-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 @media(min-width:900px){.process-line.process-animated::after{top:24px;left:24px;right:24px;height:2px;transform:scaleX(var(--process-progress,0));transform-origin:left}}
 @media(max-width:899px){.process-line.process-animated::before,.process-line.process-animated::after{content:"";position:absolute;left:23px;top:24px;bottom:24px;width:2px}.process-line.process-animated::before{background:var(--border)}.process-line.process-animated::after{background:linear-gradient(#35e0c1,#a6ffdf);transform:scaleY(var(--process-progress,0));transform-origin:top}}
-@media(prefers-reduced-motion:reduce){.process-animated .process-node,.process-animated .process-step h3,.process-line.process-animated::after{transition:none!important}}
+@media(max-width:600px){.process-current{align-items:flex-start;gap:9px}.process-current-dot{margin-top:6px}.process-current-count{margin-top:4px}.process-current-copy{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.process-animated .process-node,.process-animated .process-step h3,.process-animated .process-step p,.process-line.process-animated::after{transition:none!important}.process-current-copy{animation:none!important}}

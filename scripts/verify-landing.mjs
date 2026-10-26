@@ -13,6 +13,20 @@ try {
   const top = await line.evaluate(node => node.getBoundingClientRect().top + scrollY);
   await page.evaluate(y => scrollTo({ top: y, behavior: 'instant' }), top - 700);
   await page.waitForFunction(() => document.querySelectorAll('.process-step')[0].classList.contains('is-active'));
+  await page.evaluate(() => document.fonts.ready);
+  const descriptions = ['Poznajemy Twoje potrzeby', 'Analizujemy sytuację', 'Zmieniamy ustalenia', 'Mierzymy efekty'];
+  for (let index = 0; index < 4; index++) {
+    const progress = (index + .5) / 4;
+    const geometry = await line.evaluate(node => ({ top: node.getBoundingClientRect().top + scrollY, height: node.getBoundingClientRect().height }));
+    await page.evaluate(y => scrollTo({ top: y, behavior: 'instant' }), geometry.top - (900 * .82 - progress * (900 * .5 + geometry.height)));
+    await page.waitForFunction(i => document.querySelectorAll('.process-step')[i].classList.contains('is-active'), index);
+    assert.equal(await page.locator('.process-current-count').textContent(), `ETAP ${index + 1} / 4`);
+    assert.ok((await page.locator('.process-current-copy').textContent()).includes(descriptions[index]));
+  }
+  const reverseGeometry = await line.evaluate(node => ({ top: node.getBoundingClientRect().top + scrollY, height: node.getBoundingClientRect().height }));
+  await page.evaluate(y => scrollTo({ top: y, behavior: 'instant' }), reverseGeometry.top - (900 * .82 - .375 * (900 * .5 + reverseGeometry.height)));
+  await page.waitForFunction(() => document.querySelectorAll('.process-step')[1].classList.contains('is-active'));
+  assert.ok((await page.locator('.process-current-copy').textContent()).includes(descriptions[1]));
   await page.evaluate(y => scrollTo({ top: y, behavior: 'instant' }), top - 90);
   await page.waitForFunction(() => document.querySelectorAll('.process-step')[3].classList.contains('is-active'));
   assert.equal(await page.locator('.process-step.is-complete').count(), 3);
@@ -38,6 +52,7 @@ try {
   const reduced = await browser.newPage({ reducedMotion: 'reduce' });
   await reduced.goto(base + '/');
   assert.equal(await reduced.locator('.process-animated').count(), 0);
+  assert.equal(await reduced.locator('.process-current').isHidden(), true);
   assert.equal(await reduced.locator('[data-demo-toggle]').textContent(), 'Odtwórz ▶');
   await reduced.locator('[data-demo-step="1"]').click();
   assert.match(await reduced.locator('[data-demo-panel]:visible').textContent(), /AI analizuje/);
