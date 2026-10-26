@@ -58,6 +58,11 @@ try {
   assert.equal(await page.locator('iframe').getAttribute('scrolling'), 'no');
   assert.equal(await page.locator('.project-annotation').count(), 5);
   assert.deepEqual(await page.locator('.project-annotation').evaluateAll(nodes => nodes.map(node => node.classList.contains('annotation--left') ? 'left' : 'right')), ['left', 'right', 'left', 'right', 'left']);
+  const timedNote = page.locator('[data-anchor="oferta"]');
+  await timedNote.evaluate(node => scrollTo({ top: node.getBoundingClientRect().top + scrollY - innerHeight * .8, behavior: 'instant' }));
+  await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-anchor="oferta"] .annotation-body')).opacity) < .05);
+  await timedNote.evaluate(node => scrollTo({ top: node.getBoundingClientRect().top + scrollY - innerHeight * .2, behavior: 'instant' }));
+  await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-anchor="oferta"] .annotation-body')).opacity) > .9);
   for (const chapter of await page.locator('.project-annotation').all()) {
     await chapter.scrollIntoViewIfNeeded();
     await chapter.evaluate(node => new Promise(resolve => {

@@ -60,7 +60,7 @@ if(study){
     const annotations=notes.map(([anchor,kicker,title,text],index)=>{const note=el('article','project-annotation '+(index%2?'annotation--right':'annotation--left'));note.dataset.anchor=anchor;const line=el('span','annotation-line');line.setAttribute('aria-hidden','true');const body=el('div','annotation-body');body.append(el('span','eyebrow',kicker),el('h3','',title),el('p','',text));note.append(line,body);walkthrough.append(note);return note;});
     if('IntersectionObserver' in window&&!matchMedia('(prefers-reduced-motion: reduce)').matches){
       walkthrough.classList.add('annotations-animated');
-      const observer=new IntersectionObserver(entries=>entries.forEach(entry=>entry.target.classList.toggle('visible',entry.isIntersecting)),{rootMargin:'-12% 0px -16% 0px',threshold:0});
+      const observer=new IntersectionObserver(entries=>entries.forEach(entry=>entry.target.classList.toggle('visible',entry.isIntersecting)),{rootMargin:'-10% 0px -45% 0px',threshold:0});
       annotations.forEach(note=>observer.observe(note));
     }
     study.append(walkthrough);let layout=null;

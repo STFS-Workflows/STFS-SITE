@@ -29,8 +29,8 @@
 .annotations-animated .project-annotation.visible .annotation-line{transform:scaleX(1)}
 @supports (animation-timeline:view()){
   .annotations-animated .project-annotation{view-timeline-name:--annotation;view-timeline-axis:block}
-  .annotations-animated .annotation-body{animation:annotation-enter linear both;animation-timeline:--annotation;animation-range:entry 0% entry 90%}
-  .annotations-animated .annotation-line{animation:line-enter linear both;animation-timeline:--annotation;animation-range:entry 5% entry 75%}
+  .annotations-animated .annotation-body{animation:annotation-enter linear both;animation-timeline:--annotation;animation-range:cover 40% cover 60%}
+  .annotations-animated .annotation-line{animation:line-enter linear both;animation-timeline:--annotation;animation-range:cover 35% cover 55%}
   @keyframes annotation-enter{from{opacity:0;transform:translateY(26px) scale(.96)}to{opacity:1;transform:none}}
   @keyframes line-enter{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 }
