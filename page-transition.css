@@ -4,9 +4,9 @@
   ::view-transition-group(root) { animation-duration: .72s; perspective: 1800px; }
   ::view-transition-old(root), ::view-transition-new(root) { backface-visibility: hidden; transform-origin: 50% 50%; }
   ::view-transition-old(root) { animation: project-snapshot-out .52s cubic-bezier(.4,0,.2,1) both; }
-  ::view-transition-new(root) { animation: project-snapshot-in .62s cubic-bezier(.16,1,.3,1) .1s both; }
-  @keyframes project-snapshot-out { to { opacity: 0; transform: perspective(1800px) translateX(-3%) rotateY(-9deg) scale(.97); } }
-  @keyframes project-snapshot-in { from { opacity: 0; transform: perspective(1800px) translateX(3%) rotateY(9deg) scale(.97); } to { opacity: 1; transform: perspective(1800px) translateX(0) rotateY(0) scale(1); } }
+  ::view-transition-new(root) { animation: project-snapshot-in .7s cubic-bezier(.16,1,.3,1) both; }
+  @keyframes project-snapshot-out { 0% { opacity:1; transform:perspective(1800px) rotateY(0) scale(1); } 100% { opacity:0; transform:perspective(1800px) translateX(-2%) rotateY(-7deg) scale(.98); } }
+  @keyframes project-snapshot-in { 0% { opacity:0; transform:perspective(1800px) translateX(2%) rotateY(7deg) scale(.98); } 30% { opacity:.45; } 100% { opacity:1; transform:perspective(1800px) translateX(0) rotateY(0) scale(1); } }
   html.page-leave, html.page-enter { perspective: 1800px; }
   html.page-leave body { transform-origin: 50% calc(var(--transition-scroll, 0px) + 50vh); animation: project-page-out .36s cubic-bezier(.4,0,.2,1) both; pointer-events: none; }
   html.page-enter body { transform-origin: 50% 50vh; animation: project-page-in .6s cubic-bezier(.16,1,.3,1) both; }
