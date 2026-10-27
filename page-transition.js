@@ -1,6 +1,9 @@
 (() => {
   const key = 'stfs-project-transition';
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  // Native cross-document transitions retain the outgoing page while the
+  // destination loads, avoiding a flash of the browser background.
+  if ('CSSViewTransitionRule' in window) return;
   try {
     if (sessionStorage.getItem(key) === location.pathname && !motion.matches) {
       document.documentElement.classList.add('page-enter');
@@ -21,6 +24,7 @@
     event.preventDefault();
     leaving = true;
     try { sessionStorage.setItem(key, url.pathname); } catch { /* Continue with the exit only. */ }
+    document.documentElement.style.setProperty('--transition-scroll', `${window.scrollY}px`);
     document.documentElement.classList.remove('page-enter');
     document.documentElement.classList.add('page-leave');
     setTimeout(() => location.assign(url.href), 360);
