@@ -281,7 +281,7 @@ export function createServer({ root = ROOT, templatesRoot = process.env.STFS_TEM
       const info = await stat(target);
       if (!info.isFile()) return send(res, 404, 'Not found', req.method);
       if (showcase && path.extname(target) === '.html') {
-        const html = (await readFile(target, 'utf8')).replace('</head>', '<script src="/showcase-bridge.js" defer></script></head>');
+        const html = (await readFile(target, 'utf8')).replace('</head>', '<script src="/showcase-bridge.js?v=2" defer></script></head>');
         return send(res, 200, html, req.method, { 'Content-Type': MIME['.html'] });
       }
       res.writeHead(200, { 'Content-Type': MIME[path.extname(target).toLowerCase()] || 'application/octet-stream',

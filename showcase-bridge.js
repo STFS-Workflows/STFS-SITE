@@ -2,10 +2,10 @@
 (() => {
   if (window.parent === window) return;
   const style = document.createElement('style');
-  style.textContent = 'html{overflow:hidden!important;scroll-behavior:auto!important}body{min-height:0!important}.hero{height:900px!important;min-height:900px!important}.garden-banner{height:720px!important}.rating-card{bottom:54px!important}.reveal{opacity:1!important;transform:none!important;transition:none!important}.stfs-stage{transition:none!important}';
+  style.textContent = 'html{overflow:hidden!important;scroll-behavior:auto!important}body{min-height:0!important}.hero{height:900px!important;min-height:900px!important}.garden-banner{height:720px!important}.rating-card{bottom:54px!important}.reveal{opacity:1!important;transform:none!important;transition:none!important}.stfs-stage{transition:opacity .75s cubic-bezier(.22,1,.36,1)!important}@media(prefers-reduced-motion:reduce){.stfs-stage{transition:none!important}}';
   document.head.append(style);
   let queued = false, stages = [];
-  const readiness = new Map(), revealed = new WeakSet(), timers = new Map();
+  const readiness = new Map(), prepared = new WeakSet(), revealed = new WeakSet();
   const signal = (key, ready) => {
     if (readiness.get(key) === ready) return;
     readiness.set(key, ready);
@@ -18,6 +18,10 @@
       const key = section.id || section.classList[0];
       sections[key] = { y: section.getBoundingClientRect().top + scrollY, height: section.offsetHeight };
       section.classList.add('stfs-stage');
+      if (!prepared.has(section)) {
+        prepared.add(section);
+        section.style.setProperty('opacity', '0', 'important');
+      }
       return { node: section, key, y: sections[key].y };
     });
     parent.postMessage({ type: 'stfs-showcase-layout', height: Math.ceil(document.body.getBoundingClientRect().height), sections }, '*');
@@ -28,19 +32,13 @@
     const { frameTop, scale, viewportHeight } = event.data;
     if (![frameTop, scale, viewportHeight].every(Number.isFinite) || scale <= 0 || scale > 2 || viewportHeight <= 0) return;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const distance = Math.min(420, viewportHeight * .48);
     for (const stage of stages) {
       const top = frameTop + stage.y * scale;
-      const progress = reduced || revealed.has(stage.node) ? 1 : Math.max(0, Math.min(1, (viewportHeight - top) / distance));
-      const eased = progress * progress * (3 - 2 * progress);
-      const opacity = String(Math.round(eased * 1000) / 1000);
-      if (stage.node.style.opacity !== opacity) stage.node.style.setProperty('opacity', opacity, 'important');
-      if (progress >= 1) {
+      if (!revealed.has(stage.node) && (reduced || top < viewportHeight - 30)) {
         revealed.add(stage.node);
+        stage.node.style.setProperty('opacity', '1', 'important');
         if (reduced) signal(stage.key, true);
-        else if (!timers.has(stage.key) && readiness.get(stage.key) !== true) {
-          timers.set(stage.key, setTimeout(() => { timers.delete(stage.key); signal(stage.key, true); }, 280));
-        }
+        else setTimeout(() => signal(stage.key, true), 930);
       }
     }
   });
@@ -48,8 +46,11 @@
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     while (walker.nextNode()) {
       const node = walker.currentNode;
-      if (!/^[\d\s/]+$/.test(node.nodeValue)) continue;
-      const clean = node.nodeValue.replace(/\b0([1-9])\b/g, '$1');
+      if (['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(node.parentElement?.tagName)) continue;
+      let clean = node.nodeValue;
+      if (/^[\d\s/]+$/.test(clean)) clean = clean.replace(/\b0([1-9])\b/g, '$1');
+      if (/^[\s—–]+$/.test(clean) && /[—–]/.test(clean)) clean = clean.replace(/[—–]/g, 'brak danych');
+      else clean = clean.replace(/\s+[—–]\s+/g, ', ').replace(/\be-mail\b/gi, match => match[0] === 'E' ? 'EMAIL' : 'email');
       if (clean !== node.nodeValue) node.nodeValue = clean;
     }
   };

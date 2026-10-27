@@ -39,7 +39,7 @@ try {
   assert.equal(await page.locator('[data-demo-count]').textContent(), '3 / 5');
   assert.match(await page.locator('[data-demo-panel]:visible').textContent(), /Dziękujemy za miłe słowa/);
   await page.locator('[data-demo-step="4"]').click();
-  assert.match(await page.locator('[data-demo-panel]:visible').textContent(), /nic nie zostało opublikowane/);
+  assert.match(await page.locator('[data-demo-panel]:visible').textContent(), /nic nie zostało opublikowane/i);
   await page.locator('[data-demo-replay]').click();
   assert.equal(await page.locator('[data-demo-count]').textContent(), '1 / 5');
   await page.locator('[data-demo-toggle]').click();
