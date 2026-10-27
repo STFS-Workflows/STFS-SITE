@@ -78,10 +78,13 @@ try {
   await page.evaluate(top => scrollTo({ top, behavior: 'instant' }), frameGeometry.top + sectionY * frameGeometry.scale - page.viewportSize().height + 50);
   await embedded.waitForFunction(() => {const opacity=Number(getComputedStyle(document.querySelector('#oferta')).opacity);return opacity > 0 && opacity < .4;});
   await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-anchor="oferta"]')).opacity) < .01);
+  const initialRollScale = await page.locator('.scroll-roll').evaluate(node => Number(getComputedStyle(node).getPropertyValue('--roll-scale')));
   await timedNote.evaluate(node => scrollTo({ top: node.getBoundingClientRect().top + scrollY - innerHeight * .8, behavior: 'instant' }));
   await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-anchor="oferta"] .annotation-body')).opacity) < .05);
   await timedNote.evaluate(node => scrollTo({ top: node.getBoundingClientRect().top + scrollY - innerHeight * .2, behavior: 'instant' }));
   await page.waitForFunction(() => Math.abs(document.querySelector('.scroll-roll').getBoundingClientRect().bottom - innerHeight) < 2);
+  await page.waitForFunction(scale => Number(getComputedStyle(document.querySelector('.scroll-roll')).getPropertyValue('--roll-scale')) < scale, initialRollScale);
+  assert.notEqual(await page.locator('.scroll-roll').evaluate(node => getComputedStyle(node).getPropertyValue('--roll-turn').trim()), '0deg', 'The ends should turn as the page unrolls');
   await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-anchor="oferta"] .annotation-body')).opacity) > .9);
   await embedded.waitForFunction(() => Number(getComputedStyle(document.querySelector('#oferta')).opacity) >= .99);
   await page.waitForFunction(() => document.querySelector('[data-anchor="oferta"]').classList.contains('stage-ready'));
@@ -139,7 +142,7 @@ try {
   assert.equal(await reduced.evaluate(() => document.documentElement.classList.contains('page-enter')), false, 'Reduced motion skips the page rotation');
   assert.equal(await reduced.locator('.cover-surface').last().evaluate(node => getComputedStyle(node).transform), 'none');
   await reduced.goto(base + '/projekt?slug=dom-przyjec-premium');
-  assert.equal(await reduced.locator('.scroll-roll-core').evaluate(node => getComputedStyle(node, '::before').animationName), 'none', 'Reduced motion disables roll rotation');
+  assert.equal(await reduced.locator('.scroll-roll').evaluate(node => getComputedStyle(node).getPropertyValue('--roll-turn').trim()), '0deg', 'Reduced motion disables roll rotation');
   assert.equal(await reduced.locator('.annotations-animated').count(), 0);
   assert.equal(await reduced.locator('.annotation-body').first().evaluate(node => getComputedStyle(node).opacity), '1');
   await reduced.locator('.project-canvas').scrollIntoViewIfNeeded();

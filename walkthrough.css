@@ -9,15 +9,14 @@
 .project-canvas{position:relative;overflow:hidden;height:600px;background:#eee9df}
 .project-canvas iframe{display:block;border:0;width:1440px;height:900px;max-width:none;transform-origin:top left;pointer-events:none}
 /* The lower edge follows the viewport while the page underneath scrolls. */
-.scroll-roll{position:sticky;bottom:0;z-index:1;width:calc(100% - 510px);height:32px;margin:-16px auto 0;pointer-events:none;display:flex;align-items:center}
-.scroll-roll-core{display:block;position:relative;width:100%;height:25px;border:1px solid rgba(86,73,51,.45);border-radius:14px;background:linear-gradient(180deg,#c8b797 0%,#f5ead3 25%,#e7d8bc 47%,#bba580 82%,#9e8868 100%);box-shadow:0 -5px 14px #0003,0 9px 20px #0008,inset 0 1px 2px #fff9}
-.scroll-roll-core::before,.scroll-roll-core::after{content:'';position:absolute;top:50%;width:26px;height:26px;border-radius:50%;border:1px solid #8b7657;background:radial-gradient(circle,#d9c7a7 0 12%,#9c896d 15% 20%,#f5ead1 25% 44%,#b9a384 48% 58%,#e8d8b9 62%);box-shadow:0 2px 7px #0006;transform:translateY(-50%)}
-.scroll-roll-core::before{left:-8px}.scroll-roll-core::after{right:-8px}
-@supports ((animation-timeline:view()) and (animation-range:0% 100%)){
-  .walkthrough{view-timeline-name:--scroll-paper;view-timeline-axis:block}
-  .scroll-roll-core::before,.scroll-roll-core::after{animation:paper-turn linear both;animation-timeline:--scroll-paper;animation-range:cover 0% cover 100%}
-  @keyframes paper-turn{from{transform:translateY(-50%) rotate(0deg)}to{transform:translateY(-50%) rotate(720deg)}}
-}
+.scroll-roll{--roll-scale:1;--roll-turn:0deg;position:sticky;bottom:0;z-index:1;width:calc(100% - 510px);height:84px;margin:-42px auto 0;pointer-events:none}
+.scroll-roll::before{content:'';position:absolute;bottom:0;left:0;right:0;height:8px;background:var(--bg)}
+.scroll-roll-core{position:absolute;left:0;right:0;bottom:6px;height:70px;transform:scaleY(var(--roll-scale));transform-origin:center bottom;border:2px solid #826848;border-radius:32px;background:linear-gradient(180deg,#e6d6ad 0 10%,#f4e7c4 10% 44%,#dfc99f 44% 47%,#e8d5b0 47% 73%,#c9ae83 73% 78%,#b4976f 78%);box-shadow:0 -3px 0 #f8efd8,0 12px 20px #0009,inset 0 -5px 0 #8c704b55}
+.scroll-roll-core::after{content:'';position:absolute;inset:20% 3% auto;height:1px;background:#fff8e6;box-shadow:0 20px 0 #a6875b55}
+.scroll-roll-end{position:absolute;bottom:4px;width:76px;height:76px;border:3px solid #745332;border-radius:50%;transform:scale(var(--roll-scale));transform-origin:center bottom;background:#b08b5c;box-shadow:0 5px 9px #0006,inset 0 0 0 5px #a37b4e}
+.scroll-roll-end::before{content:'';position:absolute;inset:3px;border-radius:50%;transform:rotate(var(--roll-turn));background:radial-gradient(circle,#704b2c 0 11%,#c49a62 12% 17%,#f1dfb9 18% 26%,#a67e50 27% 31%,#e4ce9f 32% 42%,transparent 43%),repeating-conic-gradient(from 5deg,#b08b5c 0 18deg,#ddc79c 19deg 42deg)}
+.scroll-roll-end::after{content:'';position:absolute;inset:31%;border:3px solid #a77f51;border-radius:50%;border-right-color:#f5e7c6;transform:rotate(var(--roll-turn))}
+.scroll-roll-end--left{left:-34px}.scroll-roll-end--right{right:-34px}
 .project-annotation{position:absolute;width:240px;z-index:2}
 .stage-gated .project-annotation{opacity:0;transition:opacity .45s ease}
 .stage-gated .project-annotation.stage-ready{opacity:1}
@@ -45,5 +44,5 @@
 .annotations-animated:not(.stage-gated) .project-annotation.visible .annotation-body{opacity:1;transform:none}
 .annotations-animated:not(.stage-gated) .project-annotation.visible .annotation-line{transform:scaleX(1)}
 @media(max-width:1050px){.walkthrough-browser{width:calc(100% - 400px)}.scroll-roll{width:calc(100% - 390px)}.project-annotation{width:185px}.annotation-body{padding:17px}.project-annotation h3{font-size:17px}.project-annotation p{font-size:12px}.annotation-line{width:28px}}
-@media(max-width:800px){.walkthrough-browser{width:100%}.scroll-roll{width:calc(100% - 12px);height:26px;margin-top:-13px}.scroll-roll-core{height:21px}.scroll-roll-core::before,.scroll-roll-core::after{width:22px;height:22px}.walkthrough .browser-bar{font-size:8px;padding:10px}.project-annotation{width:min(250px,67%);text-align:left}.annotation--left{left:10px;right:auto}.annotation--right{right:10px;left:auto}.annotation-body{padding:16px}.project-annotation h3{font-size:19px;margin:10px 0}.project-annotation p{font-size:11px;line-height:1.6}.annotation-line{top:25px;width:20px}.walkthrough{margin-bottom:50px}}
-@media(prefers-reduced-motion:reduce){.annotation-body,.annotation-line,.stage-gated .project-annotation{animation:none!important;transition:none!important;opacity:1!important;transform:none!important}.scroll-cue-arrow,.annotation-line::after,.scroll-roll-core::before,.scroll-roll-core::after{animation:none!important}}
+@media(max-width:800px){.walkthrough-browser{width:100%}.scroll-roll{width:calc(100% - 20px);height:60px;margin-top:-30px}.scroll-roll-core{height:48px}.scroll-roll-end{width:52px;height:52px}.scroll-roll-end--left{left:-19px}.scroll-roll-end--right{right:-19px}.walkthrough .browser-bar{font-size:8px;padding:10px}.project-annotation{width:min(250px,67%);text-align:left}.annotation--left{left:10px;right:auto}.annotation--right{right:10px;left:auto}.annotation-body{padding:16px}.project-annotation h3{font-size:19px;margin:10px 0}.project-annotation p{font-size:11px;line-height:1.6}.annotation-line{top:25px;width:20px}.walkthrough{margin-bottom:50px}}
+@media(prefers-reduced-motion:reduce){.annotation-body,.annotation-line,.stage-gated .project-annotation{animation:none!important;transition:none!important;opacity:1!important;transform:none!important}.scroll-roll{--roll-scale:.65;--roll-turn:0deg}.scroll-cue-arrow,.annotation-line::after{animation:none!important}}
