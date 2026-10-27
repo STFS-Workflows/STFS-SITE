@@ -1,2 +1,33 @@
-:root{--bg:#08090b;--panel:#14171c;--ink:#f2f4f7;--muted:#a7adb8;--mint:#35e0c1;--line:rgba(255,255,255,.14)}
-.top .brand::before{content:"";width:30px;height:30px;flex:none;border-radius:50%;background:url('/logo_stfs.jpg') 53% 6% / 138% 138%;border:1.5px solid rgba(53,224,193,.45);box-shadow:0 0 12px rgba(53,224,193,.25)}
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap');
+/* Shared landing-page typography, surfaces and accents. */
+:root{--bg:#08090b;--panel:#14171c;--ink:#f2f4f7;--muted:#a7adb8;--mint:#35e0c1;--line:rgba(255,255,255,.08);--display:'Space Grotesk',sans-serif;--mono:'IBM Plex Mono',monospace}
+body{font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+main,footer,.top{width:min(1240px,calc(100% - 40px))}
+.top{min-height:64px;border-color:var(--line)}
+.top .brand{gap:8px;font:700 19px var(--display);letter-spacing:.02em}
+.top .brand::before{content:"";width:30px;height:30px;flex:none;border-radius:50%;background:url('/logo_stfs.jpg') 53% 6% / 138% 138%;border:1.5px solid rgba(53,224,193,.45);box-shadow:0 0 12px rgba(53,224,193,.35)}
+.top .brand span{font:700 19px var(--display);letter-spacing:.02em;border:0;padding:0}
+.top nav{gap:20px}.top nav a{font-size:14px}.top nav a:hover,.top nav [aria-current]{color:var(--ink)}
+.top nav .contact,.pill{border:0;border-radius:999px;background:var(--mint);color:var(--bg);font-weight:700;box-shadow:0 8px 25px rgba(53,224,193,.15),inset 0 1px 0 rgba(255,255,255,.35);transition:background .25s,box-shadow .25s}
+.top nav .contact:hover,.pill:hover{background:#4fe9cd;color:var(--bg);box-shadow:0 10px 30px rgba(53,224,193,.25),inset 0 1px 0 rgba(255,255,255,.35)}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid rgba(53,224,193,.25);border-radius:999px;background:rgba(53,224,193,.14);color:var(--mint);font:500 12px/1.5 var(--mono);letter-spacing:.1em}
+.small-label,.coverflow-header p{font-family:var(--mono);letter-spacing:.1em}
+h1{font-weight:700;letter-spacing:-.045em;line-height:1.08}
+.case-lead,.intro-bottom p{line-height:1.65}
+.case-facts{border-color:var(--line);gap:12px;padding:20px 0}
+.case-facts>div{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px}
+.case-facts dt{color:var(--mint);font:500 10px/1.5 var(--mono);letter-spacing:.08em}
+.case-facts dd{font-weight:600}
+.filters button{border-color:rgba(255,255,255,.14)}
+.filters button.active{background:var(--mint);color:var(--bg)}
+.browser-bar{background:#14171c;border-bottom:1px solid var(--line);font-family:var(--mono);letter-spacing:.04em}
+.browser-dots{color:var(--mint)}
+.walkthrough-browser{border-color:rgba(255,255,255,.14);box-shadow:0 24px 70px rgba(0,0,0,.45)}
+.annotation-body{background:linear-gradient(145deg,#191d23,#101317);border-color:rgba(53,224,193,.25);box-shadow:0 18px 45px #0009,0 0 30px rgba(53,224,193,.06)}
+.annotation-body::after{background:#171b20;border-color:rgba(53,224,193,.25)}
+.project-annotation .eyebrow{font-size:9px;letter-spacing:.08em;padding:4px 8px}
+.project-annotation h3{font-weight:700}
+.scroll-cue-arrow{border-color:rgba(53,224,193,.35);background:rgba(53,224,193,.1)}
+.closing h2,.walkthrough-lead h2{font-weight:700}
+@media(max-width:800px){main,footer,.top{width:calc(100% - 32px)}.top{min-height:64px}.top .brand span{display:inline;font-size:16px}.top .brand{font-size:16px}.top nav{gap:12px}.top nav a{font-size:12px}.case-facts>div{padding:14px}.project-annotation h3{font-size:18px}}
+@media(max-width:390px){.top .brand span{display:none}}
