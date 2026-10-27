@@ -44,9 +44,10 @@ navMobile.querySelectorAll('a').forEach(link => {
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const revealEls = document.querySelectorAll('.reveal');
 
-if (reduceMotion) {
+if (reduceMotion || !('IntersectionObserver' in window)) {
   revealEls.forEach(el => el.classList.add('in'));
 } else {
+  document.documentElement.classList.add('reveal-enabled');
   const io = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {

@@ -14,6 +14,7 @@ Audyt dotyczy kodu gałęzi roboczej i wybranych, publicznie dostępnych stron k
 - `sitemap.xml`: adres strony głównej i docelowy adres listy projektów; `robots.txt` zachowuje odnośnik do mapy.
 - Podglądy projektów: lokalny serwer oznacza je nagłówkiem `X-Robots-Tag: noindex, nofollow`; dynamiczna strona szczegółów pozostaje `noindex` do czasu przygotowania odrębnych, zweryfikowanych i dostępnych publicznie stron projektów.
 - Menu mobilne może przewijać wszystkie pozycje, gdy nie mieszczą się na ekranie.
+- Nagłówki i treści usług są widoczne również bez JavaScriptu; animacja odsłaniania włącza się dopiero po uruchomieniu skryptu. Dodano też opis logo i język do metadanych udostępniania.
 
 ## Propozycje tematów i fraz
 

@@ -26,6 +26,8 @@ try {
   assert.match(xml, /<loc>https:\/\/stfs\.pl\/<\/loc>/);
   assert.match(xml, /<loc>https:\/\/stfs\.pl\/projekty<\/loc>/);
   await page.goto(base + '/');
+  assert.equal(await page.locator('#uslugi h2').evaluate(node => getComputedStyle(node).opacity), '1', 'Service heading must remain visible without JavaScript');
+  assert.equal(await page.locator('#uslugi .service-card').first().evaluate(node => getComputedStyle(node).opacity), '1', 'Service content must remain visible without JavaScript');
   const organization = JSON.parse(await page.locator('script[type="application/ld+json"]').first().textContent());
   assert.equal(organization['@type'], 'Organization');
   assert.equal(organization.address.addressLocality, 'Katowice');
