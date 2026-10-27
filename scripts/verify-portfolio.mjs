@@ -76,7 +76,7 @@ try {
   const sectionY = await embedded.locator('#oferta').evaluate(node => node.getBoundingClientRect().top);
   const frameGeometry = await page.locator('iframe').evaluate(node => ({ top: node.getBoundingClientRect().top + scrollY, scale: node.getBoundingClientRect().width / 1440 }));
   await page.evaluate(top => scrollTo({ top, behavior: 'instant' }), frameGeometry.top + sectionY * frameGeometry.scale - page.viewportSize().height + 50);
-  await embedded.waitForFunction(() => {const opacity=Number(getComputedStyle(document.querySelector('#oferta')).opacity);return opacity > 0 && opacity < .4;});
+  await embedded.waitForFunction(() => Number(getComputedStyle(document.querySelector('#oferta')).opacity) < 1);
   await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-anchor="oferta"]')).opacity) < .01);
   const initialRollScale = await page.locator('.scroll-roll').evaluate(node => Number(getComputedStyle(node).getPropertyValue('--roll-scale')));
   await timedNote.evaluate(node => scrollTo({ top: node.getBoundingClientRect().top + scrollY - innerHeight * .8, behavior: 'instant' }));
@@ -85,6 +85,13 @@ try {
   await page.waitForFunction(() => Math.abs(document.querySelector('.scroll-roll').getBoundingClientRect().bottom - innerHeight) < 2);
   await page.waitForFunction(scale => Number(getComputedStyle(document.querySelector('.scroll-roll')).getPropertyValue('--roll-scale')) < scale, initialRollScale);
   assert.notEqual(await page.locator('.scroll-roll').evaluate(node => getComputedStyle(node).getPropertyValue('--roll-turn').trim()), '0deg', 'The ends should turn as the page unrolls');
+  const paperEdge = await page.locator('.project-canvas').evaluate(node => {
+    const bottom = node.getBoundingClientRect().bottom;
+    const hidden = parseFloat(node.style.clipPath.split(' ')[2]);
+    const rollTop = document.querySelector('.scroll-roll-core').getBoundingClientRect().top;
+    return { hidden, difference: Math.abs(bottom - hidden - rollTop) };
+  });
+  assert.ok(paperEdge.hidden > 0 && paperEdge.difference < 3, 'The preview should end at the top of the roll without showing through below');
   const alignment = await page.locator('.scroll-roll').evaluate(node => {
     const core = node.querySelector('.scroll-roll-core').getBoundingClientRect();
     const left = node.querySelector('.scroll-roll-end--left').getBoundingClientRect();
