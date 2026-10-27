@@ -9,7 +9,7 @@
 .project-canvas{position:relative;overflow:hidden;height:600px;background:#eee9df}
 .project-canvas iframe{display:block;border:0;width:1440px;height:900px;max-width:none;transform-origin:top left;pointer-events:none}
 .project-annotation{position:absolute;width:210px;z-index:2}
-.stage-gated .project-annotation{opacity:0;transition:opacity .3s ease}
+.stage-gated .project-annotation{opacity:0;transition:opacity .45s ease}
 .stage-gated .project-annotation.stage-ready{opacity:1}
 .annotation--left{left:0;text-align:right}.annotation--right{right:0;text-align:left}
 .annotation-body{position:relative;padding:21px 19px;background:linear-gradient(145deg,#1b352bf5,#101d19fa);border:1px solid #8cebc842;border-radius:34px 34px 34px 12px;box-shadow:0 18px 45px #0008,0 0 35px #8cebc80b;transition:opacity .65s ease,transform .8s cubic-bezier(.2,.75,.2,1);transition-delay:.12s}
@@ -31,15 +31,10 @@
 .annotations-animated .annotation--left .annotation-body{transform:translate(-18px,24px) scale(.97)}
 .annotations-animated .annotation--right .annotation-body{transform:translate(18px,24px) scale(.97)}
 .annotations-animated .annotation-line{transform:scaleX(0)}
-.annotations-animated .project-annotation.visible .annotation-body{opacity:1;transform:none}
-.annotations-animated .project-annotation.visible .annotation-line{transform:scaleX(1)}
-@supports (animation-timeline:view()){
-  .annotations-animated .project-annotation{view-timeline-name:--annotation;view-timeline-axis:block}
-  .annotations-animated .annotation-body{animation:annotation-enter linear both;animation-timeline:--annotation;animation-range:cover 40% cover 60%}
-  .annotations-animated .annotation-line{animation:line-enter linear both;animation-timeline:--annotation;animation-range:cover 35% cover 55%}
-  @keyframes annotation-enter{from{opacity:0;transform:translateY(26px) scale(.96)}to{opacity:1;transform:none}}
-  @keyframes line-enter{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-}
+.annotations-animated .project-annotation.visible.stage-ready .annotation-body{opacity:1;transform:none}
+.annotations-animated .project-annotation.visible.stage-ready .annotation-line{transform:scaleX(1)}
+.annotations-animated:not(.stage-gated) .project-annotation.visible .annotation-body{opacity:1;transform:none}
+.annotations-animated:not(.stage-gated) .project-annotation.visible .annotation-line{transform:scaleX(1)}
 @media(max-width:1050px){.walkthrough-browser{width:calc(100% - 280px)}.project-annotation{width:155px}.project-annotation h3{font-size:19px}.project-annotation p{font-size:11px}.annotation-line{width:28px}}
 @media(max-width:800px){.walkthrough-browser{width:100%}.walkthrough .browser-bar{font-size:8px;padding:10px}.project-annotation{width:min(250px,67%);text-align:left}.annotation--left{left:10px;right:auto}.annotation--right{right:10px;left:auto}.annotation-body{padding:16px}.project-annotation h3{font-size:19px;margin:10px 0}.project-annotation p{font-size:11px;line-height:1.6}.annotation-line{top:25px;width:20px}.walkthrough{margin-bottom:50px}}
 @media(prefers-reduced-motion:reduce){.annotation-body,.annotation-line,.stage-gated .project-annotation{animation:none!important;transition:none!important;opacity:1!important;transform:none!important}.scroll-cue-arrow,.annotation-line::after{animation:none!important}}

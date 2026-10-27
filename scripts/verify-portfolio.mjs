@@ -70,12 +70,12 @@ try {
   await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-anchor="oferta"] .annotation-body')).opacity) > .9);
   await embedded.waitForFunction(() => Number(getComputedStyle(document.querySelector('#oferta')).opacity) >= .99);
   await page.waitForFunction(() => document.querySelector('[data-anchor="oferta"]').classList.contains('stage-ready'));
+  await page.evaluate(top => scrollTo({ top, behavior: 'instant' }), frameGeometry.top + sectionY * frameGeometry.scale - page.viewportSize().height + 50);
+  await page.waitForTimeout(100);
+  assert.equal(await embedded.locator('#oferta').evaluate(node => getComputedStyle(node).opacity), '1', 'An already revealed section must not fade out again when scrolling back');
   for (const chapter of await page.locator('.project-annotation').all()) {
-    await chapter.scrollIntoViewIfNeeded();
-    await chapter.evaluate(node => new Promise(resolve => {
-      const check = () => getComputedStyle(node).opacity === '1' ? resolve() : requestAnimationFrame(check);
-      check();
-    }));
+    await chapter.evaluate(node => scrollTo({ top: node.getBoundingClientRect().top + scrollY - innerHeight * .25, behavior: 'instant' }));
+    await chapter.waitFor({ state: 'visible' });
   }
   await embedded.evaluate(() => scrollTo(0, 0));
   await page.evaluate(() => scrollTo(0, 0));

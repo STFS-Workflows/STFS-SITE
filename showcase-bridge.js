@@ -2,10 +2,10 @@
 (() => {
   if (window.parent === window) return;
   const style = document.createElement('style');
-  style.textContent = 'html{overflow:hidden!important;scroll-behavior:auto!important}body{min-height:0!important}.hero{height:900px!important;min-height:900px!important}.garden-banner{height:720px!important}.rating-card{bottom:54px!important}.reveal{opacity:1!important;transform:none!important;transition:none!important}.stfs-stage{transition:opacity .42s ease-out!important}@media(prefers-reduced-motion:reduce){.stfs-stage{transition:none!important}}';
+  style.textContent = 'html{overflow:hidden!important;scroll-behavior:auto!important}body{min-height:0!important}.hero{height:900px!important;min-height:900px!important}.garden-banner{height:720px!important}.rating-card{bottom:54px!important}.reveal{opacity:1!important;transform:none!important;transition:none!important}.stfs-stage{transition:none!important}';
   document.head.append(style);
   let queued = false, stages = [];
-  const observed = new WeakSet(), readiness = new Map();
+  const readiness = new Map(), revealed = new WeakSet(), timers = new Map();
   const signal = (key, ready) => {
     if (readiness.get(key) === ready) return;
     readiness.set(key, ready);
@@ -18,12 +18,6 @@
       const key = section.id || section.classList[0];
       sections[key] = { y: section.getBoundingClientRect().top + scrollY, height: section.offsetHeight };
       section.classList.add('stfs-stage');
-      if (!observed.has(section)) {
-        observed.add(section);
-        section.addEventListener('transitionend', event => {
-          if (event.propertyName === 'opacity' && Number(section.style.opacity) >= .99) signal(key, true);
-        });
-      }
       return { node: section, key, y: sections[key].y };
     });
     parent.postMessage({ type: 'stfs-showcase-layout', height: Math.ceil(document.body.getBoundingClientRect().height), sections }, '*');
@@ -34,14 +28,20 @@
     const { frameTop, scale, viewportHeight } = event.data;
     if (![frameTop, scale, viewportHeight].every(Number.isFinite) || scale <= 0 || scale > 2 || viewportHeight <= 0) return;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const distance = Math.min(320, viewportHeight * .36);
+      const distance = Math.min(420, viewportHeight * .48);
     for (const stage of stages) {
       const top = frameTop + stage.y * scale;
-      const progress = reduced ? 1 : Math.max(0, Math.min(1, (viewportHeight - top) / distance));
-      const opacity = String(Math.round(progress * 100) / 100);
+      const progress = reduced || revealed.has(stage.node) ? 1 : Math.max(0, Math.min(1, (viewportHeight - top) / distance));
+      const eased = progress * progress * (3 - 2 * progress);
+      const opacity = String(Math.round(eased * 1000) / 1000);
       if (stage.node.style.opacity !== opacity) stage.node.style.setProperty('opacity', opacity, 'important');
-      if (progress < .99) signal(stage.key, false);
-      else if (readiness.get(stage.key) !== true && (reduced || Number(getComputedStyle(stage.node).opacity) >= .99)) signal(stage.key, true);
+      if (progress >= 1) {
+        revealed.add(stage.node);
+        if (reduced) signal(stage.key, true);
+        else if (!timers.has(stage.key) && readiness.get(stage.key) !== true) {
+          timers.set(stage.key, setTimeout(() => { timers.delete(stage.key); signal(stage.key, true); }, 280));
+        }
+      }
     }
   });
   const normalizeNumbers = () => {
