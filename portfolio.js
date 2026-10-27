@@ -17,12 +17,6 @@ function setupReveal(){
   document.querySelectorAll('.reveal').forEach(node=>observer.observe(node));
 }
 const grid=document.getElementById('projectGrid');
-if(grid||document.getElementById('reviews')){
-  const wrap=el('div','section-switch-wrap'),nav=el('nav','section-switch');nav.setAttribute('aria-label','Wybierz widok');
-  [['/projekty','Projekty',String(projects.length)],['/opinie','Opinie','Google']].forEach(([href,label,detail])=>{const link=el('a','',label);link.href=href;if((grid&&href==='/projekty')||(!grid&&href==='/opinie'))link.setAttribute('aria-current','page');link.append(el('span','',detail));link.addEventListener('click',event=>{if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||link.hasAttribute('aria-current')||matchMedia('(prefers-reduced-motion: reduce)').matches)return;event.preventDefault();link.classList.add('is-target');document.documentElement.classList.add('section-changing');setTimeout(()=>location.assign(link.href),180);});nav.append(link);});
-  wrap.append(nav);document.querySelector('.top').after(wrap);
-  addEventListener('pageshow',()=>{document.documentElement.classList.remove('section-changing');nav.querySelector('.is-target')?.classList.remove('is-target');});
-}
 if(grid){
   document.querySelector('.small-label').textContent=projects.length+' PROJEKTY ↓';
   let filter='all',active=0,animations=[],scrollFrame=0;const input=document.getElementById('projectSearch');
@@ -45,7 +39,7 @@ if(study){
   const project=projects.find(p=>p.slug===new URLSearchParams(location.search).get('slug'));
   if(!project){const intro=el('section','intro');intro.append(el('h1','','Nie znaleziono projektu.'));const back=el('a','pill','Wróć do projektów ↗');back.href='/projekty';intro.append(back);study.append(intro);}else{
     document.title=project.name+' — realizacja STFS';
-    const intro=el('section','case-intro reveal');intro.append(el('p','eyebrow','WYBRANA REALIZACJA / '+project.location.toUpperCase()),el('h1','',project.name),el('p','case-lead',project.summary));
+    const intro=el('section','case-intro reveal');intro.append(el('p','eyebrow','PRZYKŁADOWY PROJEKT / '+project.location.toUpperCase()),el('h1','',project.name),el('p','case-lead',project.summary));
     const facts=el('dl','case-facts');[['Dla kogo',project.name],['Zakres',project.scope],['Czas realizacji',project.duration],['Status','Podgląd projektu']].forEach(([label,value])=>{const pair=el('div');pair.append(el('dt','',label),el('dd','',value));facts.append(pair);});intro.append(facts);study.append(intro);
     const lead=el('div','walkthrough-lead reveal');lead.append(el('p','eyebrow','PRZEWIŃ. ZOBACZ. POZNAJ HISTORIĘ.'),el('h2','','Za każdym fragmentem stoi pomysł.'),el('p','','Przewijaj w dół — odkrywaj stronę i decyzje, które nadały jej charakter.'));const cue=el('div','scroll-cue');const cueArrow=el('span','scroll-cue-arrow','↓');cueArrow.setAttribute('aria-hidden','true');cue.append(cueArrow,el('span','','Przewiń i odkryj projekt'));lead.append(cue);study.append(lead);
     const walkthrough=el('section','walkthrough'),preview=el('div','walkthrough-browser'),bar=el('div','browser-bar reveal');bar.append(el('span','browser-dots','● ● ●'),el('span','','REALIZACJA / WIDOK DESKTOPOWY'));const open=el('a','','Otwórz stronę ↗');open.href=project.preview;open.target='_blank';open.rel='noopener';bar.append(open);
@@ -77,21 +71,4 @@ if(study){
     window.addEventListener('message',event=>{if(event.source!==frame.contentWindow)return;const data=event.data;if(data?.type==='stfs-stage-ready'&&typeof data.key==='string'&&typeof data.ready==='boolean'){annotations.filter(note=>note.dataset.anchor===data.key).forEach(note=>note.classList.toggle('stage-ready',data.ready));return;}if(data?.type!=='stfs-showcase-layout'||!Number.isFinite(data.height)||data.height<100||data.height>60000||!data.sections||typeof data.sections!=='object')return;layout={height:data.height,sections:{}};for(const [key,section] of Object.entries(data.sections)){if(Number.isFinite(section.y)&&Number.isFinite(section.height)&&section.y>=0&&section.y<60000&&section.height>=0)layout.sections[key]=section;}walkthrough.classList.add('stage-gated');resize();});new ResizeObserver(resize).observe(stage);
     const closing=el('section','closing');closing.append(el('span','eyebrow','TWÓJ PROJEKT. TWÓJ CHARAKTER.'),el('h2','','Stwórzmy coś, co pasuje do Twojej firmy.'));const cta=el('a','pill','Porozmawiajmy ↗');cta.href='/#konsultacja';closing.append(cta);study.append(closing);setupReveal();
   }
-}
-const reviewsGrid=document.getElementById('reviews');
-if(reviewsGrid){
-  const status=document.getElementById('reviewStatus');
-  const safeGoogleUrl=value=>{try{const url=new URL(value);return url.protocol==='https:'&&!url.username&&!url.password&&(['google.com','google.pl','maps.app.goo.gl','goo.gl','share.google'].includes(url.hostname)||/\.(?:google\.com|google\.pl)$/.test(url.hostname))?url.href:null;}catch{return null;}};
-  const empty=(title,text)=>{const box=el('div','review-empty');box.append(el('h3','',title),el('p','',text));reviewsGrid.replaceChildren(box);};
-  (async()=>{try{
-    const response=await fetch('/api/reviews',{signal:AbortSignal.timeout(12000)});if(!response.ok)throw Error('fetch');const data=await response.json();
-    if(data.demo){const banner=el('div','review-empty');banner.setAttribute('role','note');banner.append(el('h3','','Podgląd testowy'),el('p','','Opinie z przykładowej wizytówki. Nie dotyczą STFS AI STUDIO.'));document.querySelector('.reviews-panel').before(banner);}
-    const source=safeGoogleUrl(data.profileUrl);if(source){const link=document.getElementById('reviewSource');link.href=source;link.hidden=false;}
-    if(data.status==='unconfigured'){status.textContent='Profil Google nie jest jeszcze podłączony.';empty('Tu pojawią się opinie.','Po podłączeniu profilu firmy zobaczysz tutaj aktualne wypowiedzi klientów z Google.');return;}
-    if(!Array.isArray(data.reviews)||!data.reviews.length){status.textContent='Opinie są chwilowo niedostępne.';empty('Jeszcze chwila.','Nie udało się pobrać opinii. Spróbuj później lub sprawdź profil bezpośrednio w Google.');return;}
-    if(Number.isFinite(data.rating)){const rating=el('p','stars',data.rating.toFixed(1)+' / 5');document.getElementById('reviewSummary').prepend(rating);}
-    if(Number.isInteger(data.count)&&data.count>=0){document.getElementById('reviewSummary').append(el('p','',data.count+' opinii w Google'));}
-    const updated=data.updatedAt?new Date(data.updatedAt):null;status.textContent=(data.status==='stale'?'Wyświetlamy ostatnio pobrane opinie. ':'')+(updated&&!Number.isNaN(updated.getTime())?'Aktualizacja: '+updated.toLocaleString('pl-PL'):'Opinie z Google');
-    reviewsGrid.replaceChildren(...data.reviews.map(review=>{const article=el('article','review-card');const author=el('div','review-author');author.append(el('span','avatar',String(review.author||'K').slice(0,1)),el('span','',review.author||'Klient Google'));const rating=Math.max(0,Math.min(5,Number(review.rating)||0));const stars=el('p','stars','★'.repeat(Math.round(rating)));stars.setAttribute('aria-label',rating+' na 5');article.append(author,stars,el('p','',review.text||''),el('span','',review.date||''));const url=safeGoogleUrl(review.url)||source;if(url){const link=el('a','','Czytaj w Google ↗');link.href=url;link.target='_blank';link.rel='noopener noreferrer';article.append(el('br'),link);}return article;}));
-  }catch{status.textContent='Nie udało się połączyć z opiniami.';empty('Opinie wrócą za chwilę.','Odśwież stronę za moment.');}finally{reviewsGrid.setAttribute('aria-busy','false');}})();
 }

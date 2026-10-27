@@ -82,39 +82,40 @@ try {
   await page.screenshot({ path: join(tmpdir(), 'stfs-projekt-desktop.png'), fullPage: true });
   for (const width of [390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const route of ['/projekty', '/projekt?slug=dom-przyjec-gonsior', '/projekt?slug=dom-przyjec-premium', '/opinie']) {
+    for (const route of ['/projekty', '/projekt?slug=dom-przyjec-gonsior', '/projekt?slug=dom-przyjec-premium', '/']) {
       await page.goto(base + route);
       await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${route} overflows at ${width}px`);
     }
   }
-  await page.locator('#reviews[aria-busy="false"]').waitFor();
-  assert.notEqual(await page.locator('#reviewStatus').textContent(), 'Pobieramy opinie…');
+  await page.locator('[data-reviews-grid][aria-busy="false"]').waitFor({ state: 'attached' });
+  assert.equal(await page.locator('[data-reviews-status]').textContent(), 'Opinie klientów pojawią się tutaj wkrótce.');
   await page.setViewportSize({ width: 390, height: 900 });
   await page.screenshot({ path: join(tmpdir(), 'stfs-opinie-mobile.png'), fullPage: true });
-  await page.route('**/api/reviews', route => route.fulfill({ json: { status: 'unconfigured', demo: true, reviews: [] } }));
-  await page.goto(base + '/opinie');
-  await page.locator('#reviews[aria-busy="false"]').waitFor();
-  assert.equal(await page.getByRole('note').isVisible(), true);
-  assert.match(await page.getByRole('note').textContent(), /Nie dotyczą STFS/);
+  let reviewLoads = 0;
+  await page.route('**/api/reviews', route => { reviewLoads++; return route.fulfill({ json: { status: 'ok', demo: true, profileUrl: 'https://www.google.com/maps/place/test', reviews: [{author:'<script>alert(1)</script>',rating:5,text:'Przykładowa opinia',date:'test'}] } }); });
+  await page.goto(base + '/#opinie');
+  await page.reload();
+  await page.locator('[data-reviews-grid][aria-busy="false"]').waitFor({ state: 'attached' });
+  assert.equal(await page.locator('[data-reviews-demo]').isVisible(), true);
+  assert.match(await page.locator('[data-reviews-demo]').textContent(), /nie dotyczą STFS/);
+  assert.equal(await page.locator('.landing-reviews__card').count(), 1);
+  assert.equal(await page.locator('.landing-reviews__author').textContent(), '<script>alert(1)</script>');
+  assert.equal(await page.locator('.landing-reviews__author script').count(), 0, 'Review text must not execute as HTML');
+  assert.equal(reviewLoads, 1);
   await page.unroute('**/api/reviews');
   await page.goto(base + '/projekt?slug=unknown');
   assert.equal(await page.locator('h1').textContent(), 'Nie znaleziono projektu.');
   await page.goto(base + '/projekty');
-  assert.equal(await page.locator('.section-switch [aria-current="page"]').textContent(), 'Projekty2');
-  let reviewLoads = 0;
-  await page.route('**/api/reviews', route => { reviewLoads++; return route.fulfill({ json: { status: 'unconfigured', reviews: [] } }); });
-  await page.locator('.section-switch a[href="/opinie"]').click();
-  await page.waitForURL('**/opinie');
-  await page.locator('#reviews[aria-busy="false"]').waitFor();
-  assert.equal(reviewLoads, 1, 'Opinions must load fresh on navigation');
-  assert.equal(await page.locator('.section-switch [aria-current="page"]').textContent(), 'OpinieGoogle');
-  await page.locator('.section-switch a[href="/projekty"]').click();
-  await page.waitForURL('**/projekty');
-  await page.goBack();
-  await page.waitForURL('**/opinie');
-  assert.equal(await page.locator('html').evaluate(node => node.classList.contains('section-changing')), false);
-  await page.unroute('**/api/reviews');
+  assert.equal(await page.locator('a[href="/#opinie"]').count(), 1);
+  const oldReviews = await page.request.get(base + '/opinie', { maxRedirects: 0 });
+  assert.equal(oldReviews.status(), 308);
+  assert.equal(oldReviews.headers().location, '/#opinie');
+  const noJs = await browser.newPage({ javaScriptEnabled: false });
+  await noJs.goto(base + '/projekty');
+  assert.equal(await noJs.locator('.project-card').count(), 2, 'Project links must exist without JavaScript');
+  assert.match(await noJs.locator('h1').textContent(), /Projekty stron internetowych/);
+  await noJs.close();
   const protectedResponse = await page.request.get(base + '/server.mjs');
   assert.ok([403, 404].includes(protectedResponse.status()));
   const reduced = await browser.newPage({ reducedMotion: 'reduce' });
@@ -135,7 +136,7 @@ try {
   await fallback.waitForFunction(() => document.querySelector('#coverPosition').textContent === '2 / 2');
   await fallback.close();
   assert.deepEqual(errors, [], 'Unexpected JavaScript errors');
-  console.log('PASS: projects, search, embedded preview, animated chapters, reviews, 4 viewport widths, unknown project and server source protection.');
+  console.log('PASS: projects, search, no-JS project links, embedded previews, landing reviews, 4 viewport widths and source protection.');
   console.log('Screenshots saved to: ' + tmpdir());
 } finally {
   await browser.close();

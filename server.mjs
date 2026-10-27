@@ -42,8 +42,8 @@ const MIME = {
   '.webm': 'video/webm', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8',
 };
 const SITE_FILES = new Set([
-  'index.html', 'projekty.html', 'projekt.html', 'opinie.html', 'portfolio.js', 'portfolio.css',
-  'script.js', 'styles.css', 'showcase-bridge.js', 'walkthrough.css', 'coverflow.css', 'section-switch.css', 'process-journey.css', 'process-journey.js', 'workflow-demo.css', 'workflow-demo.js', 'logo_stfs.jpg', 'favicon.ico', 'robots.txt', 'sitemap.xml',
+  'index.html', 'projekty.html', 'projekt.html', 'portfolio.js', 'portfolio.css',
+  'script.js', 'styles.css', 'showcase-bridge.js', 'walkthrough.css', 'coverflow.css', 'project-brand.css', 'landing-reviews.css', 'landing-reviews.js', 'process-journey.css', 'process-journey.js', 'workflow-demo.css', 'workflow-demo.js', 'logo_stfs.jpg', 'favicon.ico', 'robots.txt', 'sitemap.xml',
   'polityka-prywatnosci.html', 'regulamin.html',
 ]);
 const SHOWCASE_FILES = new Set([
@@ -250,6 +250,9 @@ export function createServer({ root = ROOT, templatesRoot = process.env.STFS_TEM
       const parts = safeSegments(rawPath);
       if (!parts) return send(res, 403, 'Forbidden', req.method);
       const pathname = `/${parts.join('/')}`;
+      if (pathname === '/opinie' || pathname === '/opinie.html') {
+        return send(res, 308, '', req.method, { Location: '/#opinie' });
+      }
       if (pathname === '/api/reviews') {
         return send(res, 200, JSON.stringify(reviews.snapshot()), req.method, { 'Content-Type': 'application/json; charset=utf-8' });
       }
@@ -261,11 +264,12 @@ export function createServer({ root = ROOT, templatesRoot = process.env.STFS_TEM
         base = mounts[parts[1]];
         showcase = true;
         res.setHeader('Content-Security-Policy', SHOWCASE_CSP);
+        res.setHeader('X-Robots-Tag', 'noindex, nofollow');
         if (parts.length === 2 && !rawPath.endsWith('/')) {
           return send(res, 308, '', req.method, { Location: `${pathname}/${(req.url || '').includes('?') ? `?${req.url.split('?').slice(1).join('?')}` : ''}` });
         }
         files = parts.slice(2);
-      } else if (parts.length === 1 && ['projekty', 'opinie', 'projekt', 'polityka-prywatnosci', 'regulamin'].includes(parts[0])) {
+      } else if (parts.length === 1 && ['projekty', 'projekt', 'polityka-prywatnosci', 'regulamin'].includes(parts[0])) {
         if (rawPath.endsWith('/')) return send(res, 308, '', req.method, { Location: pathname + ((req.url || '').includes('?') ? `?${req.url.split('?').slice(1).join('?')}` : '') });
         files = [`${parts[0]}.html`];
       }

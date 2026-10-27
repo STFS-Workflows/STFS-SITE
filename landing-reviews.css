@@ -1,0 +1,16 @@
+.landing-reviews { border-top: 1px solid var(--border); padding: clamp(56px,7vw,90px) 0; }
+.landing-reviews .section-title { margin-bottom: 12px; }
+.landing-reviews__intro, .landing-reviews__status { color: var(--text-secondary); font-size: 15px; }
+.landing-reviews__status:not(:empty) { margin-top: 24px; }
+.landing-reviews__demo { margin-top: 24px; padding: 14px 18px; border: 1px solid var(--border-strong); border-radius: 10px; color: var(--text-primary); font-size: 14px; }
+.landing-reviews__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.landing-reviews__grid:not(:empty) { margin-top: 28px; }
+.landing-reviews__card { padding: 28px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); overflow-wrap: anywhere; }
+.landing-reviews__author { font-size: 15px; font-weight: 700; }
+.landing-reviews__rating { margin-top: 8px; color: var(--accent); font-size: 13px; }
+.landing-reviews__text { margin-top: 18px; color: var(--text-secondary); line-height: 1.7; white-space: pre-wrap; }
+.landing-reviews__date { margin-top: 16px; color: var(--text-tertiary); font-size: 12px; }
+.landing-reviews__link, .landing-reviews__source { display: inline-block; margin-top: 18px; color: var(--accent); font-size: 13px; }
+.landing-reviews__link:hover, .landing-reviews__source:hover { text-decoration: underline; }
+.landing-reviews [hidden] { display: none; }
+@media (max-width: 800px) { .landing-reviews__grid { grid-template-columns: 1fr; } }

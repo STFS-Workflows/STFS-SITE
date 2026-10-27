@@ -13,9 +13,9 @@ npm start
 
 - http://127.0.0.1:4173/projekty — katalog z wyszukiwarką i filtrami;
 - http://127.0.0.1:4173/projekt?slug=dom-przyjec-gonsior — podgląd i opis projektu;
-- http://127.0.0.1:4173/opinie — opinie Google.
+- http://127.0.0.1:4173/#opinie — opinie Google na stronie głównej.
 
-Na stronach projektów i opinii przełącznik prowadzi pod osobne adresy z krótkim przejściem. Każde wejście do opinii ponownie pobiera aktualny stan endpointu `/api/reviews`; sam scraper odświeża dane zgodnie z ustawionym harmonogramem.
+Opinie są częścią strony głównej; lista projektów pozostaje osobną stroną. Landing page pobiera aktualny stan endpointu `/api/reviews` podczas otwarcia; sam scraper odświeża dane zgodnie z ustawionym harmonogramem.
 
 Na stronie głównej etapy współpracy podświetlają się kolejno podczas przewijania. Demo automatyzacji pokazuje pięć kroków na przykładowych danych, bez publikacji odpowiedzi. Można wstrzymać, ponowić lub wybrać etap. Autoodtwarzanie jest wyłączone przy ograniczonym ruchu.
 
@@ -53,8 +53,9 @@ Przy działającym serwerze:
 node scripts/verify-portfolio.mjs
 node scripts/verify-reviews.mjs
 node scripts/verify-landing.mjs
+node scripts/verify-seo.mjs
 ```
 
 Test interfejsu sprawdza karty, wyszukiwanie, pełny podgląd, animacje, stany opinii i szerokości 390/768/1024/1440 px. Test opinii obejmuje walidację URL, ekstrakcję DOM, blokadę równoczesnego pobierania i zachowanie cache po błędzie. Zrzuty podglądowe trafiają do systemowego katalogu tymczasowego.
 
-Nowe podstrony mają `noindex` na czas prac. To osobny serwer Node; samo wysłanie HTML na hosting statyczny nie uruchamia scrapera. Ta gałąź nie zmienia konfiguracji wdrożenia produkcji.
+Lista projektów jest przygotowana do indeksowania. Poszczególne podglądy projektów pozostają `noindex`: są demonstracyjne i zależą od zewnętrznego katalogu. To osobny serwer Node; samo wysłanie HTML na hosting statyczny nie uruchamia scrapera ani nie udostępnia podglądów. Przed publikacją sprawdź routing `/projekty`, dostępność podglądów, prawa do materiałów i ochronę podglądów przed indeksowaniem. Ta gałąź nie zmienia konfiguracji wdrożenia produkcji.

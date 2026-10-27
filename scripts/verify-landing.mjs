@@ -49,6 +49,12 @@ try {
     await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${width}px overflow`);
   }
+  await page.setViewportSize({ width: 390, height: 500 });
+  await page.goto(base + '/');
+  await page.locator('#navToggle').click();
+  assert.equal(await page.locator('#navToggle').getAttribute('aria-expanded'), 'true');
+  await page.locator('#navMobile a.btn').scrollIntoViewIfNeeded();
+  assert.equal(await page.locator('#navMobile a.btn').isVisible(), true, 'The mobile consultation link must remain reachable');
   const reduced = await browser.newPage({ reducedMotion: 'reduce' });
   await reduced.goto(base + '/');
   assert.equal(await reduced.locator('.process-animated').count(), 0);

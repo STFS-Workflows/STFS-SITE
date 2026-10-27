@@ -1,0 +1,2 @@
+:root{--bg:#08090b;--panel:#14171c;--ink:#f2f4f7;--muted:#a7adb8;--mint:#35e0c1;--line:rgba(255,255,255,.14)}
+.top .brand::before{content:"";width:30px;height:30px;flex:none;border-radius:50%;background:url('/logo_stfs.jpg') 53% 6% / 138% 138%;border:1.5px solid rgba(53,224,193,.45);box-shadow:0 0 12px rgba(53,224,193,.25)}

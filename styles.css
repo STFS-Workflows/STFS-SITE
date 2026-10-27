@@ -156,7 +156,7 @@ input,textarea{font:inherit;color:inherit}
   border-bottom:1px solid var(--border);
   transition:max-height 0.35s var(--ease);
 }
-.nav-mobile.open{max-height:400px}
+.nav-mobile.open{max-height:min(80dvh,600px);overflow-y:auto}
 .nav-mobile a{
   padding:16px 20px;font-size:15px;color:var(--text-secondary);
   border-top:1px solid var(--border);
