@@ -85,6 +85,13 @@ try {
   await page.waitForFunction(() => Math.abs(document.querySelector('.scroll-roll').getBoundingClientRect().bottom - innerHeight) < 2);
   await page.waitForFunction(scale => Number(getComputedStyle(document.querySelector('.scroll-roll')).getPropertyValue('--roll-scale')) < scale, initialRollScale);
   assert.notEqual(await page.locator('.scroll-roll').evaluate(node => getComputedStyle(node).getPropertyValue('--roll-turn').trim()), '0deg', 'The ends should turn as the page unrolls');
+  const alignment = await page.locator('.scroll-roll').evaluate(node => {
+    const core = node.querySelector('.scroll-roll-core').getBoundingClientRect();
+    const left = node.querySelector('.scroll-roll-end--left').getBoundingClientRect();
+    const right = node.querySelector('.scroll-roll-end--right').getBoundingClientRect();
+    return { left: Math.abs(left.left - core.left), right: Math.abs(right.right - core.right), vertical: Math.abs((left.top + left.bottom - core.top - core.bottom) / 2) };
+  });
+  assert.ok(alignment.left < 2 && alignment.right < 2 && alignment.vertical < 2, 'The end circles should stay aligned with the roll as it shrinks');
   await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-anchor="oferta"] .annotation-body')).opacity) > .9);
   await embedded.waitForFunction(() => Number(getComputedStyle(document.querySelector('#oferta')).opacity) >= .99);
   await page.waitForFunction(() => document.querySelector('[data-anchor="oferta"]').classList.contains('stage-ready'));
