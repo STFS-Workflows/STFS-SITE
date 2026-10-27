@@ -14,6 +14,13 @@ try {
   await page.waitForURL('**/projekty');
   assert.equal(await page.evaluate(() => 'CSSViewTransitionRule' in window || document.documentElement.classList.contains('page-enter')), true, 'Opening projects should support a page transition');
   assert.equal(await page.locator('header a[href="/#opinie"]').count(), 0, 'Reviews belong on the landing page');
+  assert.equal(await page.locator('header nav a[href="/"]').textContent(), 'Strona główna');
+  assert.equal(await page.locator('header .brand-mark').count(), 1, 'The portfolio should use the landing-page logo mark');
+  assert.equal(await page.locator('header .brand-word').textContent(), 'STFS');
+  const icon = await page.request.get(base + '/favicon.svg');
+  assert.equal(icon.status(), 200);
+  assert.match(icon.headers()['content-type'], /image\/svg\+xml/);
+  assert.equal(await page.evaluate(async () => { const image = new Image(); image.src = '/favicon.svg'; await image.decode(); const canvas = document.createElement('canvas'); canvas.width = canvas.height = 100; const context = canvas.getContext('2d'); context.drawImage(image, 0, 0); return context.getImageData(0, 0, 1, 1).data[3] === 0 && context.getImageData(50, 50, 1, 1).data[3] > 0; }), true, 'The favicon should be round with a transparent corner');
   await page.goto(base + '/projekty');
   await page.locator('.project-card').first().waitFor();
   assert.equal(await page.locator('.project-card').count(), 2);
@@ -49,6 +56,7 @@ try {
   await page.mouse.move(gridBox.x + gridBox.width / 2, gridBox.y + 100);
   await page.mouse.wheel(0, 400);
   await page.waitForFunction(() => document.querySelector('#coverPosition').textContent === '2 / 2');
+  await page.waitForFunction(() => !document.querySelector('#projectGrid').classList.contains('is-dragging'));
   await page.locator('#coverPrev').click();
   await page.waitForFunction(() => document.querySelector('#coverPosition').textContent === '1 / 2');
   await page.waitForFunction(() => {const grid=document.querySelector('#projectGrid'), card=grid.firstElementChild, rect=card.getBoundingClientRect(), view=grid.getBoundingClientRect();return Math.abs((rect.left+rect.width/2)-(view.left+view.width/2))<3;});

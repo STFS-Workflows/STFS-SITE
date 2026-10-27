@@ -43,7 +43,7 @@ const MIME = {
 };
 const SITE_FILES = new Set([
   'index.html', 'projekty.html', 'projekt.html', 'portfolio.js', 'portfolio.css',
-  'script.js', 'styles.css', 'page-transition.js', 'page-transition.css', 'showcase-bridge.js', 'walkthrough.css', 'coverflow.css', 'project-brand.css', 'landing-reviews.css', 'landing-reviews.js', 'process-journey.css', 'process-journey.js', 'workflow-demo.css', 'workflow-demo.js', 'logo_stfs.jpg', 'favicon.ico', 'robots.txt', 'sitemap.xml',
+  'script.js', 'styles.css', 'page-transition.js', 'page-transition.css', 'showcase-bridge.js', 'walkthrough.css', 'coverflow.css', 'project-brand.css', 'landing-reviews.css', 'landing-reviews.js', 'process-journey.css', 'process-journey.js', 'workflow-demo.css', 'workflow-demo.js', 'logo_stfs.jpg', 'favicon.svg', 'favicon.ico', 'robots.txt', 'sitemap.xml',
   'polityka-prywatnosci.html', 'regulamin.html',
 ]);
 const SHOWCASE_FILES = new Set([

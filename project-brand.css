@@ -5,8 +5,8 @@ body{font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
 main,footer,.top{width:min(1240px,calc(100% - 40px))}
 .top{min-height:64px;border-color:var(--line)}
 .top .brand{gap:8px;font:700 19px var(--display);letter-spacing:.02em}
-.top .brand::before{content:"";width:30px;height:30px;flex:none;border-radius:50%;background:url('/logo_stfs.jpg') 53% 6% / 138% 138%;border:1.5px solid rgba(53,224,193,.45);box-shadow:0 0 12px rgba(53,224,193,.35)}
-.top .brand span{font:700 19px var(--display);letter-spacing:.02em;border:0;padding:0}
+.top .brand .brand-mark{display:block;width:30px;height:30px;flex:none;border-radius:50%;background:url('/logo_stfs.jpg') 53% 6% / 138% 138%;border:1.5px solid rgba(53,224,193,.45);box-shadow:0 0 12px rgba(53,224,193,.35);padding:0}
+.top .brand .brand-word{display:inline;font:700 19px var(--display);letter-spacing:.02em;border:0;padding:0}
 .top nav{gap:20px}.top nav a{font-size:14px}.top nav a:hover,.top nav [aria-current]{color:var(--ink)}
 .top nav .contact,.pill{border:0;border-radius:999px;background:var(--mint);color:var(--bg);font-weight:700;box-shadow:0 8px 25px rgba(53,224,193,.15),inset 0 1px 0 rgba(255,255,255,.35);transition:background .25s,box-shadow .25s}
 .top nav .contact:hover,.pill:hover{background:#4fe9cd;color:var(--bg);box-shadow:0 10px 30px rgba(53,224,193,.25),inset 0 1px 0 rgba(255,255,255,.35)}
@@ -29,5 +29,4 @@ h1{font-weight:700;letter-spacing:-.045em;line-height:1.08}
 .project-annotation h3{font-weight:700}
 .scroll-cue-arrow{border-color:rgba(53,224,193,.35);background:rgba(53,224,193,.1)}
 .closing h2,.walkthrough-lead h2{font-weight:700}
-@media(max-width:800px){main,footer,.top{width:calc(100% - 32px)}.top{min-height:64px}.top .brand span{display:inline;font-size:16px}.top .brand{font-size:16px}.top nav{gap:12px}.top nav a{font-size:12px}.case-facts>div{padding:14px}.project-annotation h3{font-size:18px}}
-@media(max-width:390px){.top .brand span{display:none}}
+@media(max-width:800px){main,footer,.top{width:calc(100% - 32px)}.top{min-height:64px}.top .brand .brand-word{font-size:19px}.top nav{gap:12px}.top nav a{font-size:12px}.case-facts>div{padding:14px}.project-annotation h3{font-size:18px}}
