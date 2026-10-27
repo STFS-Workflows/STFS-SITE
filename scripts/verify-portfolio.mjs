@@ -72,6 +72,7 @@ try {
   assert.equal(await page.locator('.project-annotation').count(), 5);
   assert.deepEqual(await page.locator('.project-annotation').evaluateAll(nodes => nodes.map(node => node.classList.contains('annotation--left') ? 'left' : 'right')), ['left', 'right', 'left', 'right', 'left']);
   const timedNote = page.locator('[data-anchor="oferta"]');
+  assert.equal(await page.locator('.scroll-roll[aria-hidden="true"]').count(), 1, 'The scroll edge should be decorative');
   const sectionY = await embedded.locator('#oferta').evaluate(node => node.getBoundingClientRect().top);
   const frameGeometry = await page.locator('iframe').evaluate(node => ({ top: node.getBoundingClientRect().top + scrollY, scale: node.getBoundingClientRect().width / 1440 }));
   await page.evaluate(top => scrollTo({ top, behavior: 'instant' }), frameGeometry.top + sectionY * frameGeometry.scale - page.viewportSize().height + 50);
@@ -80,6 +81,7 @@ try {
   await timedNote.evaluate(node => scrollTo({ top: node.getBoundingClientRect().top + scrollY - innerHeight * .8, behavior: 'instant' }));
   await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-anchor="oferta"] .annotation-body')).opacity) < .05);
   await timedNote.evaluate(node => scrollTo({ top: node.getBoundingClientRect().top + scrollY - innerHeight * .2, behavior: 'instant' }));
+  await page.waitForFunction(() => Math.abs(document.querySelector('.scroll-roll').getBoundingClientRect().bottom - innerHeight) < 2);
   await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-anchor="oferta"] .annotation-body')).opacity) > .9);
   await embedded.waitForFunction(() => Number(getComputedStyle(document.querySelector('#oferta')).opacity) >= .99);
   await page.waitForFunction(() => document.querySelector('[data-anchor="oferta"]').classList.contains('stage-ready'));
@@ -137,6 +139,7 @@ try {
   assert.equal(await reduced.evaluate(() => document.documentElement.classList.contains('page-enter')), false, 'Reduced motion skips the page rotation');
   assert.equal(await reduced.locator('.cover-surface').last().evaluate(node => getComputedStyle(node).transform), 'none');
   await reduced.goto(base + '/projekt?slug=dom-przyjec-premium');
+  assert.equal(await reduced.locator('.scroll-roll-core').evaluate(node => getComputedStyle(node, '::before').animationName), 'none', 'Reduced motion disables roll rotation');
   assert.equal(await reduced.locator('.annotations-animated').count(), 0);
   assert.equal(await reduced.locator('.annotation-body').first().evaluate(node => getComputedStyle(node).opacity), '1');
   await reduced.locator('.project-canvas').scrollIntoViewIfNeeded();
