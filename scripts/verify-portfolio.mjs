@@ -9,6 +9,12 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  await page.goto(base + '/');
+  await page.locator('.nav-links a[href="/projekty"]').click();
+  assert.equal(await page.evaluate(() => document.documentElement.classList.contains('page-leave')), true, 'Opening projects should animate the outgoing page');
+  await page.waitForURL('**/projekty');
+  assert.equal(await page.evaluate(() => document.documentElement.classList.contains('page-enter')), true, 'The new project page should animate in');
+  assert.equal(await page.locator('header a[href="/#opinie"]').count(), 0, 'Reviews belong on the landing page');
   await page.goto(base + '/projekty');
   await page.locator('.project-card').first().waitFor();
   assert.equal(await page.locator('.project-card').count(), 2);
@@ -107,7 +113,7 @@ try {
   await page.goto(base + '/projekt?slug=unknown');
   assert.equal(await page.locator('h1').textContent(), 'Nie znaleziono projektu.');
   await page.goto(base + '/projekty');
-  assert.equal(await page.locator('a[href="/#opinie"]').count(), 1);
+  assert.equal(await page.locator('a[href="/#opinie"]').count(), 0);
   const oldReviews = await page.request.get(base + '/opinie', { maxRedirects: 0 });
   assert.equal(oldReviews.status(), 308);
   assert.equal(oldReviews.headers().location, '/#opinie');
@@ -119,7 +125,9 @@ try {
   const protectedResponse = await page.request.get(base + '/server.mjs');
   assert.ok([403, 404].includes(protectedResponse.status()));
   const reduced = await browser.newPage({ reducedMotion: 'reduce' });
-  await reduced.goto(base + '/projekty');
+  await reduced.goto(base + '/');
+  await Promise.all([reduced.waitForURL('**/projekty'), reduced.locator('.nav-links a[href="/projekty"]').click()]);
+  assert.equal(await reduced.evaluate(() => document.documentElement.classList.contains('page-enter')), false, 'Reduced motion skips the page rotation');
   assert.equal(await reduced.locator('.cover-surface').last().evaluate(node => getComputedStyle(node).transform), 'none');
   await reduced.goto(base + '/projekt?slug=dom-przyjec-premium');
   assert.equal(await reduced.locator('.annotations-animated').count(), 0);
