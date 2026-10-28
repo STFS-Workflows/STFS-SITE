@@ -5,19 +5,14 @@
 .scroll-cue-arrow{display:grid;place-items:center;width:32px;height:32px;border:1px solid #8cebc844;border-radius:50%;color:var(--mint);animation:scroll-hint 2s ease-in-out infinite}
 @keyframes scroll-hint{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
 .walkthrough{position:relative;margin:0 0 85px;min-height:600px}
+.scroll-opening{height:clamp(160px,30vh,300px);pointer-events:none}
 .walkthrough-browser{width:calc(100% - 520px);margin-inline:auto;border:1px solid #698b7a42;border-bottom:0;border-radius:14px 14px 0 0;overflow:hidden;box-shadow:0 30px 90px #0008,0 0 75px #8cebc80c}
 .project-canvas{position:relative;overflow:hidden;height:600px;background:#eee9df}
 .project-canvas iframe{display:block;border:0;width:1440px;height:900px;max-width:none;transform-origin:top left;pointer-events:none}
-/* The lower edge follows the viewport while the page underneath scrolls. */
-.scroll-roll{--roll-scale:1;--roll-turn:0deg;position:sticky;bottom:0;z-index:1;width:calc(100% - 450px);height:84px;margin:-49px auto 0;pointer-events:none}
-.scroll-roll::before{content:'';position:absolute;bottom:0;left:0;right:0;height:8px;background:var(--bg)}
-.scroll-roll-core{position:absolute;left:0;right:0;bottom:6px;height:70px;transform:scaleY(var(--roll-scale));transform-origin:center bottom;border:1px solid rgba(53,224,193,.42);border-radius:32px;background:linear-gradient(180deg,#273535 0 10%,#202b2e 10% 43%,#162123 44% 48%,#1c2729 49% 72%,#111a1c 73% 78%,#0d1215 79%);box-shadow:0 -2px 0 rgba(53,224,193,.18),0 12px 24px #000b,0 0 24px rgba(53,224,193,.08),inset 0 -5px 0 #05090a66}
-.scroll-roll-core::after{content:'';position:absolute;inset:20% 3% auto;height:1px;background:rgba(185,255,239,.25);box-shadow:0 20px 0 rgba(53,224,193,.12)}
-.scroll-roll-core::before{content:'';position:absolute;left:4%;right:4%;top:0;height:4px;border-radius:50%;background:rgba(126,255,228,.18)}
-.scroll-roll-end{position:absolute;bottom:6px;width:70px;height:70px;border:1px solid rgba(53,224,193,.5);border-radius:50%;transform:scale(var(--roll-scale));background:#12201f;box-shadow:0 4px 12px #0009,inset 0 0 0 5px #1a302e,0 0 14px rgba(53,224,193,.1)}
-.scroll-roll-end::before{content:'';position:absolute;inset:6px;border-radius:50%;transform:rotate(var(--roll-turn));background:radial-gradient(circle,#35e0c1 0 7%,#102322 8% 17%,#338278 18% 20%,#192e2c 21% 37%,#376c65 38% 40%,#172927 41% 64%,#284541 65%);}
-.scroll-roll-end::after{content:'';position:absolute;inset:30%;border:2px solid rgba(53,224,193,.4);border-radius:50%;border-right-color:#74ffe0;transform:rotate(var(--roll-turn))}
-.scroll-roll-end--left{left:0;transform-origin:left bottom}.scroll-roll-end--right{right:0;transform-origin:right bottom}
+/* A light curled edge follows the viewport as the page opens. */
+.sheet-edge{position:sticky;bottom:12px;z-index:1;width:calc(100% - 520px);height:32px;margin:-1px auto 0;pointer-events:none;border:1px solid rgba(53,224,193,.25);border-radius:0 0 22px 22px;background:linear-gradient(180deg,#e5eee9 0%,#d3e0da 45%,#a8beb5 82%,#78968b 100%);box-shadow:0 12px 24px #0009,0 2px 10px rgba(53,224,193,.08)}
+.sheet-edge::before{content:'';position:absolute;left:2%;right:2%;top:3px;height:1px;background:rgba(255,255,255,.6);border-radius:50%}
+.sheet-edge-label{position:absolute;left:10px;right:10px;top:8px;color:#0d2926;text-align:center;font:600 12px/1.2 var(--display);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:var(--sheet-label-opacity,1)}
 .project-annotation{position:absolute;width:240px;z-index:2}
 .stage-gated .project-annotation{opacity:0;transition:opacity .45s ease}
 .stage-gated .project-annotation.stage-ready{opacity:1}
@@ -44,6 +39,6 @@
 .annotations-animated .project-annotation.visible.stage-ready .annotation-line{transform:scaleX(1)}
 .annotations-animated:not(.stage-gated) .project-annotation.visible .annotation-body{opacity:1;transform:none}
 .annotations-animated:not(.stage-gated) .project-annotation.visible .annotation-line{transform:scaleX(1)}
-@media(max-width:1050px){.walkthrough-browser{width:calc(100% - 400px)}.scroll-roll{width:calc(100% - 330px)}.project-annotation{width:185px}.annotation-body{padding:17px}.project-annotation h3{font-size:17px}.project-annotation p{font-size:12px}.annotation-line{width:28px}}
-@media(max-width:800px){.walkthrough-browser{width:100%}.scroll-roll{width:calc(100% + 20px);height:60px;margin:-34px -10px 0}.scroll-roll-core{height:48px}.scroll-roll-end{width:48px;height:48px}.walkthrough .browser-bar{font-size:8px;padding:10px}.project-annotation{width:min(250px,67%);text-align:left}.annotation--left{left:10px;right:auto}.annotation--right{right:10px;left:auto}.annotation-body{padding:16px}.project-annotation h3{font-size:19px;margin:10px 0}.project-annotation p{font-size:11px;line-height:1.6}.annotation-line{top:25px;width:20px}.walkthrough{margin-bottom:50px}}
-@media(prefers-reduced-motion:reduce){.annotation-body,.annotation-line,.stage-gated .project-annotation{animation:none!important;transition:none!important;opacity:1!important;transform:none!important}.scroll-roll{--roll-scale:.65;--roll-turn:0deg}.scroll-cue-arrow,.annotation-line::after{animation:none!important}}
+@media(max-width:1050px){.walkthrough-browser,.sheet-edge{width:calc(100% - 400px)}.project-annotation{width:185px}.annotation-body{padding:17px}.project-annotation h3{font-size:17px}.project-annotation p{font-size:12px}.annotation-line{width:28px}}
+@media(max-width:800px){.scroll-opening{height:clamp(150px,27vh,230px)}.walkthrough-browser,.sheet-edge{width:100%}.sheet-edge{height:26px;bottom:8px}.sheet-edge-label{font-size:11px;top:6px}.walkthrough .browser-bar{font-size:8px;padding:10px}.project-annotation{width:min(250px,67%);text-align:left}.annotation--left{left:10px;right:auto}.annotation--right{right:10px;left:auto}.annotation-body{padding:16px}.project-annotation h3{font-size:19px;margin:10px 0}.project-annotation p{font-size:11px;line-height:1.6}.annotation-line{top:25px;width:20px}.walkthrough{margin-bottom:50px}}
+@media(prefers-reduced-motion:reduce){.annotation-body,.annotation-line,.stage-gated .project-annotation{animation:none!important;transition:none!important;opacity:1!important;transform:none!important}.scroll-cue-arrow,.annotation-line::after{animation:none!important}}
